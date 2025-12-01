@@ -16,7 +16,7 @@
 Safari や Edge では動きませんので、必ず Chrome を使ってください。
 
 Chrome がインストールされていない場合：  
-👉 [Google Chrome をダウンロード](https://www.google.com/chrome/)
+👉 <a href="https://www.google.com/chrome/" target="_blank">Google Chrome をダウンロード</a>
 
 ---
 
@@ -28,7 +28,7 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 #### 手順
 
 1. 下のリンクをクリック  
-   👉 [Tampermonkey をインストール](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
+   👉 <a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank">Tampermonkey をインストール</a>
 
 2. Chrome ウェブストアが開きます
 
@@ -50,7 +50,7 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 #### 手順
 
 1. 下のリンクをクリック  
-   👉 [ブログ生成ツール v0.56.0 をインストール](https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator_v0.56.0.user.js)
+   👉 <a href="https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator_v0.56.0.user.js" target="_blank">ブログ生成ツール v0.56.0 をインストール</a>
 
 2. 新しいタブが開き、**Tampermonkey のインストール画面** が表示されます
 
@@ -74,7 +74,7 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 #### 手順
 
 1. 下のリンクをクリック  
-   👉 [装飾ツール（editor-icons.html）](https://tools.eisai.org/blogs/editor-icons.html)
+   👉 <a href="https://tools.eisai.org/blogs/editor-icons.html" target="_blank">装飾ツール（editor-icons.html）</a>
 
 2. ツール画面が開いたら、ブラウザのブックマークに追加  
    - Mac：⌘ + D  
@@ -100,7 +100,7 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 ### STEP 1：Gemini を開く
 
 1. Chrome で下のリンクを開く  
-   👉 [Gemini を開く](https://gemini.google.com/app)
+   👉 <a href="https://gemini.google.com/app" target="_blank">Gemini を開く</a>
 
 2. 画面が表示されたら **3〜5秒待つ**
 
@@ -159,7 +159,7 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 ### STEP 4：装飾ツールでデザインを適用
 
 1. ブックマークしておいた **装飾ツール** を開く  
-   👉 [装飾ツール](https://tools.eisai.org/blogs/editor-icons.html)
+   👉 <a href="https://tools.eisai.org/blogs/editor-icons.html" target="_blank">装飾ツール</a>
 
 2. 画面左側の大きな入力エリアをクリック
 
