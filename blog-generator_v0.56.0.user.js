@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版 v0.56.0
+// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版 v0.56.02
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.0
+// @version      0.56.02
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @grant        none
@@ -11,11 +11,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID     = 'eisai-tool-v0-56-0';
-  const BTN_ID      = 'eisai-btn-v0-56-0';
-  const STORAGE_KEY = 'eisai_blog_info_v0560';
+  const TOOL_ID     = 'eisai-tool-v0-56-02';
+  const BTN_ID      = 'eisai-btn-v0-56-02';
+  const STORAGE_KEY = 'eisai_blog_info_v05602';
 
-  console.log('🚀 英才ブログ生成ツール v0.56.0 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.02 起動');
 
   let lastBlogHtml = '';
 
@@ -107,7 +107,7 @@
   version: "5.0-minimal-eisai"
   description: >
     英才個別学院のブログ記事を、構成だけ指定して中身は自由に生成するための指示書です。
-    この記事では、650〜900文字の日本語HTMLを生成します。
+    この記事では、700〜1000文字の日本語HTMLを生成します。
     読者が飽きない読了時間1〜2分で、「共感→理解→行動」の流れを作り、
     SEO効果も高く、AI感のない自然な記事にします。
 
@@ -121,13 +121,13 @@
 
   article_goal:
     - "保護者が『うちの子の話かもしれない』と感じられるリアルな記事にすること"
-    - "650〜900字で『共感→理解→行動』の流れを端的に完結させること"
+    - "700〜1000字で『共感→理解→行動』の流れを端的に完結させること"
     - "①共感（あるある・プロ視点）②原因理解 ③解決策の３要素を含めること"
     - "子どもの状態や背景を、専門用語を使いすぎずにわかりやすく言語化すること"
     - "必要に応じて英才個別学院のサポート内容に触れ、最後に『少し相談してみようかな』と感じてもらえるようにすること"
 
   output_constraints:
-    character_length: "650〜900文字（日本語）"
+    character_length: "700〜1000文字（日本語）"
     allowed_html_tags:
       - h2
       - h3
@@ -162,6 +162,7 @@
       - "<p>タグの中は原則1〜3文程度にとどめ、1文を極端に長くしないこと"
       - "画像挿入箇所は <p style=\"color:red\">■■■■■画像：◯◯■■■■■</p> のように、赤字で目立つプレースホルダのみを書く。実際の<img>タグは使わない"
       - "リンク（<a>タグ）は記事末尾のCTAボタン内のみに使用し、本文中では使用しない"
+      - "リスト（<ul><li>）、装飾枠、吹き出し（bubble-left/bubble-right）などの要素を、読みやすさと理解を助ける目的で効果的に活用すること"
 
   article_structure:
     - "【イントロ】挨拶と今日のテーマ紹介（150〜300文字）。挨拶には必ず『英才個別学院 __KOSHA__』のように校舎名を含めること"
@@ -178,18 +179,19 @@
     - "読者に問いかける表現（『こんなこと、ありませんか？』『心当たりはありませんか？』など）は使ってもよいが、頻度は控えめにし、毎回表現を変える"
     - "『〜しなければなりません』のような強い言い切りは避け、『〜していけると安心です』『〜していきたいところです』など柔らかい表現を使う"
     - "次の表現は、CTAを含め記事全体で使用しない：『無理な勧誘は一切いたしませんので、セカンドオピニオンとして利用していただくだけでも構いません。』『費用は一切かかりませんので、安心してお越しくださいね。』"
+    - "『やる気スイッチ』『ヤル気スイッチ』など類似の表現は、記事全体（本文・見出し・CTA・会話文など）で一切使用しない"
 
   output_checklist:
     - "イントロ→本文→まとめ→CTAのおおまかな流れになっているか"
     - "各パートの前後に空行が2つ入っているか"
     - "語りかけ・寄り添いトーンが維持されているか"
     - "記事末尾にCTAプレースホルダーが入っているか"
-    - "650〜900文字になっているか"
+    - "700〜1000文字になっているか"
     - "『共感→理解→行動』の流れが自然に作れているか"
 
   final_instruction: >
     上記の構成とHTMLルールだけを守り、細かい書き方・段落構成・会話の有無・CTAの文面は毎回自由にしてよい。
-    【theme】と【memo】に合わせて、その記事のためのオリジナルな内容を650〜900文字の日本語HTMLで生成せよ。
+    【theme】と【memo】に合わせて、その記事のためのオリジナルな内容を700〜1000文字の日本語HTMLで生成せよ。
     わかりやすく端的に、「共感→理解→行動」の流れを意識して構成すること。
     記事本文のみを出力し、YAMLの再掲や説明は不要。
 `;
@@ -321,7 +323,7 @@
   function buildCtaHtml(url, tel, ctaData = null) {
     const d = ctaData || defaultCtaData;
     return `
-<div data-cta-protected="true" contenteditable="false" style="background: #f8f8f8; padding: 40px 20px; margin: 40px 0;">
+<div data-cta-protected="true" style="background: #f8f8f8; padding: 40px 20px; margin: 40px 0;">
   <div style="text-align: center; font-size: 26px; font-weight: bold; color: #333; margin: 0 0 12px 0;">まずはお気軽にご相談ください</div>
   <div style="text-align: center; color: #888; margin: 0 0 16px 0; font-size: 13px;">入会する・しないにかかわらず、お子さまの学習についてお力になります。</div>
   <div style="text-align: center; color: #555; margin: 0 0 10px 0; font-size: 15px;">${d['説明文1'] || defaultCtaData['説明文1']}</div>
@@ -596,10 +598,10 @@
     createEl('summary', {}, details, '⚙️ 教室情報設定（1回入力すれば保存されます）');
     const dContent = createEl('div', { className: 'eisai-details-content' }, details);
 
-    const nameIn    = createInput(dContent, '校舎名（記事に反映されます）', '例：武蔵新城校', false);
-    const managerIn = createInput(dContent, '室長名（本文では名前のみ使用）', '例：湯浅', false);
+    const nameIn    = createInput(dContent, '校舎名（記事に反映されます）', '例：◯◯校　※校まで必ずいれる', false);
+    const managerIn = createInput(dContent, '室長名（本文では名前のみ使用）', '例：●●', false);
     const urlIn     = createInput(dContent, 'CTAリンク先URL（https://必須）', '例：https://eisai.org/…', false);
-    const telIn     = createInput(dContent, '電話番号（CTAの電話ボタン用）', '例：044-xxx-xxxx', false);
+    const telIn     = createInput(dContent, '電話番号（CTAの電話ボタン用）', '例：ハイフンなしで登録', false);
 
     const saveBtn = createEl('button', {
       style: {
@@ -865,12 +867,12 @@
 [主題]を描写してください。[構図: カメラアングル、配置、背景ぼかし]。[動作: 表情、アクション]。[場所: 背景の詳細]。[スタイル: 画風、色合い、品質]。[テキスト: 入れたい文字とデザイン]。
 
 【テキストデザインの指定】
-- メインキャッチフレーズは大きく太字で目立つように配置
-- サブキャッチフレーズはメインより小さめでバランスよく配置
-- ポイントや特徴は装飾要素として自然なデザインに組み込み
+- メインキャッチフレーズは画面全体で最も大きく、太字で目立つように配置。一目で視線を引くサイズ感にする
+- サブキャッチフレーズはメインの次に大きく、メインを補完する位置にバランスよく配置
+- ポイントや特徴は、デザインの余白を考慮しながらセンスよく配置。全体のバランスを崩さない程度のサイズで
 - ラベル（「メイン」「サブ」「ポイント」など）は表示せず、フレーズのみをレンダリング
-- 全体的なデザインバランスと視認性を最優先
-- 【重要】右下には文字や枠を配置しないでください（Geminiのマークが入るため、空白のままにしてください）
+- 構図は上下いっぱいに使い、余白を活かしつつダイナミックに。キャッチコピーがはっきり読めることを最優先
+- 【重要: 画像の右下の角には文字や要素を一切配置しないでください】
 
 【重要】ユーザー入力の「メインキャッチ：」「サブキャッチ：」「ポイント：」などのラベル部分は必ず削除し、フレーズ本文のみを使用してください。
 
@@ -919,7 +921,7 @@
       const ctaTel  = (info.tel || '').trim();
 
       if (!kosha) {
-        alert('校舎名を設定してください\n例：武蔵新城校');
+        alert('校舎名を設定してください\n例：◯◯校 ※校までいれてください。');
         return;
       }
       if (!shichou) {
@@ -931,7 +933,7 @@
         return;
       }
       if (!ctaTel) {
-        alert('電話番号を設定してください\n例：044-xxx-xxxx');
+        alert('電話番号を設定してください\n例：00000000000 ※ハイフンなし');
         return;
       }
       if (!/^https?:\/\//i.test(ctaUrl)) ctaUrl = 'https://' + ctaUrl;
