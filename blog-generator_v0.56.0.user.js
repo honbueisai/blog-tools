@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版 v0.56.02
+// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版 v0.56.03
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.02
+// @version      0.56.03
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @grant        none
@@ -11,11 +11,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID     = 'eisai-tool-v0-56-02';
-  const BTN_ID      = 'eisai-btn-v0-56-02';
-  const STORAGE_KEY = 'eisai_blog_info_v05602';
+  const TOOL_ID     = 'eisai-tool-v0-56-03';
+  const BTN_ID      = 'eisai-btn-v0-56-03';
+  const STORAGE_KEY = 'eisai_blog_info_v05603';
 
-  console.log('🚀 英才ブログ生成ツール v0.56.02 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.03 起動');
 
   let lastBlogHtml = '';
 
@@ -163,6 +163,7 @@
       - "画像挿入箇所は <p style=\"color:red\">■■■■■画像：◯◯■■■■■</p> のように、赤字で目立つプレースホルダのみを書く。実際の<img>タグは使わない"
       - "リンク（<a>タグ）は記事末尾のCTAボタン内のみに使用し、本文中では使用しない"
       - "リスト（<ul><li>）、装飾枠、吹き出し（bubble-left/bubble-right）などの要素を、読みやすさと理解を助ける目的で効果的に活用すること"
+      - "強調したい箇所は Markdown記法（**...**）ではなく、必ず <strong>...</strong> タグを使用すること。これはHTMLとして正しく太字表示するために必須"
 
   article_structure:
     - "【イントロ】挨拶と今日のテーマ紹介（150〜300文字）。挨拶には必ず『英才個別学院 __KOSHA__』のように校舎名を含めること"
