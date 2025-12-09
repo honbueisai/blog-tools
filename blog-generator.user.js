@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.13
+// @version      0.56.14
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,10 +13,10 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-13';
-  const BTN_ID          = 'eisai-btn-v0-56-13';
-  const STORAGE_KEY     = 'eisai_blog_info_v05613';
-  const CURRENT_VERSION = '0.56.13';
+  const TOOL_ID         = 'eisai-tool-v0-56-14';
+  const BTN_ID          = 'eisai-btn-v0-56-14';
+  const STORAGE_KEY     = 'eisai_blog_info_v05614';
+  const CURRENT_VERSION = '0.56.14';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -30,7 +30,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.13 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.14 起動');
 
   let lastBlogHtml = '';
 
@@ -735,10 +735,120 @@
 
     const nextBtn = createEl('button', { className: 'eisai-primary-btn' }, step1, '次へ');
 
-    // ステップ2: 詳細入力
+    // ステップ2: 詳細入力（タイプ別フォーム）
     const step2 = createEl('div', { id: 'eisai-step2', style: { display: 'none' } }, content);
-    const themeIn = createInput(step2, 'ブログのテーマ（タイトルイメージ）', '例：西中原中の定期テストで結果を出すには？', false);
-    const memoIn  = createInput(step2, 'メモ（対象学年・伝えたいことなど）', '例：中1〜中3／ワークのやり方／内申の話を入れる など', true);
+    
+    // 選択中のタイプ表示
+    const selectedTypeLabel = createEl('div', {
+      style: {
+        padding: '8px 12px',
+        marginBottom: '12px',
+        background: '#e0e7ff',
+        borderRadius: '6px',
+        fontSize: '13px',
+        fontWeight: '600',
+        color: '#3730a3'
+      }
+    }, step2, '📝 結果アップ・成長ストーリー');
+
+    // タイプ別フォームコンテナ
+    const formContainer = createEl('div', { id: 'eisai-form-container' }, step2);
+
+    // フォーム入力値を保持するオブジェクト
+    const formInputs = {};
+
+    // タイプ別フォーム定義
+    const TYPE_FORMS = {
+      [BLOG_TYPES.GROWTH]: {
+        label: '📝 結果アップ・成長ストーリー',
+        fields: [
+          { key: 'student', label: '主役の生徒情報', placeholder: '例：中2・西中原中・Aさん・数学', isArea: false },
+          { key: 'before', label: 'ビフォー（課題・前回の状況）', placeholder: '例：前回テスト45点、計算ミスが多かった', isArea: false },
+          { key: 'after', label: 'アフター（成果・今回の結果）', placeholder: '例：今回78点、33点アップ！', isArea: false },
+          { key: 'actions', label: '教室で行ったこと（3つ以上）', placeholder: '例：計算練習を毎回10分／途中式を書く習慣づけ／テスト前に類題演習', isArea: true },
+          { key: 'episode', label: '印象に残ったエピソード・室長コメント', placeholder: '例：最初は自信なさそうだったけど、点数を見た時の笑顔が忘れられません', isArea: true }
+        ]
+      },
+      [BLOG_TYPES.EVENT]: {
+        label: '📅 対策・イベント紹介',
+        fields: [
+          { key: 'eventName', label: 'イベント名・対象', placeholder: '例：冬期講習・中1〜中3対象', isArea: false },
+          { key: 'flow', label: 'イベントの流れ・内容', placeholder: '例：12/25〜1/7の14日間／1日2コマ×週3回／苦手単元を集中特訓', isArea: true },
+          { key: 'benefit', label: '生徒が得られるもの', placeholder: '例：冬休み明けテストで自己ベスト更新／苦手克服で自信がつく', isArea: true },
+          { key: 'example', label: '過去の実例・雰囲気メモ（任意）', placeholder: '例：去年参加した生徒は平均20点アップ', isArea: true }
+        ]
+      },
+      [BLOG_TYPES.PERSON]: {
+        label: '👤 講師・室長・生徒紹介',
+        fields: [
+          { key: 'personInfo', label: '紹介する人の基本情報', placeholder: '例：講師・田中先生・理系科目担当・3年目', isArea: false },
+          { key: 'points', label: 'その人の「らしさ」ポイント（3つ以上）', placeholder: '例：説明がわかりやすい／生徒の話をよく聞く／テスト前は自習にも付き合う', isArea: true },
+          { key: 'episode', label: '印象的なエピソード', placeholder: '例：苦手だった生徒が「先生の授業だけは楽しい」と言ってくれた', isArea: true },
+          { key: 'message', label: '室長として伝えたい一言', placeholder: '例：生徒思いの先生です。安心してお任せください', isArea: false }
+        ]
+      },
+      [BLOG_TYPES.SERVICE]: {
+        label: '💼 サービス・相談メニュー紹介',
+        fields: [
+          { key: 'serviceName', label: 'サービス名', placeholder: '例：無料学習相談会／無料体験授業', isArea: false },
+          { key: 'target', label: 'どんな悩みを持つ人向け？（3つ以上）', placeholder: '例：勉強のやり方がわからない／塾選びに迷っている／成績が伸び悩んでいる', isArea: true },
+          { key: 'flow', label: '相談・体験の流れ', placeholder: '例：①お電話で予約→②ヒアリング30分→③体験授業→④ご報告', isArea: true },
+          { key: 'goal', label: '利用後にどうなってほしいか', placeholder: '例：お子さまに合った勉強法が見つかり、前向きに取り組めるように', isArea: true }
+        ]
+      },
+      [BLOG_TYPES.SCORE]: {
+        label: '🎯 点数アップ速報',
+        fields: [
+          { key: 'testName', label: '対象テスト', placeholder: '例：2学期期末テスト・中1〜中3', isArea: false },
+          { key: 'scoreList', label: '高得点・点数アップ一覧（1行1件）', placeholder: '例：中2 Aさん 数学 45→78点（+33点）\n中1 Bくん 英語 52→71点（+19点）\n中3 Cさん 理科 88点', isArea: true },
+          { key: 'comment', label: '速報から伝えたいこと', placeholder: '例：みんな本当によく頑張りました！次も一緒に頑張ろう', isArea: true },
+          { key: 'pickup', label: '代表ケース深掘りメモ（任意）', placeholder: '例：Aさんは毎日自習に来て、計算練習を続けた結果です', isArea: true }
+        ]
+      },
+      [BLOG_TYPES.OTHER]: {
+        label: '📄 その他',
+        fields: [
+          { key: 'theme', label: '今回のブログで伝えたいテーマ・主役', placeholder: '例：西中原中の定期テストで結果を出すには？', isArea: false },
+          { key: 'actions', label: '教室や先生が行ったこと（箇条書き）', placeholder: '例：テスト範囲の確認／苦手単元の洗い出し／類題演習', isArea: true },
+          { key: 'episode', label: 'エピソード・メッセージ', placeholder: '例：生徒たちの頑張りを見て、私も元気をもらいました', isArea: true }
+        ]
+      }
+    };
+
+    // フォーム生成関数
+    function renderTypeForm(type) {
+      formContainer.innerHTML = '';
+      formInputs[type] = formInputs[type] || {};
+      const config = TYPE_FORMS[type];
+      if (!config) return;
+
+      selectedTypeLabel.textContent = config.label;
+
+      config.fields.forEach(field => {
+        const input = createInput(formContainer, field.label, field.placeholder, field.isArea);
+        // 以前の入力値があれば復元
+        if (formInputs[type][field.key]) {
+          input.value = formInputs[type][field.key];
+        }
+        // 入力時に値を保存
+        input.addEventListener('input', () => {
+          formInputs[type][field.key] = input.value;
+        });
+        formInputs[type][field.key + '_el'] = input;
+      });
+    }
+
+    // 初期フォーム表示
+    renderTypeForm(currentBlogType);
+
+    // タイプボタンクリック時にフォームも切り替え
+    typeButtons.forEach((btn, idx) => {
+      const originalOnclick = btn.onclick;
+      btn.onclick = () => {
+        originalOnclick();
+        renderTypeForm(currentBlogType);
+      };
+    });
 
     const step2BtnWrap = createEl('div', { style: { display: 'flex', gap: '8px', marginTop: '10px' } }, step2);
     const backBtn = createEl('button', {
@@ -1064,10 +1174,15 @@
 
     // ===== 記事生成 =====
     genBtn.onclick = async () => {
-      const theme = themeIn.value.trim();
-      const memo  = (memoIn.value || '特になし').trim();
-      if (!theme) {
-        alert('テーマを入力してください');
+      // タイプ別フォームから入力値を取得
+      const typeData = formInputs[currentBlogType] || {};
+      const config = TYPE_FORMS[currentBlogType];
+      
+      // 必須項目チェック（最初のフィールドは必須）
+      const firstField = config.fields[0];
+      const firstValue = typeData[firstField.key] || '';
+      if (!firstValue.trim()) {
+        alert(`「${firstField.label}」を入力してください`);
         return;
       }
 
@@ -1095,10 +1210,62 @@
       }
       if (!/^https?:\/\//i.test(ctaUrl)) ctaUrl = 'https://' + ctaUrl;
 
+      // タイプ別の入力内容をまとめる
       const esc = (s) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      let formContent = '';
+      config.fields.forEach(field => {
+        const val = typeData[field.key] || '';
+        if (val.trim()) {
+          formContent += `${field.label}: ${val}\n`;
+        }
+      });
+
+      // タイプ別指示を生成
+      const TYPE_INSTRUCTIONS = {
+        [BLOG_TYPES.GROWTH]: `【記事タイプ】成長ストーリー型
+【構成指示】
+- 導入：生徒の課題や悩みに共感する書き出し
+- 本文：ビフォー→取り組み→アフターの流れで構成
+- 見出し例：「〇〇さんの挑戦」「教室で取り組んだこと」「結果と変化」
+- 締め：同じ悩みを持つ保護者への励ましメッセージ`,
+        [BLOG_TYPES.EVENT]: `【記事タイプ】イベント紹介型
+【構成指示】
+- 導入：イベントの目的や対象者への呼びかけ
+- 本文：内容・流れ・得られるものを具体的に紹介
+- 見出し例：「〇〇講習の特徴」「参加するとどうなる？」
+- 締め：参加を検討している保護者への後押しメッセージ`,
+        [BLOG_TYPES.PERSON]: `【記事タイプ】人物紹介型
+【構成指示】
+- 導入：紹介する人との出会いや印象
+- 本文：その人の特徴・エピソードを具体的に紹介
+- 見出し例：「〇〇先生ってこんな人」「印象に残ったエピソード」
+- 締め：保護者への安心感を与えるメッセージ`,
+        [BLOG_TYPES.SERVICE]: `【記事タイプ】サービス紹介型
+【構成指示】
+- 導入：対象となる悩みへの共感
+- 本文：サービス内容・流れ・利用後のイメージを紹介
+- 見出し例：「こんなお悩みありませんか？」「相談の流れ」「利用された方の声」
+- 締め：気軽に相談できることを伝えるメッセージ`,
+        [BLOG_TYPES.SCORE]: `【記事タイプ】点数アップ速報型
+【構成指示】
+- 導入：テスト結果への喜びと生徒への称賛
+- 本文：点数アップ一覧を見やすく紹介し、代表ケースを深掘り
+- 見出し例：「今回のテスト結果速報！」「特に頑張った生徒たち」
+- 締め：次のテストに向けた意気込みと保護者へのメッセージ`,
+        [BLOG_TYPES.OTHER]: `【記事タイプ】自由テーマ型
+【構成指示】
+- 導入：テーマに合わせた書き出し
+- 本文：伝えたい内容を自然な流れで構成
+- 締め：保護者への前向きなメッセージ`
+      };
+
+      const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
+
       let yaml = MASTER_YAML;
-      yaml = yaml.replace(/__THEME__/g, esc(theme));
-      yaml = yaml.replace(/__MEMO__/g, esc(memo));
+      // タイプ別情報を追加
+      yaml = yaml.replace('input_required:', `article_type: "${currentBlogType}"\n\n${typeInstruction}\n\n【入力された情報】\n${formContent}\ninput_required:`);
+      yaml = yaml.replace(/__THEME__/g, esc(config.label.replace(/^[^\s]+\s/, '')));
+      yaml = yaml.replace(/__MEMO__/g, esc(formContent));
       yaml = yaml.replace(/__KOSHA__/g, esc(kosha));
       yaml = yaml.replace(/__SHICHOU__/g, esc(shichou));
       yaml = yaml.replace(/__CTA_URL__/g, esc(ctaUrl));
