@@ -50,7 +50,7 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 #### 手順
 
 1. 下のリンクをクリック  
-   👉 <a href="https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js" target="_blank">ブログ生成ツール 拡張機能にインストール</a>
+   👉 <a href="https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js" target="_blank">ブログ生成ツール 拡張機能にインストール</a>
 
 2. 新しいタブが開き、**Tampermonkey のインストール画面** が表示されます
 
