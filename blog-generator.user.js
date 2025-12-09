@@ -264,10 +264,12 @@
     }));
   }
 
-  // GitHub上の最新バージョンを確認
+  // GitHub上の最新バージョンを確認（CSP回避のためjsDelivr CDN使用）
   async function checkLatestVersion() {
     try {
-      const res = await fetch(UPDATE_URL + '?t=' + Date.now());
+      // jsDelivr CDN経由で取得（CSP対応）
+      const cdnUrl = 'https://cdn.jsdelivr.net/gh/honbueisai/blog-tools@main/blog-generator.user.js';
+      const res = await fetch(cdnUrl + '?t=' + Date.now());
       if (!res.ok) return null;
       const text = await res.text();
       const m = text.match(/@version\s+([0-9.]+)/);
