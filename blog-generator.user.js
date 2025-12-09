@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.14
+// @version      0.56.15
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,10 +13,10 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-14';
-  const BTN_ID          = 'eisai-btn-v0-56-14';
-  const STORAGE_KEY     = 'eisai_blog_info_v05614';
-  const CURRENT_VERSION = '0.56.14';
+  const TOOL_ID         = 'eisai-tool-v0-56-15';
+  const BTN_ID          = 'eisai-btn-v0-56-15';
+  const STORAGE_KEY     = 'eisai_blog_info_v05615';
+  const CURRENT_VERSION = '0.56.15';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -30,7 +30,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.14 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.15 起動');
 
   let lastBlogHtml = '';
 
@@ -733,7 +733,12 @@
     addTypeButton(BLOG_TYPES.OTHER, 'その他');
     btnGrowth.classList.add('eisai-type-btn-active');
 
-    const nextBtn = createEl('button', { className: 'eisai-primary-btn', type: 'button' }, step1, '次へ');
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'eisai-primary-btn';
+    nextBtn.type = 'button';
+    nextBtn.textContent = '次へ';
+    nextBtn.style.cssText = 'width:100%;padding:10px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;margin-top:10px;font-size:14px;';
+    step1.appendChild(nextBtn);
 
     // ステップ2: 詳細入力（タイプ別フォーム）
     const step2 = createEl('div', { id: 'eisai-step2', style: { display: 'none' } }, content);
@@ -879,12 +884,11 @@
     }, step2BtnWrap, 'Geminiへ送信して記事生成');
 
     // ステップ切り替え
-    nextBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+    nextBtn.onclick = function() {
+      console.log('次へボタンがクリックされました');
       step1.style.display = 'none';
       step2.style.display = 'block';
-    });
+    };
     backBtn.onclick = () => {
       step2.style.display = 'none';
       step1.style.display = 'block';
