@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版 v0.56.04
+// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版 v0.56.05
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.04
+// @version      0.56.05
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +13,13 @@
 (function () {
   'use strict';
 
-  const TOOL_ID     = 'eisai-tool-v0-56-04';
-  const BTN_ID      = 'eisai-btn-v0-56-04';
-  const STORAGE_KEY = 'eisai_blog_info_v05604';
+  const TOOL_ID         = 'eisai-tool-v0-56-05';
+  const BTN_ID          = 'eisai-btn-v0-56-05';
+  const STORAGE_KEY     = 'eisai_blog_info_v05605';
+  const CURRENT_VERSION = '0.56.05';
+  const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
-  console.log('🚀 英才ブログ生成ツール v0.56.04 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.05 起動');
 
   let lastBlogHtml = '';
 
@@ -250,6 +252,20 @@
       which: 13,
       bubbles: true
     }));
+  }
+
+  // GitHub上の最新バージョンを確認
+  async function checkLatestVersion() {
+    try {
+      const res = await fetch(UPDATE_URL + '?t=' + Date.now());
+      if (!res.ok) return null;
+      const text = await res.text();
+      const m = text.match(/@version\s+([0-9.]+)/);
+      return m ? m[1] : null;
+    } catch (e) {
+      console.warn('バージョンチェックに失敗しました', e);
+      return null;
+    }
   }
 
   // CTAデータをパースする関数
@@ -585,13 +601,51 @@
     };
 
     const header = createEl('div', { className: 'eisai-header' }, panel);
-    createEl('span', {}, header, '📝 英才ブログ生成（ブログ＋サムネイル）');
-    const closeBtn = createEl('button', { textContent: '←', style: { background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', padding: '4px 8px' } }, header);
+    const titleWrap = createEl('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } }, header);
+    createEl('span', {}, titleWrap, '📝 英才ブログ生成（ブログ＋サムネイル）');
+    const verSpan = createEl('span', { style: { fontSize: '11px', color: '#6b7280' } }, titleWrap, `v${CURRENT_VERSION}`);
+
+    const headerRight = createEl('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } }, header);
+
+    const updateBtn = createEl('button', {
+      style: {
+        fontSize: '11px',
+        padding: '3px 6px',
+        borderRadius: '4px',
+        border: '1px solid #d1d5db',
+        background: '#f9fafb',
+        cursor: 'pointer'
+      }
+    }, headerRight, '更新確認');
+
+    const closeBtn = createEl('button', { textContent: '←', style: { background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', padding: '4px 8px' } }, headerRight);
     closeBtn.title = 'サイドパネルを閉じる';
     closeBtn.onclick = () => {
       panel.classList.add('collapsed');
       toggleBtn.classList.add('collapsed');
       localStorage.setItem('eisai_collapsed', 'true');
+    };
+
+    // 更新確認ボタンの動作
+    updateBtn.onclick = async () => {
+      updateBtn.disabled = true;
+      const originalText = updateBtn.textContent;
+      updateBtn.textContent = '確認中…';
+
+      const latest = await checkLatestVersion();
+      if (!latest) {
+        alert('最新バージョンの確認に失敗しました。時間をおいて再度お試しください。');
+      } else if (latest === CURRENT_VERSION) {
+        alert(`このツールは最新バージョンです（v${CURRENT_VERSION}）。`);
+      } else {
+        const ok = confirm(`新しいバージョン v${latest} が見つかりました。\n\nインストールページを開きますか？`);
+        if (ok) {
+          window.open(UPDATE_URL, '_blank');
+        }
+      }
+
+      updateBtn.disabled = false;
+      updateBtn.textContent = originalText;
     };
 
     const content = createEl('div', { style: { padding: '14px', overflow: 'auto', flex: 1 } }, panel);
