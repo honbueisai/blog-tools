@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版 v0.56.08
+// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.08
+// @version      0.56.09
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,13 +13,13 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-08';
-  const BTN_ID          = 'eisai-btn-v0-56-08';
-  const STORAGE_KEY     = 'eisai_blog_info_v05608';
-  const CURRENT_VERSION = '0.56.08';
+  const TOOL_ID         = 'eisai-tool-v0-56-09';
+  const BTN_ID          = 'eisai-btn-v0-56-09';
+  const STORAGE_KEY     = 'eisai_blog_info_v05609';
+  const CURRENT_VERSION = '0.56.09';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
-  console.log('🚀 英才ブログ生成ツール v0.56.08 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.09 起動');
 
   let lastBlogHtml = '';
 
