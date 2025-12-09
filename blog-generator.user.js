@@ -733,7 +733,7 @@
     addTypeButton(BLOG_TYPES.OTHER, 'その他');
     btnGrowth.classList.add('eisai-type-btn-active');
 
-    const nextBtn = createEl('button', { className: 'eisai-primary-btn' }, step1, '次へ');
+    const nextBtn = createEl('button', { className: 'eisai-primary-btn', type: 'button' }, step1, '次へ');
 
     // ステップ2: 詳細入力（タイプ別フォーム）
     const step2 = createEl('div', { id: 'eisai-step2', style: { display: 'none' } }, content);
@@ -879,10 +879,12 @@
     }, step2BtnWrap, 'Geminiへ送信して記事生成');
 
     // ステップ切り替え
-    nextBtn.onclick = () => {
+    nextBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       step1.style.display = 'none';
       step2.style.display = 'block';
-    };
+    });
     backBtn.onclick = () => {
       step2.style.display = 'none';
       step1.style.display = 'block';
