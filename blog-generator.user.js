@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.11
+// @version      0.56.12
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,10 +13,10 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-11';
-  const BTN_ID          = 'eisai-btn-v0-56-11';
-  const STORAGE_KEY     = 'eisai_blog_info_v05611';
-  const CURRENT_VERSION = '0.56.11';
+  const TOOL_ID         = 'eisai-tool-v0-56-12';
+  const BTN_ID          = 'eisai-btn-v0-56-12';
+  const STORAGE_KEY     = 'eisai_blog_info_v05612';
+  const CURRENT_VERSION = '0.56.12';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -30,7 +30,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.11 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.12 起動');
 
   let lastBlogHtml = '';
 
@@ -428,6 +428,25 @@
     .eisai-label { font-size: 11px; display: block; margin-bottom: 3px; font-weight: bold; color: #555; }
     .eisai-input { width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
     .eisai-input-wrap { margin-bottom: 10px; }
+    .eisai-type-wrap { margin: 8px 0 4px; }
+    .eisai-type-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .eisai-type-btn {
+      flex: 1 1 calc(50% - 6px);
+      min-width: 140px;
+      padding: 6px 8px;
+      font-size: 11px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      cursor: pointer;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .eisai-type-btn-active {
+      background: #1d4ed8;
+      color: #ffffff;
+      border-color: #1d4ed8;
+    }
     .eisai-primary-btn {
       width: 100%; padding: 10px; background: #1d4ed8; color: #fff;
       border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
@@ -685,6 +704,28 @@
     // ブログ入力
     const themeIn = createInput(content, 'ブログのテーマ（タイトルイメージ）', '例：西中原中の定期テストで結果を出すには？', false);
     const memoIn  = createInput(content, 'メモ（対象学年・伝えたいことなど）', '例：中1〜中3／ワークのやり方／内申の話を入れる など', true);
+
+    const typeWrap = createEl('div', { className: 'eisai-type-wrap' }, content);
+    createEl('div', { className: 'eisai-label' }, typeWrap, '記事タイプを選択');
+    const typeRow = createEl('div', { className: 'eisai-type-row' }, typeWrap);
+    const typeButtons = [];
+    function addTypeButton(type, label) {
+      const btn = createEl('button', { className: 'eisai-type-btn' }, typeRow, label);
+      btn.onclick = () => {
+        currentBlogType = type;
+        typeButtons.forEach(b => b.classList.remove('eisai-type-btn-active'));
+        btn.classList.add('eisai-type-btn-active');
+      };
+      typeButtons.push(btn);
+      return btn;
+    }
+    const btnGrowth = addTypeButton(BLOG_TYPES.GROWTH, '結果アップ・成長');
+    addTypeButton(BLOG_TYPES.EVENT, '対策・イベント');
+    addTypeButton(BLOG_TYPES.PERSON, '講師・室長・生徒');
+    addTypeButton(BLOG_TYPES.SERVICE, 'サービス・相談');
+    addTypeButton(BLOG_TYPES.SCORE, '点数アップ速報');
+    addTypeButton(BLOG_TYPES.OTHER, 'その他');
+    btnGrowth.classList.add('eisai-type-btn-active');
 
     const genBtn    = createEl('button', { className: 'eisai-primary-btn' }, content, 'Geminiへ送信して記事生成');
     const statusDiv = createEl('div', { className: 'eisai-status' }, content);
