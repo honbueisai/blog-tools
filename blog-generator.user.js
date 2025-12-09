@@ -264,21 +264,7 @@
     }));
   }
 
-  // GitHub上の最新バージョンを確認（CSP回避のためjsDelivr CDN使用）
-  async function checkLatestVersion() {
-    try {
-      // jsDelivr CDN経由で取得（CSP対応）
-      const cdnUrl = 'https://cdn.jsdelivr.net/gh/honbueisai/blog-tools@main/blog-generator.user.js';
-      const res = await fetch(cdnUrl + '?t=' + Date.now());
-      if (!res.ok) return null;
-      const text = await res.text();
-      const m = text.match(/@version\s+([0-9.]+)/);
-      return m ? m[1] : null;
-    } catch (e) {
-      console.warn('バージョンチェックに失敗しました', e);
-      return null;
-    }
-  }
+  // 更新確認：CSP制限のため外部fetchは不可。直接インストールページを開く方式に変更
 
   // CTAデータをパースする関数
   function parseCtaData(text) {
@@ -666,24 +652,12 @@
       localStorage.setItem('eisai_collapsed', 'true');
     };
 
-    // 更新ボタンの動作：リモート版と比較して必要なら再インストールページを開く
-    updateBtn.onclick = async () => {
-      updateBtn.disabled = true;
-      const originalText = updateBtn.textContent;
-      updateBtn.textContent = '確認中…';
-
-      const latest = await checkLatestVersion();
-      if (!latest || latest === CURRENT_VERSION) {
-        alert(`このツールは最新バージョンです（v${CURRENT_VERSION}）。`);
-      } else {
-        const ok = confirm(`新しいバージョン v${latest} が見つかりました。\n\nインストールページを開きますか？`);
-        if (ok) {
-          window.open(UPDATE_URL, '_blank');
-        }
+    // 更新ボタンの動作：直接インストールページを開く（CSP制限のためバージョンチェック不可）
+    updateBtn.onclick = () => {
+      const ok = confirm(`現在のバージョン: v${CURRENT_VERSION}\n\n最新版を確認・インストールしますか？\n（Tampermonkeyのインストール画面が開きます）`);
+      if (ok) {
+        window.open(UPDATE_URL, '_blank');
       }
-
-      updateBtn.disabled = false;
-      updateBtn.textContent = originalText;
     };
 
     const content = createEl('div', { style: { padding: '14px', overflow: 'auto', flex: 1 } }, panel);
