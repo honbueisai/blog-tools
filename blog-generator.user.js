@@ -614,9 +614,10 @@
         borderRadius: '4px',
         border: '1px solid #d1d5db',
         background: '#f9fafb',
-        cursor: 'pointer'
+        cursor: 'pointer',
+        whiteSpace: 'nowrap'
       }
-    }, headerRight, '更新確認');
+    }, headerRight, '更新');
 
     const closeBtn = createEl('button', { textContent: '←', style: { background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', padding: '4px 8px' } }, headerRight);
     closeBtn.title = 'サイドパネルを閉じる';
@@ -634,7 +635,10 @@
 
       const latest = await checkLatestVersion();
       if (!latest) {
-        alert('最新バージョンの確認に失敗しました。時間をおいて再度お試しください。');
+        const ok = confirm('最新バージョンの確認に失敗しましたが、インストールページを開きますか？');
+        if (ok) {
+          window.open(UPDATE_URL, '_blank');
+        }
       } else if (latest === CURRENT_VERSION) {
         alert(`このツールは最新バージョンです（v${CURRENT_VERSION}）。`);
       } else {
