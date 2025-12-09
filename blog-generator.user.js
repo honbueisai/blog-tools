@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.15
+// @version      0.56.16
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,10 +13,10 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-15';
-  const BTN_ID          = 'eisai-btn-v0-56-15';
-  const STORAGE_KEY     = 'eisai_blog_info_v05615';
-  const CURRENT_VERSION = '0.56.15';
+  const TOOL_ID         = 'eisai-tool-v0-56-16';
+  const BTN_ID          = 'eisai-btn-v0-56-16';
+  const STORAGE_KEY     = 'eisai_blog_info_v05616';
+  const CURRENT_VERSION = '0.56.16';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -30,7 +30,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.15 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.16 起動');
 
   let lastBlogHtml = '';
 
@@ -822,7 +822,9 @@
 
     // フォーム生成関数
     function renderTypeForm(type) {
-      formContainer.innerHTML = '';
+      while (formContainer.firstChild) {
+        formContainer.removeChild(formContainer.firstChild);
+      }
       formInputs[type] = formInputs[type] || {};
       const config = TYPE_FORMS[type];
       if (!config) return;
