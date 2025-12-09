@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版 v0.56.07
+// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版 v0.56.08
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.07
+// @version      0.56.08
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,13 +13,13 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-07';
-  const BTN_ID          = 'eisai-btn-v0-56-07';
-  const STORAGE_KEY     = 'eisai_blog_info_v05607';
-  const CURRENT_VERSION = '0.56.07';
+  const TOOL_ID         = 'eisai-tool-v0-56-08';
+  const BTN_ID          = 'eisai-btn-v0-56-08';
+  const STORAGE_KEY     = 'eisai_blog_info_v05608';
+  const CURRENT_VERSION = '0.56.08';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
-  console.log('🚀 英才ブログ生成ツール v0.56.07 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.08 起動');
 
   let lastBlogHtml = '';
 
@@ -627,12 +627,26 @@
       localStorage.setItem('eisai_collapsed', 'true');
     };
 
-    // 更新ボタンの動作：常にインストールページを開く
-    updateBtn.onclick = () => {
-      const ok = confirm('最新のスクリプトを再インストールしますか？\n\nOK を押すとインストールページが開きます。');
-      if (ok) {
-        window.open(UPDATE_URL, '_blank');
+    // 更新ボタンの動作：リモート版と比較して必要なら再インストールページを開く
+    updateBtn.onclick = async () => {
+      updateBtn.disabled = true;
+      const originalText = updateBtn.textContent;
+      updateBtn.textContent = '確認中…';
+
+      const latest = await checkLatestVersion();
+      if (!latest) {
+        alert('最新バージョンの確認に失敗しました。時間をおいて再度お試しください。');
+      } else if (latest === CURRENT_VERSION) {
+        alert(`このツールは最新バージョンです（v${CURRENT_VERSION}）。`);
+      } else {
+        const ok = confirm(`新しいバージョン v${latest} が見つかりました。\n\nインストールページを開きますか？`);
+        if (ok) {
+          window.open(UPDATE_URL, '_blank');
+        }
       }
+
+      updateBtn.disabled = false;
+      updateBtn.textContent = originalText;
     };
 
     const content = createEl('div', { style: { padding: '14px', overflow: 'auto', flex: 1 } }, panel);
