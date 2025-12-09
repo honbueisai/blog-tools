@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.09
+// @version      0.56.10
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,13 +13,13 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-09';
-  const BTN_ID          = 'eisai-btn-v0-56-09';
-  const STORAGE_KEY     = 'eisai_blog_info_v05609';
-  const CURRENT_VERSION = '0.56.09';
+  const TOOL_ID         = 'eisai-tool-v0-56-10';
+  const BTN_ID          = 'eisai-btn-v0-56-10';
+  const STORAGE_KEY     = 'eisai_blog_info_v05610';
+  const CURRENT_VERSION = '0.56.10';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
-  console.log('🚀 英才ブログ生成ツール v0.56.09 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.10 起動');
 
   let lastBlogHtml = '';
 
@@ -634,9 +634,7 @@
       updateBtn.textContent = '確認中…';
 
       const latest = await checkLatestVersion();
-      if (!latest) {
-        alert('最新バージョンの確認に失敗しました。時間をおいて再度お試しください。');
-      } else if (latest === CURRENT_VERSION) {
+      if (!latest || latest === CURRENT_VERSION) {
         alert(`このツールは最新バージョンです（v${CURRENT_VERSION}）。`);
       } else {
         const ok = confirm(`新しいバージョン v${latest} が見つかりました。\n\nインストールページを開きますか？`);
