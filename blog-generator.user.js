@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.12
+// @version      0.56.13
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,10 +13,10 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-12';
-  const BTN_ID          = 'eisai-btn-v0-56-12';
-  const STORAGE_KEY     = 'eisai_blog_info_v05612';
-  const CURRENT_VERSION = '0.56.12';
+  const TOOL_ID         = 'eisai-tool-v0-56-13';
+  const BTN_ID          = 'eisai-btn-v0-56-13';
+  const STORAGE_KEY     = 'eisai_blog_info_v05613';
+  const CURRENT_VERSION = '0.56.13';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -30,7 +30,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.12 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.13 起動');
 
   let lastBlogHtml = '';
 
@@ -442,10 +442,18 @@
       text-align: center;
       white-space: nowrap;
     }
+    .eisai-type-btn:hover {
+      background: #e0e7ff;
+      border-color: #6366f1;
+    }
     .eisai-type-btn-active {
       background: #1d4ed8;
       color: #ffffff;
       border-color: #1d4ed8;
+    }
+    .eisai-type-btn-active:hover {
+      background: #1e40af;
+      border-color: #1e40af;
     }
     .eisai-primary-btn {
       width: 100%; padding: 10px; background: #1d4ed8; color: #fff;
@@ -701,11 +709,9 @@
       details.open = false;
     };
 
-    // ブログ入力
-    const themeIn = createInput(content, 'ブログのテーマ（タイトルイメージ）', '例：西中原中の定期テストで結果を出すには？', false);
-    const memoIn  = createInput(content, 'メモ（対象学年・伝えたいことなど）', '例：中1〜中3／ワークのやり方／内申の話を入れる など', true);
-
-    const typeWrap = createEl('div', { className: 'eisai-type-wrap' }, content);
+    // ステップ1: 記事タイプ選択
+    const step1 = createEl('div', { id: 'eisai-step1' }, content);
+    const typeWrap = createEl('div', { className: 'eisai-type-wrap' }, step1);
     createEl('div', { className: 'eisai-label' }, typeWrap, '記事タイプを選択');
     const typeRow = createEl('div', { className: 'eisai-type-row' }, typeWrap);
     const typeButtons = [];
@@ -727,7 +733,50 @@
     addTypeButton(BLOG_TYPES.OTHER, 'その他');
     btnGrowth.classList.add('eisai-type-btn-active');
 
-    const genBtn    = createEl('button', { className: 'eisai-primary-btn' }, content, 'Geminiへ送信して記事生成');
+    const nextBtn = createEl('button', { className: 'eisai-primary-btn' }, step1, '次へ');
+
+    // ステップ2: 詳細入力
+    const step2 = createEl('div', { id: 'eisai-step2', style: { display: 'none' } }, content);
+    const themeIn = createInput(step2, 'ブログのテーマ（タイトルイメージ）', '例：西中原中の定期テストで結果を出すには？', false);
+    const memoIn  = createInput(step2, 'メモ（対象学年・伝えたいことなど）', '例：中1〜中3／ワークのやり方／内申の話を入れる など', true);
+
+    const step2BtnWrap = createEl('div', { style: { display: 'flex', gap: '8px', marginTop: '10px' } }, step2);
+    const backBtn = createEl('button', {
+      style: {
+        flex: '1',
+        padding: '10px',
+        background: '#6b7280',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: '600',
+        fontSize: '14px',
+        cursor: 'pointer'
+      }
+    }, step2BtnWrap, '戻る');
+    const genBtn = createEl('button', {
+      style: {
+        flex: '2',
+        padding: '10px',
+        background: '#1d4ed8',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: '600',
+        fontSize: '14px',
+        cursor: 'pointer'
+      }
+    }, step2BtnWrap, 'Geminiへ送信して記事生成');
+
+    // ステップ切り替え
+    nextBtn.onclick = () => {
+      step1.style.display = 'none';
+      step2.style.display = 'block';
+    };
+    backBtn.onclick = () => {
+      step2.style.display = 'none';
+      step1.style.display = 'block';
+    };
     const statusDiv = createEl('div', { className: 'eisai-status' }, content);
 
     // ブログコピー用トースト
