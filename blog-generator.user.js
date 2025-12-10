@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.32
+// @version      0.56.33
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +13,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-32';
-  const BTN_ID          = 'eisai-btn-v0-56-32';
-  const STORAGE_KEY     = 'eisai_blog_info_v05632';
+  const TOOL_ID         = 'eisai-tool-v0-56-33';
+  const BTN_ID          = 'eisai-btn-v0-56-33';
+  const STORAGE_KEY     = 'eisai_blog_info_v05633';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.32';
+  const CURRENT_VERSION = '0.56.33';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -31,7 +31,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.32 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.33 起動');
 
   let lastBlogHtml = '';
 
@@ -1090,152 +1090,7 @@
       }
     }, imgSection, '▶ 画像生成用プロンプトを作成');
 
-    // ===== NANO BANANA PRO Controller =====
-    const nanoSection = createEl('div', {
-      id: 'eisai-nano-section',
-      style: {
-        display: 'none',
-        marginTop: '16px',
-        paddingTop: '12px',
-        borderTop: '1px solid #e5e7eb'
-      }
-    }, content);
-
-    createEl('p', { style: { fontWeight: 'bold', marginBottom: '6px', color: '#001E43' } }, nanoSection,
-      '🚀 NANO BANANA PRO Controller');
-
-    // ブログテーマ入力
-    createEl('label', { className: 'eisai-label' }, nanoSection, 'ブログテーマ（日本語）');
-    const nanoThemeInput = createInput(nanoSection, '', '例：期末テストで数学20点アップ！', true);
-
-    // 画像スタイル選択
-    createEl('label', { className: 'eisai-label' }, nanoSection, '画像スタイル');
-    const nanoVisualSelect = createEl('select', {
-      className: 'eisai-input',
-      style: { width: '100%', marginBottom: '8px' }
-    }, nanoSection);
-    Object.keys(VISUAL_STYLES).forEach(label => {
-      const opt = document.createElement('option');
-      opt.value = label;
-      opt.textContent = label;
-      nanoVisualSelect.appendChild(opt);
-    });
-
-    // 訴求スタイル選択
-    createEl('label', { className: 'eisai-label' }, nanoSection, '訴求スタイル');
-    const nanoAppealSelect = createEl('select', {
-      className: 'eisai-input',
-      style: { width: '100%', marginBottom: '8px' }
-    }, nanoSection);
-    Object.keys(APPEAL_STYLES).forEach(label => {
-      const opt = document.createElement('option');
-      opt.value = label;
-      opt.textContent = label;
-      nanoAppealSelect.appendChild(opt);
-    });
-
-    // 指示を挿入ボタン
-    const nanoInsertBtn = createEl('button', {
-      style: {
-        marginTop: '8px',
-        width: '100%',
-        padding: '10px',
-        background: '#FF6600',
-        color: '#ffffff',
-        border: 'none',
-        borderRadius:'8px',
-        fontWeight:'600',
-        fontSize:'14px',
-        cursor:'pointer'
-      }
-    }, nanoSection, '📝 指示を挿入');
-
-    nanoInsertBtn.onclick = () => {
-      const theme = nanoThemeInput.value.trim();
-      const visualStyle = VISUAL_STYLES[nanoVisualSelect.value];
-      const appealStyle = APPEAL_STYLES[nanoAppealSelect.value];
-
-      if (!theme) {
-        alert('ブログテーマを入力してください');
-        return;
-      }
-
-      const promptText = `@NANO BANANA PRO
-【画像生成リクエスト】
-以下のブログ記事の内容に基づき、定義されたスタイルでサムネイル画像を生成してください。
-
-■ ブログのテーマ（日本語）
-${theme}
-
-■ 適用するスタイルパラメータ（英語）
-1. Visual Style: ${visualStyle}
-2. Emotion/Appeal: ${appealStyle}
-3. Brand Rules: ${BRAND_CONSTANT}
-
-■ 思考と生成プロセス（Gemini 3 Thinking Mode）
-1. 【翻訳と抽出】上記の「ブログのテーマ」を、画像生成AIが理解しやすい「具体的な被写体・アクションの英語描写（Subject Description）」に変換してください。
-2. 【結合】抽出したSubject Descriptionと、上記の[Visual Style] + [Emotion/Appeal] + [Brand Rules]をすべて結合し、プロンプトを完成させてください。
-3. 【生成】そのプロンプトを使用して画像を生成してください。`;
-
-      // Geminiの入力欄を探してテキストを挿入
-      const input = document.querySelector('div[contenteditable="true"]') || 
-                   document.querySelector('textarea') ||
-                   document.querySelector('div[role="textbox"]');
-      
-      if (input) {
-        input.focus();
-        document.execCommand('selectAll', false, null);
-        document.execCommand('insertText', false, promptText);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        
-        // Enterキーを押して送信
-        if (input.tagName === 'DIV' && input.contentEditable === 'true') {
-          input.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'Enter',
-            code: 'Enter',
-            keyCode: 13,
-            which: 13,
-            bubbles: true
-          }));
-        } else {
-          sendMessageViaEnter(input);
-        }
-      } else {
-        // 入力欄が見つからない場合はクリップボードにコピー
-        navigator.clipboard.writeText(promptText).then(() => {
-          alert('プロンプトをクリップボードにコピーしました。Geminiの入力欄に貼り付けてください。');
-        }).catch(() => {
-          alert('プロンプトの挿入に失敗しました。以下のテキストをコピーしてください：\n\n' + promptText);
-        });
-      }
-    };
-
-    // NANO BANANA PRO Controller トグルボタン
-    const nanoToggleBtn = createEl('button', {
-      style: {
-        marginTop: '8px',
-        width: '100%',
-        padding: '8px',
-        background: '#FF6600',
-        color: '#ffffff',
-        border: 'none',
-        borderRadius:'6px',
-        fontWeight:'500',
-        fontSize:'13px',
-        cursor:'pointer'
-      }
-    }, imgSection, '🚀 NANO BANANA PRO Controller');
     
-    nanoToggleBtn.onclick = () => {
-      nanoSection.style.display = 
-        (nanoSection.style.display === 'none' || nanoSection.style.display === '') ? 'block' : 'none';
-      if (nanoSection.style.display === 'block') {
-        setTimeout(() => {
-          nanoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      }
-    };
-
     const imgExecBtn = createEl('button', {
       style: {
         marginTop: '8px',
@@ -1277,50 +1132,52 @@ ${theme}
 
       // ユーザー入力に基づいてプロンプトを生成、または「おまかせ」の場合はGeminiに任せる
       const promptRequest = `
-以下のブログ記事について、最適なサムネイル画像生成用の日本語プロンプトを作成してください。
+@NANO BANANA PRO
+【画像生成リクエスト】
+以下のブログ記事の内容に基づき、定義されたスタイルで最高品質のサムネイル画像を生成するためのプロンプトを作成してください。
 
-【記事テーマ】${theme}
-【画像スタイル】${style}
-【訴求スタイル】${appeal}
+■ ブログのテーマ（日本語）
+${theme}
 
-【ユーザー入力情報】
-メインキャッチ：${mainCatch || 'おまかせ'}
-サブキャッチ：${subCatch || 'おまかせ'}
-ポイント：${points || 'おまかせ'}
+■ 適用するスタイルパラメータ（英語）
+1. Visual Style: ${VISUAL_STYLES[style] || style}
+2. Emotion/Appeal: ${APPEAL_STYLES[appeal] || appeal}
+3. Brand Rules: ${BRAND_CONSTANT}
 
-上記情報を基に、以下の条件で画像生成プロンプトを作成してください：
+■ ユーザー入力情報
+メインキャッチ：${mainCatch}
+サブキャッチ：${subCatch}
+ポイント：${points}
 
-1. 「おまかせ」の場合は、ブログ内容から最も訴求力のあるキャッチフレーズを自動生成
-2. 入力されたフレーズがある場合は、それをさらに改善・最適化して使用
-3. 英才個別学院のブログサムネイルに適した構図・デザインを詳細に指定
-4. 【重要】画像サイズは必ず3:2比率で指定してください
-5. 視認性の高いテキスト配置、教育的で信頼感のある雰囲気
-6. 生徒・保護者の興味を引く要素を盛り込む
+■ 思考と生成プロセス（Gemini 3 Thinking Mode）
+1. 【翻訳と抽出】上記の「ブログのテーマ」を、画像生成AIが理解しやすい「具体的な被写体・アクションの英語描写（Subject Description）」に変換してください。
+2. 【キャッチフレーズ最適化】「おまかせ」の場合は、ブログ内容から最も訴求力のあるキャッチフレーズを自動生成。入力がある場合は、それをさらに改善・最適化して使用。
+3. 【結合】抽出したSubject Descriptionと、上記の[Visual Style] + [Emotion/Appeal] + [Brand Rules] + [最適化されたキャッチフレーズ]をすべて結合し、プロンプトを完成させてください。
 
-【プロンプト構造】
-以下の形式で作成してください：
-
-[主題]を描写してください。[構図: カメラアングル、配置、背景ぼかし]。[動作: 表情、アクション]。[場所: 背景の詳細]。[スタイル: 画風、色合い、品質]。[テキスト: 入れたい文字とデザイン]。
-
-【テキストデザインの指定】
-- メインキャッチフレーズは画面全体で最も大きく、太字で目立つように配置。一目で視線を引くサイズ感にする
-- サブキャッチフレーズはメインの次に大きく、メインを補完する位置にバランスよく配置
-- ポイントや特徴は、デザインの余白を考慮しながらセンスよく配置。全体のバランスを崩さない程度のサイズで
-- ラベル（「メイン」「サブ」「ポイント」など）は表示せず、フレーズのみをレンダリング
-- 構図は上下いっぱいに使い、余白を活かしつつダイナミックに。キャッチコピーがはっきり読めることを最優先
+■ 画像生成プロンプトの要件
+- 英才個別学院のブランドイメージに合致した、教育的で信頼感のある雰囲気
+- 生徒・保護者の興味を引く、プロフェッショナルな学習塾の雰囲気
+- 【重要】画像サイズは必ず3:2比率で指定
+- 視認性の高いテキスト配置、読みやすさを最優先
+- 構図は上下いっぱいに使い、余白を活かしつつダイナミックに
 - 【重要: 画像の右下の角には文字や要素を一切配置しないでください】
 
-【重要】ユーザー入力の「メインキャッチ：」「サブキャッチ：」「ポイント：」などのラベル部分は必ず削除し、フレーズ本文のみを使用してください。
+■ テキストデザインの指定
+- メインキャッチフレーズは画面全体で最も大きく、太字で目立つように配置
+- サブキャッチフレーズはメインの次に大きく、メインを補完する位置に
+- ポイントや特徴は、デザインの余白を考慮しながらセンスよく配置
+- ラベル（「メイン」「サブ」「ポイント」など）は表示せず、フレーズのみをレンダリング
 
-【テキスト記入例】
-[テキスト: 大きく太字で「冬休みの過ごし方で決まる！」、その下に小さめに「伸びる子と伸びない子の違い」、左上に装飾的に「成績アップの秘訣」を配置]
+■ 出力形式
+以下の形式でプロンプトを作成してください：
 
-出力形式：
+---
 以下のプロンプトで画像を生成してください
 
 [ここに詳細な画像生成プロンプト]
 
-最後に「このプロンプトで画像を生成してください」と必ず含めてください。
+このプロンプトで画像を生成してください。
+---
 
 【重要】プロンプトを出力のみで、画像は生成しないでください。プロンプトの内容を確認してから後で画像生成を実行します。`;
 
