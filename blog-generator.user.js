@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.36
+// @version      0.56.37
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +13,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-36';
-  const BTN_ID          = 'eisai-btn-v0-56-36';
-  const STORAGE_KEY     = 'eisai_blog_info_v05636';
+  const TOOL_ID         = 'eisai-tool-v0-56-37';
+  const BTN_ID          = 'eisai-btn-v0-56-37';
+  const STORAGE_KEY     = 'eisai_blog_info_v05637';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.36';
+  const CURRENT_VERSION = '0.56.37';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -31,7 +31,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.36 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.37 起動');
 
   let lastBlogHtml = '';
 
@@ -866,18 +866,10 @@
     // 仮のデフォルト値を設定（後でプレースホルダーに変更予定）
     setTimeout(() => {
       // 教室情報設定
-      if (document.getElementById('eisai-room-name')) {
-        document.getElementById('eisai-room-name').value = '英才個別学院 西中原教室';
-      }
-      if (document.getElementById('eisai-director-name')) {
-        document.getElementById('eisai-director-name').value = '鈴木室長';
-      }
-      if (document.getElementById('eisai-url')) {
-        document.getElementById('eisai-url').value = 'https://eisai.org/contact';
-      }
-      if (document.getElementById('eisai-tel')) {
-        document.getElementById('eisai-tel').value = '09012345678';
-      }
+      if (nameIn) nameIn.value = '英才個別学院 西中原教室';
+      if (managerIn) managerIn.value = '鈴木室長';
+      if (urlIn) urlIn.value = 'https://eisai.org/contact';
+      if (telIn) telIn.value = '09012345678';
       
       // 結果アップ・成長ストーリーのデフォルト値
       const growthInputs = formInputs[BLOG_TYPES.GROWTH];
