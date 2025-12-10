@@ -1122,7 +1122,7 @@
       const points = isOmakase ? 'おまかせ' : (pointsInput.value.trim() || 'おまかせ');
 
       if (!theme) {
-        alert('テーマを入力してください');
+        alert('ブログ生成フォームで「今回のブログで伝えたいテーマ・主役」を入力してください');
         return;
       }
 
