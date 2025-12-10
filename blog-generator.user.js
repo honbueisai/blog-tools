@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.37
+// @version      0.56.38
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +13,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-37';
-  const BTN_ID          = 'eisai-btn-v0-56-37';
-  const STORAGE_KEY     = 'eisai_blog_info_v05637';
+  const TOOL_ID         = 'eisai-tool-v0-56-38';
+  const BTN_ID          = 'eisai-btn-v0-56-38';
+  const STORAGE_KEY     = 'eisai_blog_info_v05638';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.37';
+  const CURRENT_VERSION = '0.56.38';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -31,7 +31,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.37 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.38 起動');
 
   let lastBlogHtml = '';
 
@@ -57,7 +57,9 @@
     '最高': 'Triumphant pose, glowing aura, golden lighting, confetti, crown, champion vibe, masterpiece'
   };
 
-  const BRAND_CONSTANT = 'Navy Blue and Orange color scheme, Teacher wearing a white lab coat, clean composition, negative space on the right for text overlay, --ar 16:9';
+  const BRAND_CONSTANT = 'Navy Blue and Orange color scheme, Teacher as clean university student (male/female) wearing plain white lab coat with no text, professional appearance, clean composition, negative space on the right for text overlay, --ar 3:2';
+
+  const TEXT_DESIGN = 'Impactful text design: Bold 3D letters with drop shadows, gradient fills (orange to white), thick outlines, dynamic positioning, maximum visibility, eye-catching typography, professional yet striking appearance';
 
   // 既存のブログ生成用スタイル（互換性のため維持）
   const appealStyles = {
@@ -1165,16 +1167,46 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 1. Visual Style: ${VISUAL_STYLES[style] || style}
 2. Emotion/Appeal: ${APPEAL_STYLES[appeal] || appeal}
 3. Brand Rules: ${BRAND_CONSTANT}
+4. Text Design: ${TEXT_DESIGN}
 
 ■ ユーザー入力情報
 メインキャッチ：${mainCatch}
 サブキャッチ：${subCatch}
 ポイント：${points}
 
+■ キャッチフレーズ作成の原則（最高品質のテキスト生成）
+【メインキャッチフレーズ】
+- 文字数：10-15文字（超短く、インパクト重視）
+- 心理トリガー：好奇心、不安煽り、期待感、緊急性
+- 表現技法：「たった〇日で」「〇人が知らない」「ついに明らかに」
+- 具体例：「たった2週間で33点アップ！」「99%の生徒が知らない勉強法」「ついに解明！伸びる子の共通点」
+
+【サブキャッチフレーズ】
+- 文字数：15-25文字（補足情報、具体性）
+- 役割：メインの裏付け、信頼性構築、共感誘導
+- 表現技法：数字・具体性、体験談、対比構造
+- 具体例：「計算ミスが激減した理由とは」「苦手科目が得意に変わる瞬間」「他塾との違いがわかる事例」
+
+【ポイント・特徴】
+- 文字数：8-12文字（キーワード、箇条書き風）
+- 役割：視覚的アクセント、情報整理
+- 表現技法：キーワード集中、記号使用、箇条書き
+- 具体例：「・毎日10分」「・途中式必須」「・類題演習」
+
+【訴求スタイルとの連携】
+- 共感：苦悩→解決のストーリー、温かい言葉選び
+- 驚き：衝撃的な数字、予想外の事実、感嘆符活用
+- 笑顔：成功体験、ポジティブな未来、達成感
+- 不安煽る：損失回避、競争、期限効果
+- ポジティブ：成長実感、可能性拡大、自信喚起
+- 最高：圧倒的成果、No.1実績、伝説的エピソード
+
 ■ 思考と生成プロセス（Gemini 3 Thinking Mode）
-1. 【翻訳と抽出】上記の「ブログのテーマ」を、画像生成AIが理解しやすい「具体的な被写体・アクションの英語描写（Subject Description）」に変換してください。
-2. 【キャッチフレーズ最適化】「おまかせ」の場合は、ブログ内容から最も訴求力のあるキャッチフレーズを自動生成。入力がある場合は、それをさらに改善・最適化して使用。
-3. 【結合】抽出したSubject Descriptionと、上記の[Visual Style] + [Emotion/Appeal] + [Brand Rules] + [最適化されたキャッチフレーズ]をすべて結合し、プロンプトを完成させてください。
+1. 【学生年代の判定】ブログ内容から学生の年代を判定：「小学生」「中学生」「高校生」のいずれかに特定
+2. 【翻訳と抽出】ブログ内容を、画像生成AIが理解しやすい「具体的な被写体・アクションの英語描写」に変換
+3. 【教師の設定】教師を登場させる場合：さわやかで綺麗な女子大生または男子大学生、白衣着用（文字なし）、プロフェッショナルな外見
+4. 【キャッチフレーズ最適化】「おまかせ」の場合はブログ内容から最も訴求力のあるキャッチフレーズを自動生成。入力がある場合は改善・最適化
+5. 【結合】[Visual Style] + [Emotion/Appeal] + [Brand Rules] + [Text Design] + [学生年代] + [教師仕様] + [最適化されたキャッチフレーズ]を結合
 
 ■ 画像生成プロンプトの要件
 - 英才個別学院のブランドイメージに合致した、教育的で信頼感のある雰囲気
@@ -1184,7 +1216,11 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 - 構図は上下いっぱいに使い、余白を活かしつつダイナミックに
 - 【重要: 画像の右下の角には文字や要素を一切配置しないでください】
 
-■ テキストデザインの指定
+■ テキストデザインの指定（最大インパクト重視）
+- メインキャッチ：超太字3D効果、オレンジから白へのグラデーション、太い黒いアウトライン、鮮明なドロップシャドウ
+- サブキャッチ：太字、白ベースにオレンジのアクセント、適度なシャドウ効果
+- ポイント：スタイリッシュなフォント、オレンジ色、配置を工夫して目立たせる
+- 全体：ダイナミックな配置、最大の視認性、プロフェッショナルかつ衝撃的な見た目
 - メインキャッチフレーズは画面全体で最も大きく、太字で目立つように配置
 - サブキャッチフレーズはメインの次に大きく、メインを補完する位置に
 - ポイントや特徴は、デザインの余白を考慮しながらセンスよく配置
