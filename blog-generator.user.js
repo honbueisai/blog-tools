@@ -61,7 +61,7 @@
 
   const TEXT_DESIGN = 'Impactful text design: Bold 3D letters with drop shadows, gradient fills (orange to white), thick outlines, dynamic positioning, maximum visibility, eye-catching typography, professional yet striking appearance';
 
-  const CLASSROOM_DESCRIPTION = 'A clean, modern Japanese cram school study room with no people. Rows of individual study booths are arranged in perfect symmetry, each booth featuring wood-grain side panels and white desk surfaces. Black ergonomic chairs are placed at every desk. The flooring is a warm herringbone wood pattern, extending uniformly throughout the room. The back wall is covered with a textured, matte taupe wallpaper, while the side walls are light gray with a subtle pattern. Bright LED ceiling lights run in parallel rows, creating evenly distributed lighting. On the right wall, a simple white clock is mounted. High horizontal windows near the ceiling allow soft natural light to enter. A calm, quiet, and structured atmosphere suitable for focused studying. Photorealistic DSLR-style, high resolution, straight-on perspective.';
+  const CLASSROOM_DESCRIPTION = 'A clean, modern Japanese cram school study room with no people. Rows of individual study booths are arranged in perfect symmetry, each booth featuring wood-grain side panels and white desk surfaces. Black ergonomic chairs are placed at every desk. The flooring is a warm herringbone wood pattern, extending uniformly throughout the room. The back wall is covered with a textured, matte taupe wallpaper, while the side walls are light gray with a subtle pattern. Bright LED ceiling lights run in parallel rows, creating evenly distributed lighting. On the right wall, a simple white clock is mounted. High horizontal windows near the ceiling allow soft natural light to enter. A calm, quiet, and structured atmosphere suitable for focused studying. Photorealistic DSLR-style, high resolution, straight-on perspective. When showing teaching scenes, remove all partitions and create an open classroom environment with proper instruction visibility.';
 
   const TUTORING_STYLE = 'Individual tutoring style: Teacher and student sitting side-by-side at study booth, one-on-one instruction, personalized guidance, focused interaction';
 
@@ -765,6 +765,18 @@
 
     const content = createEl('div', { style: { padding: '14px', overflow: 'auto', flex: 1 } }, panel);
 
+    // フッターを作成
+    const footer = createEl('div', {
+      style: {
+        position: 'sticky',
+        bottom: 0,
+        background: '#ffffff',
+        borderTop: '1px solid #e5e7eb',
+        padding: '12px 14px',
+        boxShadow: '0 -2px 4px rgba(0,0,0,0.05)'
+      }
+    }, panel);
+
     // 教室設定
     const details = createEl('details', { className: 'eisai-details' }, content);
     createEl('summary', {}, details, '⚙️ 教室情報設定（1回入力すれば保存されます）');
@@ -1225,19 +1237,19 @@
     
     const imgExecBtn = createEl('button', {
       style: {
-        marginTop: '8px',
         width: '100%',
-        padding: '8px',
+        padding: '10px',
         background: '#0f766e',
         color: '#ffffff',
         border: 'none',
         borderRadius:'6px',
         fontWeight:'500',
-        fontSize:'13px',
+        fontSize:'14px',
         cursor:'pointer',
-        display:'none'
+        display:'none',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
       }
-    }, imgSection, 'このプロンプトで画像を生成する');
+    }, footer, 'このプロンプトで画像を生成する');
 
     // ===== 画像生成用プロンプト作成 =====
     imgGenBtn.onclick = () => {
@@ -1300,7 +1312,7 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 - 表現技法：キーワード集中、記号使用、短いフレーズ
 - 具体例：「・毎日10分」「・途中式必須」「・類題演習」
 - 注意：教室で行ったことをそのまま書かず、効果的なキーワードに変換
-- おまかせモード：メイン・サブキャッチがより活きる場合のみ追加。不要なら省略可
+- おまかせモード：Pointsは一切生成しないでください。空白のままにしてください
 - 手動入力モード：入力されている場合は必ずサムネイルに組み込む
 
 【訴求スタイルとの連携】
@@ -1318,7 +1330,7 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 4. 【教室環境の適用】実写スタイルの場合は詳細な教室環境を適用、他スタイルは適切な教育環境に調整
 5. 【指導スタイルの反映】教師と生徒が同時に登場する場合は、横並びの個別指導スタイルを適用
 6. 【キャッチフレーズ最適化】「おまかせ」の場合はブログ内容から最も訴求力のあるキャッチフレーズを自動生成。入力がある場合は改善・最適化
-7. 【ポイントの処理】おまかせモード：メイン・サブキャッチを補完する場合のみ追加。手動入力モード：入力がある場合は必ず組み込む
+7. 【ポイントの処理】おまかせモード：Pointsは一切生成しないでください。空白のままにしてください。手動入力モード：入力がある場合は必ず組み込む
 8. 【カラースタイルの適用】お任せモード：訴求スタイルに応じて最適なカラーを自動選択（共感→暖色系、笑顔→明るい色、不安煽る→緊急性のある色、ポジティブ→寒色系、最高→高級感のある色）。手動選択：指定されたメイン・サブカラーを適用
 9. 【結合】[Visual Style] + [Emotion/Appeal] + [Dynamic Brand Rules] + [Dynamic Text Design] + [Classroom Setting] + [Tutoring Style] + [Color Scheme] + [学生年代] + [教師仕様] + [最適化されたキャッチフレーズ] + [ポイント（条件付き）]を結合
 
