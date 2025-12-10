@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.39
+// @version      0.56.40
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +13,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-39';
-  const BTN_ID          = 'eisai-btn-v0-56-39';
-  const STORAGE_KEY     = 'eisai_blog_info_v05639';
+  const TOOL_ID         = 'eisai-tool-v0-56-40';
+  const BTN_ID          = 'eisai-btn-v0-56-40';
+  const STORAGE_KEY     = 'eisai_blog_info_v05640';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.39';
+  const CURRENT_VERSION = '0.56.40';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -31,7 +31,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.39 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.40 起動');
 
   let lastBlogHtml = '';
 
@@ -44,7 +44,7 @@
     'アニメスタイル': 'Modern Japanese anime style, vibrant colors, clean lines, cel shaded, Kyoto Animation style, high quality illustration',
     'インフォグラフィック': '3D isometric icon style, clay render, minimalism, clean background, educational infographic, data visualization',
     '漫画スタイル': 'Japanese manga style, black and white with screentones, comic book art, dramatic lines, ink drawing, speech bubbles',
-    'YOUTUBEスタイル': 'YouTube thumbnail style, hyper-saturated colors, bold outlines, clear contrast, catchy visuals, close-up, pop art',
+    'YOUTUBEスタイル': 'YouTube thumbnail style, photorealistic, hyper-saturated colors, bold outlines, clear contrast, catchy visuals, close-up, professional photography',
     'インパクトスタイル': 'Dynamic angle, fish-eye lens, high contrast, intense lighting, dramatic shadows, movie poster quality, explosion of colors'
   };
 
@@ -60,6 +60,67 @@
   const BRAND_CONSTANT = 'Navy Blue and Orange color scheme, Teacher as clean university student (male/female) wearing plain white lab coat with no text, professional appearance, clean composition, --ar 3:2';
 
   const TEXT_DESIGN = 'Impactful text design: Bold 3D letters with drop shadows, gradient fills (orange to white), thick outlines, dynamic positioning, maximum visibility, eye-catching typography, professional yet striking appearance';
+
+  const CLASSROOM_DESCRIPTION = 'A clean, modern Japanese cram school study room with no people. Rows of individual study booths are arranged in perfect symmetry, each booth featuring wood-grain side panels and white desk surfaces. Black ergonomic chairs are placed at every desk. The flooring is a warm herringbone wood pattern, extending uniformly throughout the room. The back wall is covered with a textured, matte taupe wallpaper, while the side walls are light gray with a subtle pattern. Bright LED ceiling lights run in parallel rows, creating evenly distributed lighting. On the right wall, a simple white clock is mounted. High horizontal windows near the ceiling allow soft natural light to enter. A calm, quiet, and structured atmosphere suitable for focused studying. Photorealistic DSLR-style, high resolution, straight-on perspective.';
+
+  const TUTORING_STYLE = 'Individual tutoring style: Teacher and student sitting side-by-side at study booth, one-on-one instruction, personalized guidance, focused interaction';
+
+  const COLOR_STYLES = {
+    '赤': {
+      main: 'Red',
+      sub: 'Dark Red',
+      hex: '#FF4444',
+      gradient: 'Red to Dark Red'
+    },
+    'ピンク': {
+      main: 'Pink',
+      sub: 'Rose Pink',
+      hex: '#FF69B4',
+      gradient: 'Pink to Rose Pink'
+    },
+    'オレンジ': {
+      main: 'Orange',
+      sub: 'Dark Orange',
+      hex: '#FF8C00',
+      gradient: 'Orange to Dark Orange'
+    },
+    'イエロー': {
+      main: 'Yellow',
+      sub: 'Golden Yellow',
+      hex: '#FFD700',
+      gradient: 'Yellow to Golden Yellow'
+    },
+    'グリーン': {
+      main: 'Green',
+      sub: 'Forest Green',
+      hex: '#32CD32',
+      gradient: 'Green to Forest Green'
+    },
+    'ブルー': {
+      main: 'Blue',
+      sub: 'Navy Blue',
+      hex: '#1E90FF',
+      gradient: 'Blue to Navy Blue'
+    },
+    'スカイブルー': {
+      main: 'Sky Blue',
+      sub: 'Light Blue',
+      hex: '#87CEEB',
+      gradient: 'Sky Blue to Light Blue'
+    },
+    'パープル': {
+      main: 'Purple',
+      sub: 'Deep Purple',
+      hex: '#9370DB',
+      gradient: 'Purple to Deep Purple'
+    },
+    '白黒': {
+      main: 'Black',
+      sub: 'White',
+      hex: '#000000',
+      gradient: 'Black to White'
+    }
+  };
 
   // 既存のブログ生成用スタイル（互換性のため維持）
   const appealStyles = {
@@ -1025,6 +1086,47 @@
       appealSelect.appendChild(opt);
     });
 
+    // カラースタイル選択
+    createEl('label', { className: 'eisai-label' }, imgSection, 'メインカラーを選択');
+    const mainColorSelect = createEl('select', {
+      className: 'eisai-input',
+      style: { width: '100%', marginBottom: '8px' }
+    }, imgSection);
+    
+    // お任せオプションを追加
+    const omakaseMainOpt = document.createElement('option');
+    omakaseMainOpt.value = 'お任せ';
+    omakaseMainOpt.textContent = 'お任せ';
+    mainColorSelect.appendChild(omakaseMainOpt);
+    
+    Object.keys(COLOR_STYLES).forEach(label => {
+      const opt = document.createElement('option');
+      opt.value = label;
+      opt.textContent = label;
+      mainColorSelect.appendChild(opt);
+    });
+    mainColorSelect.value = 'お任せ'; // デフォルト値
+
+    createEl('label', { className: 'eisai-label' }, imgSection, 'サブカラーを選択');
+    const subColorSelect = createEl('select', {
+      className: 'eisai-input',
+      style: { width: '100%', marginBottom: '8px' }
+    }, imgSection);
+    
+    // お任せオプションを追加
+    const omakaseSubOpt = document.createElement('option');
+    omakaseSubOpt.value = 'お任せ';
+    omakaseSubOpt.textContent = 'お任せ';
+    subColorSelect.appendChild(omakaseSubOpt);
+    
+    Object.keys(COLOR_STYLES).forEach(label => {
+      const opt = document.createElement('option');
+      opt.value = label;
+      opt.textContent = label;
+      subColorSelect.appendChild(opt);
+    });
+    subColorSelect.value = 'お任せ'; // デフォルト値
+
     // キャッチフレーズ入力エリア
     createEl('hr', { style: { margin: '12px 0', border: 'none', borderTop: '1px solid #e5e7eb' } }, imgSection);
     createEl('p', { style: { fontWeight: 'bold', marginBottom: '8px', color: '#374151' } }, imgSection,
@@ -1141,6 +1243,8 @@
     imgGenBtn.onclick = () => {
       const style = styleSelect.value;
       const appeal = appealSelect.value;
+      const mainColor = mainColorSelect.value;
+      const subColor = subColorSelect.value;
       
       // トグル状態をチェック
       const isOmakase = toggleSwitch.checked;
@@ -1166,8 +1270,11 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 ■ 適用するスタイルパラメータ（英語）
 1. Visual Style: ${VISUAL_STYLES[style] || style}
 2. Emotion/Appeal: ${APPEAL_STYLES[appeal] || appeal}
-3. Brand Rules: ${BRAND_CONSTANT}
-4. Text Design: ${TEXT_DESIGN}
+3. Brand Rules: ${mainColor === 'お任せ' || subColor === 'お任せ' ? 'Color scheme optimized for appeal style' : `${COLOR_STYLES[mainColor]?.sub} and ${COLOR_STYLES[subColor]?.main} color scheme`}, Teacher as clean university student (male/female) wearing plain white lab coat with no text, professional appearance, clean composition, --ar 3:2
+4. Text Design: Impactful text design: Bold 3D letters with drop shadows, gradient fills (${mainColor === 'お任せ' ? 'optimized gradient for appeal style' : COLOR_STYLES[mainColor]?.gradient}), thick outlines, dynamic positioning, maximum visibility, eye-catching typography, professional yet striking appearance
+5. Classroom Setting: ${style === '実写スタイル' ? CLASSROOM_DESCRIPTION : 'Modern educational environment appropriate for ' + style}
+6. Tutoring Style: ${TUTORING_STYLE}
+7. Color Scheme: ${mainColor === 'お任せ' || subColor === 'お任せ' ? 'Colors automatically selected based on appeal style: warm colors for empathy, bright colors for smile, urgent colors for anxiety, cool colors for positive, premium colors for highest' : `Main color ${COLOR_STYLES[mainColor]?.main} (${COLOR_STYLES[mainColor]?.hex}), Sub color ${COLOR_STYLES[subColor]?.main} (${COLOR_STYLES[subColor]?.hex})`}
 
 ■ ユーザー入力情報
 メインキャッチ：${mainCatch}
@@ -1192,7 +1299,9 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 - 役割：視覚的アクセント、情報補足
 - 表現技法：キーワード集中、記号使用、短いフレーズ
 - 具体例：「・毎日10分」「・途中式必須」「・類題演習」
-- 注意：教室で行ったことをそのまま書かず、効果的なキーワードに変換。不要なら省略可
+- 注意：教室で行ったことをそのまま書かず、効果的なキーワードに変換
+- おまかせモード：メイン・サブキャッチがより活きる場合のみ追加。不要なら省略可
+- 手動入力モード：入力されている場合は必ずサムネイルに組み込む
 
 【訴求スタイルとの連携】
 - 共感：苦悩→解決のストーリー、温かい言葉選び
@@ -1206,8 +1315,12 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 1. 【学生年代の判定】ブログ内容から学生の年代を判定：「小学生」「中学生」「高校生」のいずれかに特定
 2. 【翻訳と抽出】ブログ内容を、画像生成AIが理解しやすい「具体的な被写体・アクションの英語描写」に変換
 3. 【教師の設定】教師を登場させる場合：さわやかで綺麗な女子大生または男子大学生、白衣着用（文字なし）、プロフェッショナルな外見
-4. 【キャッチフレーズ最適化】「おまかせ」の場合はブログ内容から最も訴求力のあるキャッチフレーズを自動生成。入力がある場合は改善・最適化
-5. 【結合】[Visual Style] + [Emotion/Appeal] + [Brand Rules] + [Text Design] + [学生年代] + [教師仕様] + [最適化されたキャッチフレーズ]を結合
+4. 【教室環境の適用】実写スタイルの場合は詳細な教室環境を適用、他スタイルは適切な教育環境に調整
+5. 【指導スタイルの反映】教師と生徒が同時に登場する場合は、横並びの個別指導スタイルを適用
+6. 【キャッチフレーズ最適化】「おまかせ」の場合はブログ内容から最も訴求力のあるキャッチフレーズを自動生成。入力がある場合は改善・最適化
+7. 【ポイントの処理】おまかせモード：メイン・サブキャッチを補完する場合のみ追加。手動入力モード：入力がある場合は必ず組み込む
+8. 【カラースタイルの適用】お任せモード：訴求スタイルに応じて最適なカラーを自動選択（共感→暖色系、笑顔→明るい色、不安煽る→緊急性のある色、ポジティブ→寒色系、最高→高級感のある色）。手動選択：指定されたメイン・サブカラーを適用
+9. 【結合】[Visual Style] + [Emotion/Appeal] + [Dynamic Brand Rules] + [Dynamic Text Design] + [Classroom Setting] + [Tutoring Style] + [Color Scheme] + [学生年代] + [教師仕様] + [最適化されたキャッチフレーズ] + [ポイント（条件付き）]を結合
 
 ■ 画像生成プロンプトの要件
 - 英才個別学院のブランドイメージに合致した、教育的で信頼感のある雰囲気
@@ -1216,6 +1329,7 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 - 視認性の高いテキスト配置、読みやすさを最優先
 - 構図は上下いっぱいに使い、余白を活かしつつダイナミックに
 - 【重要: 画像の右下の角には文字や要素を一切配置しないでください】
+- 【最重要: 塾名「英才個別学院」や類似の文字を背景や画像内に一切表示しないでください】
 
 ■ テキストデザインの指定（最大インパクト重視）
 - メインキャッチ：超太字3D効果、オレンジから白へのグラデーション、太い黒いアウトライン、鮮明なドロップシャドウ、画面で最も目立つ位置に自由配置
