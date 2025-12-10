@@ -862,6 +862,42 @@
 
     // 初期フォーム表示
     renderTypeForm(currentBlogType);
+    
+    // 仮のデフォルト値を設定（後でプレースホルダーに変更予定）
+    setTimeout(() => {
+      // 教室情報設定
+      if (document.getElementById('eisai-room-name')) {
+        document.getElementById('eisai-room-name').value = '英才個別学院 西中原教室';
+      }
+      if (document.getElementById('eisai-director-name')) {
+        document.getElementById('eisai-director-name').value = '鈴木室長';
+      }
+      if (document.getElementById('eisai-url')) {
+        document.getElementById('eisai-url').value = 'https://eisai.org/contact';
+      }
+      if (document.getElementById('eisai-tel')) {
+        document.getElementById('eisai-tel').value = '09012345678';
+      }
+      
+      // 結果アップ・成長ストーリーのデフォルト値
+      const growthInputs = formInputs[BLOG_TYPES.GROWTH];
+      if (growthInputs) {
+        if (growthInputs.student_el) growthInputs.student_el.value = '中2・西中原中・Aさん・数学';
+        if (growthInputs.before_el) growthInputs.before_el.value = '前回テスト45点、計算ミスが多かった';
+        if (growthInputs.after_el) growthInputs.after_el.value = '今回78点、33点アップ！';
+        if (growthInputs.actions_el) growthInputs.actions_el.value = '・計算練習を毎回10分\n・途中式を書く習慣づけ\n・テスト前に類題演習';
+        if (growthInputs.episode_el) growthInputs.episode_el.value = '最初は自信なさそうだったけど、点数を見た時の笑顔が忘れられません';
+        
+        // formInputsにも保存
+        formInputs[BLOG_TYPES.GROWTH] = {
+          student: '中2・西中原中・Aさん・数学',
+          before: '前回テスト45点、計算ミスが多かった',
+          after: '今回78点、33点アップ！',
+          actions: '・計算練習を毎回10分\n・途中式を書く習慣づけ\n・テスト前に類題演習',
+          episode: '最初は自信なさそうだったけど、点数を見た時の笑顔が忘れられません'
+        };
+      }
+    }, 100);
 
     // タイプボタンクリック時にフォームも切り替え
     typeButtons.forEach((btn, idx) => {
