@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.29
+// @version      0.56.30
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,10 +13,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-29';
-  const BTN_ID          = 'eisai-btn-v0-56-29';
-  const STORAGE_KEY     = 'eisai_blog_info_v05629';
-  const CURRENT_VERSION = '0.56.29';
+  const TOOL_ID         = 'eisai-tool-v0-56-30';
+  const BTN_ID          = 'eisai-btn-v0-56-30';
+  const STORAGE_KEY     = 'eisai_blog_info_v05630';
+  const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
+  const CURRENT_VERSION = '0.56.30';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -30,7 +31,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.29 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.30 起動');
 
   let lastBlogHtml = '';
 
@@ -236,7 +237,12 @@
 
   function getSetting() {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      // バージョン依存のストレージから読み込み
+      const versionedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      // 永続ストレージから教室情報を読み込み
+      const classroomData = JSON.parse(localStorage.getItem(CLASSROOM_STORAGE_KEY) || '{}');
+      // マージして返す（教室情報を優先）
+      return { ...versionedData, ...classroomData };
     } catch {
       return {};
     }
@@ -244,7 +250,19 @@
 
   function saveSetting(info) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(info || {}));
+      // 現在のストレージデータを取得
+      const currentData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      // 教室情報だけを永続ストレージに保存
+      const classroomData = {
+        kosha: info.kosha || currentData.kosha,
+        shichou: info.shichou || currentData.shichou
+      };
+      localStorage.setItem(CLASSROOM_STORAGE_KEY, JSON.stringify(classroomData));
+      // その他のデータをバージョン依存ストレージに保存
+      const versionedData = { ...info };
+      delete versionedData.kosha;
+      delete versionedData.shichou;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(versionedData));
     } catch (e) {
       console.error(e);
     }
