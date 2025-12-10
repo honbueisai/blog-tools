@@ -57,7 +57,7 @@
     '最高': 'Triumphant pose, glowing aura, golden lighting, confetti, crown, champion vibe, masterpiece'
   };
 
-  const BRAND_CONSTANT = 'Navy Blue and Orange color scheme, Teacher as clean university student (male/female) wearing plain white lab coat with no text, professional appearance, clean composition, negative space on the right for text overlay, --ar 3:2';
+  const BRAND_CONSTANT = 'Navy Blue and Orange color scheme, Teacher as clean university student (male/female) wearing plain white lab coat with no text, professional appearance, clean composition, --ar 3:2';
 
   const TEXT_DESIGN = 'Impactful text design: Bold 3D letters with drop shadows, gradient fills (orange to white), thick outlines, dynamic positioning, maximum visibility, eye-catching typography, professional yet striking appearance';
 
@@ -1188,10 +1188,11 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 - 具体例：「計算ミスが激減した理由とは」「苦手科目が得意に変わる瞬間」「他塾との違いがわかる事例」
 
 【ポイント・特徴】
-- 文字数：8-12文字（キーワード、箇条書き風）
-- 役割：視覚的アクセント、情報整理
-- 表現技法：キーワード集中、記号使用、箇条書き
+- 文字数：8-12文字（キーワード、短いフレーズ）
+- 役割：視覚的アクセント、情報補足
+- 表現技法：キーワード集中、記号使用、短いフレーズ
 - 具体例：「・毎日10分」「・途中式必須」「・類題演習」
+- 注意：教室で行ったことをそのまま書かず、効果的なキーワードに変換。不要なら省略可
 
 【訴求スタイルとの連携】
 - 共感：苦悩→解決のストーリー、温かい言葉選び
@@ -1217,13 +1218,12 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 - 【重要: 画像の右下の角には文字や要素を一切配置しないでください】
 
 ■ テキストデザインの指定（最大インパクト重視）
-- メインキャッチ：超太字3D効果、オレンジから白へのグラデーション、太い黒いアウトライン、鮮明なドロップシャドウ
-- サブキャッチ：太字、白ベースにオレンジのアクセント、適度なシャドウ効果
-- ポイント：スタイリッシュなフォント、オレンジ色、配置を工夫して目立たせる
+- メインキャッチ：超太字3D効果、オレンジから白へのグラデーション、太い黒いアウトライン、鮮明なドロップシャドウ、画面で最も目立つ位置に自由配置
+- サブキャッチ：太字、白ベースにオレンジのアクセント、適度なシャドウ効果、メインキャッチを補完する位置に自由配置
+- ポイント：スタイリッシュなフォント、オレンジ色、配置を工夫して目立たせる、効果的な場合のみ表示
 - 全体：ダイナミックな配置、最大の視認性、プロフェッショナルかつ衝撃的な見た目
-- メインキャッチフレーズは画面全体で最も大きく、太字で目立つように配置
-- サブキャッチフレーズはメインの次に大きく、メインを補完する位置に
-- ポイントや特徴は、デザインの余白を考慮しながらセンスよく配置
+- 重要：テキスト配置は完全に自由。メイン・サブキャッチを最も目立つように配置。場所の制約なし
+- ポイントは教室の行動をそのまま書かず、効果的なキーワードに変換。不要なら省略可
 - ラベル（「メイン」「サブ」「ポイント」など）は表示せず、フレーズのみをレンダリング
 
 ■ 出力形式
