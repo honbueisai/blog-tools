@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.25
+// @version      0.56.26
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,10 +13,10 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-25';
-  const BTN_ID          = 'eisai-btn-v0-56-25';
-  const STORAGE_KEY     = 'eisai_blog_info_v05625';
-  const CURRENT_VERSION = '0.56.25';
+  const TOOL_ID         = 'eisai-tool-v0-56-26';
+  const BTN_ID          = 'eisai-btn-v0-56-26';
+  const STORAGE_KEY     = 'eisai_blog_info_v05626';
+  const CURRENT_VERSION = '0.56.26';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -30,7 +30,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.25 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.26 起動');
 
   let lastBlogHtml = '';
 
@@ -742,27 +742,27 @@
       [BLOG_TYPES.GROWTH]: {
         label: '📝 結果アップ・成長ストーリー',
         fields: [
-          { key: 'student', label: '主役の生徒情報', placeholder: '例：中2&#10;・西中原中&#10;・Aさん&#10;・数学', isArea: false },
+          { key: 'student', label: '主役の生徒情報', placeholder: '例：中2・西中原中・Aさん・数学', isArea: false },
           { key: 'before', label: 'ビフォー（課題・前回の状況）', placeholder: '例：前回テスト45点、計算ミスが多かった', isArea: false },
           { key: 'after', label: 'アフター（成果・今回の結果）', placeholder: '例：今回78点、33点アップ！', isArea: false },
-          { key: 'actions', label: '教室で行ったこと（3つ以上）', placeholder: '例：計算練習を毎回10分&#10;・途中式を書く習慣づけ&#10;・テスト前に類題演習', isArea: true },
+          { key: 'actions', label: '教室で行ったこと（3つ以上）', placeholder: '例：計算練習を毎回10分・途中式を書く習慣づけ・テスト前に類題演習', isArea: true },
           { key: 'episode', label: '印象に残ったエピソード・室長コメント', placeholder: '例：最初は自信なさそうだったけど、点数を見た時の笑顔が忘れられません', isArea: true }
         ]
       },
       [BLOG_TYPES.EVENT]: {
         label: '📅 対策・イベント紹介',
         fields: [
-          { key: 'eventName', label: 'イベント名・対象', placeholder: '例：冬期講習&#10;・中1〜中3対象', isArea: false },
-          { key: 'flow', label: 'イベントの流れ・内容', placeholder: '例：12/25〜1/7の14日間&#10;・1日2コマ×週3回&#10;・苦手単元を集中特訓', isArea: true },
-          { key: 'benefit', label: '生徒が得られるもの', placeholder: '例：冬休み明けテストで自己ベスト更新&#10;・苦手克服で自信がつく', isArea: true },
+          { key: 'eventName', label: 'イベント名・対象', placeholder: '例：冬期講習・中1〜中3対象', isArea: false },
+          { key: 'flow', label: 'イベントの流れ・内容', placeholder: '例：12/25〜1/7の14日間・1日2コマ×週3回・苦手単元を集中特訓', isArea: true },
+          { key: 'benefit', label: '生徒が得られるもの', placeholder: '例：冬休み明けテストで自己ベスト更新・苦手克服で自信がつく', isArea: true },
           { key: 'example', label: '過去の実例・雰囲気メモ（任意）', placeholder: '例：去年参加した生徒は平均20点アップ', isArea: true }
         ]
       },
       [BLOG_TYPES.PERSON]: {
         label: '👤 講師・室長・生徒紹介',
         fields: [
-          { key: 'personInfo', label: '紹介する人の基本情報', placeholder: '例：講師&#10;・田中先生&#10;・理系科目担当&#10;・3年目', isArea: false },
-          { key: 'points', label: 'その人の「らしさ」ポイント（3つ以上）', placeholder: '例：説明がわかりやすい&#10;・生徒の話をよく聞く&#10;・テスト前は自習にも付き合う', isArea: true },
+          { key: 'personInfo', label: '紹介する人の基本情報', placeholder: '例：講師・田中先生・理系科目担当・3年目', isArea: false },
+          { key: 'points', label: 'その人の「らしさ」ポイント（3つ以上）', placeholder: '例：説明がわかりやすい・生徒の話をよく聞く・テスト前は自習にも付き合う', isArea: true },
           { key: 'episode', label: '印象的なエピソード', placeholder: '例：苦手だった生徒が「先生の授業だけは楽しい」と言ってくれた', isArea: true },
           { key: 'message', label: '室長として伝えたい一言', placeholder: '例：生徒思いの先生です。安心してお任せください', isArea: false }
         ]
@@ -770,9 +770,9 @@
       [BLOG_TYPES.SERVICE]: {
         label: '💼 サービス・相談メニュー紹介',
         fields: [
-          { key: 'serviceName', label: 'サービス名', placeholder: '例：無料学習相談会&#10;・無料体験授業', isArea: false },
-          { key: 'target', label: 'どんな悩みを持つ人向け？（3つ以上）', placeholder: '例：勉強のやり方がわからない&#10;・塾選びに迷っている&#10;・成績が伸び悩んでいる', isArea: true },
-          { key: 'flow', label: '相談・体験の流れ', placeholder: '例：①お電話で予約&#10;・②ヒアリング30分&#10;・③体験授業&#10;・④ご報告', isArea: true },
+          { key: 'serviceName', label: 'サービス名', placeholder: '例：無料学習相談会・無料体験授業', isArea: false },
+          { key: 'target', label: 'どんな悩みを持つ人向け？（3つ以上）', placeholder: '例：勉強のやり方がわからない・塾選びに迷っている・成績が伸び悩んでいる', isArea: true },
+          { key: 'flow', label: '相談・体験の流れ', placeholder: '例：①お電話で予約→②ヒアリング30分→③体験授業→④ご報告', isArea: true },
           { key: 'goal', label: '利用後にどうなってほしいか', placeholder: '例：お子さまに合った勉強法が見つかり、前向きに取り組めるように', isArea: true }
         ]
       },
@@ -789,7 +789,7 @@
         label: '📄 その他',
         fields: [
           { key: 'theme', label: '今回のブログで伝えたいテーマ・主役', placeholder: '例：西中原中の定期テストで結果を出すには？', isArea: false },
-          { key: 'actions', label: '教室や先生が行ったこと（箇条書き）', placeholder: '例：テスト範囲の確認&#10;・苦手単元の洗い出し&#10;・類題演習', isArea: true },
+          { key: 'actions', label: '教室や先生が行ったこと（箇条書き）', placeholder: '例：テスト範囲の確認・苦手単元の洗い出し・類題演習', isArea: true },
           { key: 'episode', label: 'エピソード・メッセージ', placeholder: '例：生徒たちの頑張りを見て、私も元気をもらいました', isArea: true }
         ]
       }
