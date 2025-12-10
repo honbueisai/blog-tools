@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.31
+// @version      0.56.32
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +13,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-31';
-  const BTN_ID          = 'eisai-btn-v0-56-31';
-  const STORAGE_KEY     = 'eisai_blog_info_v05631';
+  const TOOL_ID         = 'eisai-tool-v0-56-32';
+  const BTN_ID          = 'eisai-btn-v0-56-32';
+  const STORAGE_KEY     = 'eisai_blog_info_v05632';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.31';
+  const CURRENT_VERSION = '0.56.32';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -31,7 +31,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.31 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.32 起動');
 
   let lastBlogHtml = '';
 
@@ -1090,6 +1090,126 @@
       }
     }, imgSection, '▶ 画像生成用プロンプトを作成');
 
+    // ===== NANO BANANA PRO Controller =====
+    const nanoSection = createEl('div', {
+      id: 'eisai-nano-section',
+      style: {
+        display: 'none',
+        marginTop: '16px',
+        paddingTop: '12px',
+        borderTop: '1px solid #e5e7eb'
+      }
+    }, content);
+
+    createEl('p', { style: { fontWeight: 'bold', marginBottom: '6px', color: '#001E43' } }, nanoSection,
+      '🚀 NANO BANANA PRO Controller');
+
+    // ブログテーマ入力
+    createEl('label', { className: 'eisai-label' }, nanoSection, 'ブログテーマ（日本語）');
+    const nanoThemeInput = createInput(nanoSection, '', '例：期末テストで数学20点アップ！', true);
+
+    // 画像スタイル選択
+    createEl('label', { className: 'eisai-label' }, nanoSection, '画像スタイル');
+    const nanoVisualSelect = createEl('select', {
+      className: 'eisai-input',
+      style: { width: '100%', marginBottom: '8px' }
+    }, nanoSection);
+    Object.keys(VISUAL_STYLES).forEach(label => {
+      const opt = document.createElement('option');
+      opt.value = label;
+      opt.textContent = label;
+      nanoVisualSelect.appendChild(opt);
+    });
+
+    // 訴求スタイル選択
+    createEl('label', { className: 'eisai-label' }, nanoSection, '訴求スタイル');
+    const nanoAppealSelect = createEl('select', {
+      className: 'eisai-input',
+      style: { width: '100%', marginBottom: '8px' }
+    }, nanoSection);
+    Object.keys(APPEAL_STYLES).forEach(label => {
+      const opt = document.createElement('option');
+      opt.value = label;
+      opt.textContent = label;
+      nanoAppealSelect.appendChild(opt);
+    });
+
+    // 指示を挿入ボタン
+    const nanoInsertBtn = createEl('button', {
+      style: {
+        marginTop: '8px',
+        width: '100%',
+        padding: '10px',
+        background: '#FF6600',
+        color: '#ffffff',
+        border: 'none',
+        borderRadius:'8px',
+        fontWeight:'600',
+        fontSize:'14px',
+        cursor:'pointer'
+      }
+    }, nanoSection, '📝 指示を挿入');
+
+    nanoInsertBtn.onclick = () => {
+      const theme = nanoThemeInput.value.trim();
+      const visualStyle = VISUAL_STYLES[nanoVisualSelect.value];
+      const appealStyle = APPEAL_STYLES[nanoAppealSelect.value];
+
+      if (!theme) {
+        alert('ブログテーマを入力してください');
+        return;
+      }
+
+      const promptText = `@NANO BANANA PRO
+【画像生成リクエスト】
+以下のブログ記事の内容に基づき、定義されたスタイルでサムネイル画像を生成してください。
+
+■ ブログのテーマ（日本語）
+${theme}
+
+■ 適用するスタイルパラメータ（英語）
+1. Visual Style: ${visualStyle}
+2. Emotion/Appeal: ${appealStyle}
+3. Brand Rules: ${BRAND_CONSTANT}
+
+■ 思考と生成プロセス（Gemini 3 Thinking Mode）
+1. 【翻訳と抽出】上記の「ブログのテーマ」を、画像生成AIが理解しやすい「具体的な被写体・アクションの英語描写（Subject Description）」に変換してください。
+2. 【結合】抽出したSubject Descriptionと、上記の[Visual Style] + [Emotion/Appeal] + [Brand Rules]をすべて結合し、プロンプトを完成させてください。
+3. 【生成】そのプロンプトを使用して画像を生成してください。`;
+
+      // Geminiの入力欄を探してテキストを挿入
+      const input = document.querySelector('div[contenteditable="true"]') || 
+                   document.querySelector('textarea') ||
+                   document.querySelector('div[role="textbox"]');
+      
+      if (input) {
+        input.focus();
+        document.execCommand('selectAll', false, null);
+        document.execCommand('insertText', false, promptText);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // Enterキーを押して送信
+        if (input.tagName === 'DIV' && input.contentEditable === 'true') {
+          input.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter',
+            code: 'Enter',
+            keyCode: 13,
+            which: 13,
+            bubbles: true
+          }));
+        } else {
+          sendMessageViaEnter(input);
+        }
+      } else {
+        // 入力欄が見つからない場合はクリップボードにコピー
+        navigator.clipboard.writeText(promptText).then(() => {
+          alert('プロンプトをクリップボードにコピーしました。Geminiの入力欄に貼り付けてください。');
+        }).catch(() => {
+          alert('プロンプトの挿入に失敗しました。以下のテキストをコピーしてください：\n\n' + promptText);
+        });
+      }
+    };
+
     // NANO BANANA PRO Controller トグルボタン
     const nanoToggleBtn = createEl('button', {
       style: {
@@ -1219,126 +1339,6 @@
 
       sendMessageViaEnter(input);
       watchThumbnailPrompt(statusDiv, imgExecBtn);
-    };
-
-    // ===== NANO BANANA PRO Controller =====
-    const nanoSection = createEl('div', {
-      id: 'eisai-nano-section',
-      style: {
-        display: 'none',
-        marginTop: '16px',
-        paddingTop: '12px',
-        borderTop: '1px solid #e5e7eb'
-      }
-    }, content);
-
-    createEl('p', { style: { fontWeight: 'bold', marginBottom: '6px', color: '#001E43' } }, nanoSection,
-      '🚀 NANO BANANA PRO Controller');
-
-    // ブログテーマ入力
-    createEl('label', { className: 'eisai-label' }, nanoSection, 'ブログテーマ（日本語）');
-    const nanoThemeInput = createInput(nanoSection, '', '例：期末テストで数学20点アップ！', true);
-
-    // 画像スタイル選択
-    createEl('label', { className: 'eisai-label' }, nanoSection, '画像スタイル');
-    const nanoVisualSelect = createEl('select', {
-      className: 'eisai-input',
-      style: { width: '100%', marginBottom: '8px' }
-    }, nanoSection);
-    Object.keys(VISUAL_STYLES).forEach(label => {
-      const opt = document.createElement('option');
-      opt.value = label;
-      opt.textContent = label;
-      nanoVisualSelect.appendChild(opt);
-    });
-
-    // 訴求スタイル選択
-    createEl('label', { className: 'eisai-label' }, nanoSection, '訴求スタイル');
-    const nanoAppealSelect = createEl('select', {
-      className: 'eisai-input',
-      style: { width: '100%', marginBottom: '8px' }
-    }, nanoSection);
-    Object.keys(APPEAL_STYLES).forEach(label => {
-      const opt = document.createElement('option');
-      opt.value = label;
-      opt.textContent = label;
-      nanoAppealSelect.appendChild(opt);
-    });
-
-    // 指示を挿入ボタン
-    const nanoInsertBtn = createEl('button', {
-      style: {
-        marginTop: '8px',
-        width: '100%',
-        padding: '10px',
-        background: '#FF6600',
-        color: '#ffffff',
-        border: 'none',
-        borderRadius:'8px',
-        fontWeight:'600',
-        fontSize:'14px',
-        cursor:'pointer'
-      }
-    }, nanoSection, '📝 指示を挿入');
-
-    nanoInsertBtn.onclick = () => {
-      const theme = nanoThemeInput.value.trim();
-      const visualStyle = VISUAL_STYLES[nanoVisualSelect.value];
-      const appealStyle = APPEAL_STYLES[nanoAppealSelect.value];
-
-      if (!theme) {
-        alert('ブログテーマを入力してください');
-        return;
-      }
-
-      const promptText = `@NANO BANANA PRO
-【画像生成リクエスト】
-以下のブログ記事の内容に基づき、定義されたスタイルでサムネイル画像を生成してください。
-
-■ ブログのテーマ（日本語）
-${theme}
-
-■ 適用するスタイルパラメータ（英語）
-1. Visual Style: ${visualStyle}
-2. Emotion/Appeal: ${appealStyle}
-3. Brand Rules: ${BRAND_CONSTANT}
-
-■ 思考と生成プロセス（Gemini 3 Thinking Mode）
-1. 【翻訳と抽出】上記の「ブログのテーマ」を、画像生成AIが理解しやすい「具体的な被写体・アクションの英語描写（Subject Description）」に変換してください。
-2. 【結合】抽出したSubject Descriptionと、上記の[Visual Style] + [Emotion/Appeal] + [Brand Rules]をすべて結合し、プロンプトを完成させてください。
-3. 【生成】そのプロンプトを使用して画像を生成してください。`;
-
-      // Geminiの入力欄を探してテキストを挿入
-      const input = document.querySelector('div[contenteditable="true"]') || 
-                   document.querySelector('textarea') ||
-                   document.querySelector('div[role="textbox"]');
-      
-      if (input) {
-        input.focus();
-        document.execCommand('selectAll', false, null);
-        document.execCommand('insertText', false, promptText);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        
-        // Enterキーを押して送信
-        if (input.tagName === 'DIV' && input.contentEditable === 'true') {
-          input.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'Enter',
-            code: 'Enter',
-            keyCode: 13,
-            which: 13,
-            bubbles: true
-          }));
-        } else {
-          sendMessageViaEnter(input);
-        }
-      } else {
-        // 入力欄が見つからない場合はクリップボードにコピー
-        navigator.clipboard.writeText(promptText).then(() => {
-          alert('プロンプトをクリップボードにコピーしました。Geminiの入力欄に貼り付けてください。');
-        }).catch(() => {
-          alert('プロンプトの挿入に失敗しました。以下のテキストをコピーしてください：\n\n' + promptText);
-        });
-      }
     };
 
     // ===== 記事生成 =====
