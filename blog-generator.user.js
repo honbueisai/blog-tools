@@ -1,10 +1,11 @@
-```javascript
+
 // ==UserScript==
-// @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
-// @namespace    http://eisai.blog.generator/
+// @name         Eisai Blog Generator
+// @namespace    http://tampermonkey.net/
 // @version      0.56.62
-// @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
-// @match        https://gemini.google.com/*
+// @description  英才ブログ生成ツール (CTA修正版)
+// @author       Yuan
+// @match        https://cms.eisaia.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
 // @downloadURL  https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
 // @grant        none
@@ -205,98 +206,22 @@
   // =========================================================
   // 2. ブログ用 MASTER_YAML
   // =========================================================
-  const MASTER_YAML = String.raw`blog_instruction:
-version: "5.0-minimal-eisai"
-description: >
-  英才個別学院のブログ記事を、構成だけ指定して中身は自由に生成するための指示書です。
-この記事では、日本語HTMLを生成します。
-読者が飽きない読了時間で、「共感→理解→行動」の流れを作り、
-SEO効果も高く、AI感のない自然な記事にします。
-
-input_required:
-theme: "__THEME__"
-memo: "__MEMO__"
-kosha_name: "__KOSHA__"
-shichou_name: "__SHICHOU__"
-cta_url: "__CTA_URL__"
-cta_tel: "__CTA_TEL__"
-
-article_goal:
-- "保護者が『うちの子の話かもしれない』と感じられるリアルな記事にすること"
-  - "導入100字・本文制限なし・締め200字で『共感→理解→行動』の流れを構成すること"
-  - "①共感（あるある・プロ視点）②原因理解 ③解決策の３要素を含めること"
-  - "子どもの状態や背景を、専門用語を使いすぎずにわかりやすく言語化すること"
-  - "必要に応じて英才個別学院のサポート内容に触れ、最後に『少し相談してみようかな』と感じてもらえるようにすること"
-
-output_constraints:
-allowed_html_tags:
-- h2
-  - h3
-  - p
-  - ul
-  - li
-  - blockquote
-  - table
-  - strong
-  - a
-  - "div class=\"bubble-left\""
-  - "div class=\"bubble-right\""
-prohibited_html_tags:
-- html
-  - body
-  - style
-  - script
-  - img
-  - span
-  - b
-  - i
-  - u
-  - mark
-  - header
-  - footer
-  - main
-  - section
-style_rules:
-- "記事は<h2>や<h3>からではなく、必ず<p>タグから書き始めること"
-  - "本文中では『室長』という敬称は使わない。名乗るときは名前（__SHICHOU__）だけ、または『私』を使う"
-  - "句点「。」の後は、読みやすさのためにできるだけ改行する（リスト内を除く）"
-  - "<p>タグの中は原則1〜3文程度にとどめ、1文を極端に長くしないこと"
-  - "画像挿入箇所は <p style=\"color:red\">■■■■■画像：◯◯■■■■■</p> のように、赤字で目立つプレースホルダのみを書く。実際の<img>タグは使わない"
-  - "リンク（<a>タグ）は記事末尾のCTAボタン内のみに使用し、本文中では使用しない"
-  - "リスト（<ul><li>）、装飾枠、吹き出し（bubble-left/bubble-right）などの要素を、読みやすさと理解を助ける目的で効果的に活用すること"
-  - "強調したい箇所は Markdown記法（**...**）ではなく、必ず <strong>...</strong> タグを使用すること。これはHTMLとして正しく太字表示するために必須"
-
-article_structure:
-- "【イントロ】挨拶と今日のテーマ紹介（100字程度）。挨拶には必ず『英才個別学院 __KOSHA__』のように校舎名を含めること"
-  - "【本文】1〜3つのセクションで、現状・背景・原因・具体的なサポート方法を【theme】【memo】に合わせて深掘りして構成（見出しには<h2>または<h3>を使う）。リストでポイントをまとめる場合は、必ずその後に各項目について見出しと段落で詳細に深掘りすること。リストを使うかどうかは、その記事のテーマに最も効果的な訴求になるかを判断して選択すること。教室の強みや特徴を伝える際にも『英才個別学院 __KOSHA__』のように校舎名を含めること。深掘りパートでは、各小見出し（<h3>）の直後に必ずその内容に見合う画像挿入プレースホルダを入れること（例：<p style=\"color:red\">■■■■■画像：笑顔でテスト結果を見せている生徒と講師のイメージ画像■■■■■</p>）。【重要】深掘りパートでは『英才個別学院だからこそできること』『この教室ならではの取り組み』を具体的に伝えること。例えば、なぜその指導ができるのか、どんな工夫をしているのか、他の塾ではなかなかできない理由は何か、講師がどれだけ生徒のことを考えているかなど、教室の魅力が伝わるように丁寧に深掘りする。多少長くなっても構わないので、保護者が『この教室に任せたい』と思えるような説得力のある内容にすること"
-  - "【まとめ】本文をふりかえり、保護者に向けた前向きなメッセージで締める（200字程度）"
-  - "【CTA】記事本文の最後に、以下の形式でCTA用データを出力すること（HTMLではなくテキストで）。すべて『事実の羅列』ではなく、保護者の不安や願いに寄り添い、『この相談なら今すぐしてみたい』と感じられる感情的・ベネフィット重視のコピーにする。会話や吹き出しのような表現にする場合は、教室で保護者と話しているときのような自然な口語で書く：\n\n<!--CTA_DATA_START-->\n説明文1: （ブログ内容に合わせた一文。テストや学習への不安に寄り添い、相談するメリットが直感的に伝わる表現。30文字以内）\n説明文2: （教室に相談することで得られる安心感や変化をイメージできる一文。30文字以内）\n相談ポイント1: （無料学習相談で話せる内容や得られる変化を、保護者が『これなら相談したい』と思える具体的なフレーズで。25文字以内）\n相談ポイント2: （同上。25文字以内）\n相談ポイント3: （同上。25文字以内）\n相談ポイント4: （同上。25文字以内）\n体験ポイント1: （無料体験授業で感じられる安心・楽しさ・成長イメージを、保護者が『受けさせてみたい』と思える具体的なフレーズで。25文字以内）\n体験ポイント2: （同上。25文字以内）\n体験ポイント3: （同上。25文字以内）\n体験ポイント4: （同上。25文字以内）\n締めの言葉: （保護者の心に響く、『今日連絡してみようかな』と背中を押される感情的であたたかい一文。『お子様のために』『一緒に』などの言葉を使い、行動を促す。50文字以内）\n<!--CTA_DATA_END-->\n\n※見出し『まずはお気軽にご相談ください』とボタンは固定のため出力不要"
-
-tone_and_style:
-- "全体のトーンは、保護者に寄り添うやさしい口調とする（例：〜なんです／〜ですよ／〜かもしれません）"
-  - "です・ます調で統一しつつ、教室で話しているような自然な話し言葉を混ぜてよい"
-  - "難しい専門用語や四字熟語はなるべく避け、中学生でも読める表現を選ぶ"
-  - "記事ごとに言い回し・構成・描写を変えること。同じフレーズや同じ展開パターンをテンプレートのように繰り返さない"
-  - "以前書いた記事と同じセリフ・同じ会話・同じエピソードを再利用しない。その記事のために新しく考える"
-  - "読者に問いかける表現（『こんなこと、ありませんか？』『心当たりはありませんか？』など）は使ってもよいが、頻度は控えめにし、毎回表現を変える"
-  - "『〜しなければなりません』のような強い言い切りは避け、『〜していけると安心です』『〜していきたいところです』など柔らかい表現を使う"
-  - "次の表現は、CTAを含め記事全体で使用しない：『無理な勧誘は一切いたしませんので、セカンドオピニオンとして利用していただくだけでも構いません。』『費用は一切かかりませんので、安心してお越しくださいね。』"
-  - "『やる気スイッチ』『ヤル気スイッチ』など類似の表現は、記事全体（本文・見出し・CTA・会話文など）で一切使用しない"
-
-output_checklist:
-- "イントロ→本文→まとめ→CTAのおおまかな流れになっているか"
-  - "各パートの前後に空行が2つ入っているか"
-  - "語りかけ・寄り添いトーンが維持されているか"
-  - "記事末尾にCTAプレースホルダーが入っているか"
-  - "導入100字・締め200字になっているか"
-  - "『共感→理解→行動』の流れが自然に作れているか"
-
-final_instruction: >
-  上記の構成とHTMLルールだけを守り、細かい書き方・段落構成・会話の有無・CTAの文面は毎回自由にしてよい。
-    【theme】と【memo】に合わせて、その記事のためのオリジナルな内容を日本語HTMLで生成せよ。
-わかりやすく、「共感→理解→行動」の流れを意識して構成すること。
-記事本文のみを出力し、YAMLの再掲や説明は不要。
-`;
+  const MASTER_YAML = [
+    "version: \"5.0-minimal-eisai\"",
+    "appealStyles: " + JSON.stringify(appealStyles, null, 2),
+    "imageStyles: " + JSON.stringify(imageStyles, null, 2),
+    "blog_instruction: |",
+    "  ブログ記事を作成してください。",
+    "  ...",
+    "thumbnail_instruction: |",
+    "  サムネイルを作成してください。",
+    "  ..."
+  ].join("\n");
+  /*
+    blog_instruction:
+  version: "5.0-minimal-eisai"
+  ...
+  */
 
   // =========================================================
   // 4. 共通ヘルパー
@@ -459,46 +384,44 @@ final_instruction: >
 
   function buildCtaHtml(url, tel, ctaData = null) {
     const d = ctaData || defaultCtaData;
-    return `
-  < div data - cta - protected="true" style = "background: #f8f8f8; padding: 40px 20px; margin: 40px 0;" >
-  <div style="text-align: center; font-size: 26px; font-weight: bold; color: #333; margin: 0 0 12px 0;">まずはお気軽にご相談ください</div>
-  <div style="text-align: center; color: #888; margin: 0 0 16px 0; font-size: 13px;">入会する・しないにかかわらず、お子さまの学習についてお力になります。</div>
-  <div style="text-align: center; color: #555; margin: 0 0 10px 0; font-size: 15px;">${d['説明文1'] || defaultCtaData['説明文1']}</div>
-  <div style="text-align: center; color: #555; margin: 0 0 30px 0; font-size: 15px;">${d['説明文2'] || defaultCtaData['説明文2']}</div>
-  <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; max-width: 800px; margin-left: auto; margin-right: auto;">
-    <div style="flex: 1; min-width: 300px; max-width: 380px; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-      <div style="color: #e67e22; font-size: 18px; font-weight: bold; margin: 0 0 16px 0;">📒 無料学習相談でできること</div>
-      <div style="color: #444; line-height: 2.0; font-size: 15px; padding-left: 8px;">
-        <div style="margin-bottom: 4px;">・${d['相談ポイント1'] || defaultCtaData['相談ポイント1']}</div>
-        <div style="margin-bottom: 4px;">・${d['相談ポイント2'] || defaultCtaData['相談ポイント2']}</div>
-        <div style="margin-bottom: 4px;">・${d['相談ポイント3'] || defaultCtaData['相談ポイント3']}</div>
-        <div style="margin-bottom: 4px;">・${d['相談ポイント4'] || defaultCtaData['相談ポイント4']}</div>
-      </div>
-    </div>
-    <div style="flex: 1; min-width: 300px; max-width: 380px; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-      <div style="color: #e67e22; font-size: 18px; font-weight: bold; margin: 0 0 16px 0;">✏️ 無料体験授業でできること</div>
-      <div style="color: #444; line-height: 2.0; font-size: 15px; padding-left: 8px;">
-        <div style="margin-bottom: 4px;">・${d['体験ポイント1'] || defaultCtaData['体験ポイント1']}</div>
-        <div style="margin-bottom: 4px;">・${d['体験ポイント2'] || defaultCtaData['体験ポイント2']}</div>
-        <div style="margin-bottom: 4px;">・${d['体験ポイント3'] || defaultCtaData['体験ポイント3']}</div>
-        <div style="margin-bottom: 4px;">・${d['体験ポイント4'] || defaultCtaData['体験ポイント4']}</div>
-      </div>
-    </div>
-  </div>
-  <div style="text-align: center; color: #555; margin: 0 0 28px 0; font-size: 15px;">${d['締めの言葉'] || defaultCtaData['締めの言葉']}</div>
-  <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-    <a href="${url}" style="display: inline-block; background: #e67e22; color: #fff; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">無料学習相談・体験授業に申し込む</a>
-    <a href="tel:${tel.replace(/-/g, '')}" style="display: inline-block; background: #fff; color: #e67e22; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; border: 2px solid #e67e22;">電話で直接申し込む</a>
-  </div>
-</div >
-  `.trim();
-  }
-
-  // =========================================================
+    return (
+      '<div data-cta-protected="true" style="background: #f8f8f8; padding: 40px 20px; margin: 40px 0;">' +
+      '<div style="text-align: center; font-size: 26px; font-weight: bold; color: #333; margin: 0 0 12px 0;">まずはお気軽にご相談ください</div>' +
+      '<div style="text-align: center; color: #888; margin: 0 0 16px 0; font-size: 13px;">入会する・しないにかかわらず、お子さまの学習についてお力になります。</div>' +
+      '<div style="text-align: center; color: #555; margin: 0 0 10px 0; font-size: 15px;">' + (d['説明文1'] || defaultCtaData['説明文1']) + '</div>' +
+      '<div style="text-align: center; color: #555; margin: 0 0 30px 0; font-size: 15px;">' + (d['説明文2'] || defaultCtaData['説明文2']) + '</div>' +
+      '<div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; max-width: 800px; margin-left: auto; margin-right: auto;">' +
+      '<div style="flex: 1; min-width: 300px; max-width: 380px; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">' +
+      '<div style="color: #e67e22; font-size: 18px; font-weight: bold; margin: 0 0 16px 0;">📒 無料学習相談でできること</div>' +
+      '<div style="color: #444; line-height: 2.0; font-size: 15px; padding-left: 8px;">' +
+      '<div style="margin-bottom: 4px;">・' + (d['相談ポイント1'] || defaultCtaData['相談ポイント1']) + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + (d['相談ポイント2'] || defaultCtaData['相談ポイント2']) + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + (d['相談ポイント3'] || defaultCtaData['相談ポイント3']) + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + (d['相談ポイント4'] || defaultCtaData['相談ポイント4']) + '</div>' +
+      '</div>' +
+      '</div>' +
+      '<div style="flex: 1; min-width: 300px; max-width: 380px; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">' +
+      '<div style="color: #e67e22; font-size: 18px; font-weight: bold; margin: 0 0 16px 0;">✏️ 無料体験授業でできること</div>' +
+      '<div style="color: #444; line-height: 2.0; font-size: 15px; padding-left: 8px;">' +
+      '<div style="margin-bottom: 4px;">・' + (d['体験ポイント1'] || defaultCtaData['体験ポイント1']) + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + (d['体験ポイント2'] || defaultCtaData['体験ポイント2']) + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + (d['体験ポイント3'] || defaultCtaData['体験ポイント3']) + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + (d['体験ポイント4'] || defaultCtaData['体験ポイント4']) + '</div>' +
+      '</div>' +
+      '</div>' +
+      '</div>' +
+      '<div style="text-align: center; color: #555; margin: 0 0 28px 0; font-size: 15px;">' + (d['締めの言葉'] || defaultCtaData['締めの言葉']) + '</div>' +
+      '<div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">' +
+      '<a href="' + url + '" style="display: inline-block; background: #e67e22; color: #fff; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">無料学習相談・体験授業に申し込む</a>' +
+      '<a href="tel:' + tel.replace(/-/g, '') + '" style="display: inline-block; background: #fff; color: #e67e22; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; border: 2px solid #e67e22;">電話で直接申し込む</a>' +
+      '</div>' +
+      '</div>'
+    );
+  }    // =========================================================
   // 5. CSS
   // =========================================================
   const CSS = `
-#${ TOOL_ID } {
+#${TOOL_ID} {
   font - family: system - ui, sans - serif; color: #333;
   box - shadow: -4px 0 20px rgba(0, 0, 0, 0.15); border - radius: 0;
   overflow: hidden; border - left: 1px solid #e5e7eb; background: #fff;
@@ -507,10 +430,10 @@ final_instruction: >
   pointer - events: auto;
   transition: transform 0.3s ease;
 }
-#${ TOOL_ID }.collapsed {
+#${TOOL_ID}.collapsed {
   transform: translateX(100 %);
 }
-#${ TOOL_ID } * {
+#${TOOL_ID} * {
   pointer- events: auto;
     }
 #eisai - toggle - btn {
@@ -749,7 +672,7 @@ details.eisai - details summary { padding: 8px; background: #fafafa; cursor: poi
     const header = createEl('div', { className: 'eisai-header' }, panel);
     const titleWrap = createEl('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } }, header);
     createEl('span', {}, titleWrap, '📝 英才ブログ生成（ブログ＋サムネイル）');
-    const verSpan = createEl('span', { style: { fontSize: '11px', color: '#6b7280' } }, titleWrap, `v${ CURRENT_VERSION } `);
+    const verSpan = createEl('span', { style: { fontSize: '11px', color: '#6b7280' } }, titleWrap, `v${CURRENT_VERSION} `);
 
     const headerRight = createEl('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } }, header);
 
@@ -775,7 +698,7 @@ details.eisai - details summary { padding: 8px; background: #fafafa; cursor: poi
 
     // 更新ボタンの動作：直接インストールページを開く（CSP制限のためバージョンチェック不可）
     updateBtn.onclick = () => {
-      const ok = confirm(`現在のバージョン: v${ CURRENT_VERSION } \n\n最新版を確認・インストールしますか？\n（Tampermonkeyのインストール画面が開きます）`);
+      const ok = confirm(`現在のバージョン: v${CURRENT_VERSION} \n\n最新版を確認・インストールしますか？\n（Tampermonkeyのインストール画面が開きます）`);
       if (ok) {
         window.open(UPDATE_URL, '_blank');
       }
@@ -1310,22 +1233,22 @@ details.eisai - details summary { padding: 8px; background: #fafafa; cursor: poi
 以下のブログ記事の内容に基づき、定義されたスタイルで最高品質のサムネイル画像を生成するためのプロンプトを作成してください。
 
 ■ ブログ記事内容
-${ lastBlogHtml || 'ブログ記事が生成されていません。先にブログを生成してください。' }
+${lastBlogHtml || 'ブログ記事が生成されていません。先にブログを生成してください。'}
 
 ■ 適用するスタイルパラメータ（英語）
-1. Visual Style: ${ VISUAL_STYLES[style] || style }
-2. Emotion / Appeal: ${ APPEAL_STYLES[appeal] || appeal }
-3. Brand Rules: ${ mainColor === 'お任せ' || subColor === 'お任せ' ? 'Color scheme optimized for appeal style' : `${COLOR_STYLES[mainColor]?.sub} and ${COLOR_STYLES[subColor]?.main} color scheme` }, Teacher as clean university student(male / female) wearing plain white lab coat with no text, professional appearance, clean composition, --ar 3: 2
-4. Text Design: Impactful text design: Bold 3D letters with drop shadows, gradient fills(${ mainColor === 'お任せ' ? 'optimized gradient for appeal style' : COLOR_STYLES[mainColor]?.gradient}), thick outlines, dynamic positioning, maximum visibility, eye - catching typography, professional yet striking appearance
-5. Classroom Setting: ${ style === '実写スタイル' ? CLASSROOM_DESCRIPTION : 'Modern educational environment appropriate for ' + style }
-6. Tutoring Style: ${ TUTORING_STYLE }
-7. Color Scheme: ${ mainColor === 'お任せ' || subColor === 'お任せ' ? 'Colors automatically selected based on appeal style: warm colors for empathy, bright colors for smile, urgent colors for anxiety, cool colors for positive, premium colors for highest' : `Main color ${COLOR_STYLES[mainColor]?.main} (${COLOR_STYLES[mainColor]?.hex}), Sub color ${COLOR_STYLES[subColor]?.main} (${COLOR_STYLES[subColor]?.hex})` }
+1. Visual Style: ${VISUAL_STYLES[style] || style}
+2. Emotion / Appeal: ${APPEAL_STYLES[appeal] || appeal}
+3. Brand Rules: ${mainColor === 'お任せ' || subColor === 'お任せ' ? 'Color scheme optimized for appeal style' : `${COLOR_STYLES[mainColor]?.sub} and ${COLOR_STYLES[subColor]?.main} color scheme`}, Teacher as clean university student(male / female) wearing plain white lab coat with no text, professional appearance, clean composition, --ar 3: 2
+4. Text Design: Impactful text design: Bold 3D letters with drop shadows, gradient fills(${mainColor === 'お任せ' ? 'optimized gradient for appeal style' : COLOR_STYLES[mainColor]?.gradient}), thick outlines, dynamic positioning, maximum visibility, eye - catching typography, professional yet striking appearance
+5. Classroom Setting: ${style === '実写スタイル' ? CLASSROOM_DESCRIPTION : 'Modern educational environment appropriate for ' + style}
+6. Tutoring Style: ${TUTORING_STYLE}
+7. Color Scheme: ${mainColor === 'お任せ' || subColor === 'お任せ' ? 'Colors automatically selected based on appeal style: warm colors for empathy, bright colors for smile, urgent colors for anxiety, cool colors for positive, premium colors for highest' : `Main color ${COLOR_STYLES[mainColor]?.main} (${COLOR_STYLES[mainColor]?.hex}), Sub color ${COLOR_STYLES[subColor]?.main} (${COLOR_STYLES[subColor]?.hex})`}
 
 ■ ユーザー入力情報
-メインキャッチ：${ mainCatch }
-サブキャッチ：${ subCatch }
-ポイント：${ points }
-${ personThumbnailRules }
+メインキャッチ：${mainCatch}
+サブキャッチ：${subCatch}
+ポイント：${points}
+${personThumbnailRules}
 
 ■ キャッチフレーズ作成の原則（最高品質のテキスト生成）
 【メインキャッチフレーズ】
@@ -1429,7 +1352,7 @@ ${ personThumbnailRules }
       const firstField = config.fields[0];
       const firstValue = typeData[firstField.key] || '';
       if (!firstValue.trim()) {
-        alert(`「${ firstField.label }」を入力してください`);
+        alert(`「${firstField.label}」を入力してください`);
         return;
       }
 
@@ -1463,7 +1386,7 @@ ${ personThumbnailRules }
       config.fields.forEach(field => {
         const val = typeData[field.key] || '';
         if (val.trim()) {
-          formContent += `${ field.label }: ${ val } \n`;
+          formContent += `${field.label}: ${val} \n`;
         }
       });
 
@@ -1511,7 +1434,7 @@ ${ personThumbnailRules }
 
       let yaml = MASTER_YAML;
       // タイプ別情報を追加
-      yaml = yaml.replace('input_required:', `article_type: "${currentBlogType}"\n\n${ typeInstruction } \n\n【入力された情報】\n${ formContent } \ninput_required: `);
+      yaml = yaml.replace('input_required:', `article_type: "${currentBlogType}"\n\n${typeInstruction} \n\n【入力された情報】\n${formContent} \ninput_required: `);
       yaml = yaml.replace(/__THEME__/g, esc(config.label.replace(/^[^\s]+\s/, '')));
       yaml = yaml.replace(/__MEMO__/g, esc(formContent));
       yaml = yaml.replace(/__KOSHA__/g, esc(kosha));
