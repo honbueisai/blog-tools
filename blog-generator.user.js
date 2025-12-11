@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.61
+// @version      0.56.62
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -14,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-56-61';
-  const BTN_ID = 'eisai-btn-v0-56-61';
-  const STORAGE_KEY = 'eisai_blog_info_v05661';
+  const TOOL_ID = 'eisai-tool-v0-56-62';
+  const BTN_ID = 'eisai-btn-v0-56-62';
+  const STORAGE_KEY = 'eisai_blog_info_v05662';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.61';
+  const CURRENT_VERSION = '0.56.62';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -1497,7 +1497,8 @@ ${ personThumbnailRules }
 【構成指示】
 - 導入：テスト結果への喜びと生徒への称賛
   - 本文：点数アップ一覧を見やすく紹介し、代表ケースを深掘り
-    - 見出し例：「今回のテスト結果速報！」「特に頑張った生徒たち」
+    - 【重要】入力された「高得点・点数アップ一覧」は、省略せずに ** 全て ** リスト形式で記載すること。「他多数」などで省略してはならない。
+- 見出し例：「今回のテスト結果速報！」「特に頑張った生徒たち」
 - 締め：次のテストに向けた意気込みと保護者へのメッセージ`,
         [BLOG_TYPES.OTHER]: `【記事タイプ】自由テーマ型
 【構成指示】

@@ -41,7 +41,7 @@
 ```javascript
 {
   // バージョン管理データ
-  version: "0.56.61",
+  version: "0.56.62",
   classroomName: "",
   managerName: "",
   classroomUrl: "",
@@ -129,7 +129,7 @@ const BLOG_TYPES = {
 ## 保存データ
 
 ### ストレージキー
-- `STORAGE_KEY`: `eisai_blog_info_v05661`（バージョン依存）
+- `STORAGE_KEY`: `eisai_blog_info_v05662`（バージョン依存）
 - `CLASSROOM_STORAGE_KEY`: `eisai_classroom_settings_persistent`（永続）
 
 ### 保存される情報
