@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.51
+// @version      0.56.52
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +13,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-51';
-  const BTN_ID          = 'eisai-btn-v0-56-51';
-  const STORAGE_KEY     = 'eisai_blog_info_v05651';
+  const TOOL_ID         = 'eisai-tool-v0-56-52';
+  const BTN_ID          = 'eisai-btn-v0-56-52';
+  const STORAGE_KEY     = 'eisai_blog_info_v05652';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.51';
+  const CURRENT_VERSION = '0.56.52';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -31,7 +31,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.51 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.52 起動');
 
   let lastBlogHtml = '';
 
@@ -938,33 +938,7 @@
     // 初期フォーム表示
     renderTypeForm(currentBlogType);
     
-    // 仮のデフォルト値を設定（後でプレースホルダーに変更予定）
-    setTimeout(() => {
-      // 教室情報設定
-      if (nameIn) nameIn.value = '英才個別学院 西中原教室';
-      if (managerIn) managerIn.value = '鈴木室長';
-      if (urlIn) urlIn.value = 'https://eisai.org/contact';
-      if (telIn) telIn.value = '09012345678';
-      
-      // 結果アップ・成長ストーリーのデフォルト値
-      const growthInputs = formInputs[BLOG_TYPES.GROWTH];
-      if (growthInputs) {
-        if (growthInputs.student_el) growthInputs.student_el.value = '中2・西中原中・Aさん・数学';
-        if (growthInputs.before_el) growthInputs.before_el.value = '前回テスト45点、計算ミスが多かった';
-        if (growthInputs.after_el) growthInputs.after_el.value = '今回78点、33点アップ！';
-        if (growthInputs.actions_el) growthInputs.actions_el.value = '・計算練習を毎回10分\n・途中式を書く習慣づけ\n・テスト前に類題演習';
-        if (growthInputs.episode_el) growthInputs.episode_el.value = '最初は自信なさそうだったけど、点数を見た時の笑顔が忘れられません';
-        
-        // formInputsにも保存
-        formInputs[BLOG_TYPES.GROWTH] = {
-          student: '中2・西中原中・Aさん・数学',
-          before: '前回テスト45点、計算ミスが多かった',
-          after: '今回78点、33点アップ！',
-          actions: '・計算練習を毎回10分\n・途中式を書く習慣づけ\n・テスト前に類題演習',
-          episode: '最初は自信なさそうだったけど、点数を見た時の笑顔が忘れられません'
-        };
-      }
-    }, 100);
+    // デフォルト値は空欄のまま（ユーザーが入力するまで）
 
     // タイプボタンクリック時にフォームも切り替え
     typeButtons.forEach((btn, idx) => {
