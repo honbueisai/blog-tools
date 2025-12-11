@@ -1,7 +1,8 @@
+```javascript
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.60
+// @version      0.56.61
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-56-60';
-  const BTN_ID = 'eisai-btn-v0-56-60';
-  const STORAGE_KEY = 'eisai_blog_info_v05660';
+  const TOOL_ID = 'eisai-tool-v0-56-61';
+  const BTN_ID = 'eisai-btn-v0-56-61';
+  const STORAGE_KEY = 'eisai_blog_info_v05661';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.60';
+  const CURRENT_VERSION = '0.56.61';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -205,96 +206,96 @@
   // 2. ブログ用 MASTER_YAML
   // =========================================================
   const MASTER_YAML = String.raw`blog_instruction:
-  version: "5.0-minimal-eisai"
-  description: >
-    英才個別学院のブログ記事を、構成だけ指定して中身は自由に生成するための指示書です。
-    この記事では、日本語HTMLを生成します。
-    読者が飽きない読了時間で、「共感→理解→行動」の流れを作り、
-    SEO効果も高く、AI感のない自然な記事にします。
+version: "5.0-minimal-eisai"
+description: >
+  英才個別学院のブログ記事を、構成だけ指定して中身は自由に生成するための指示書です。
+この記事では、日本語HTMLを生成します。
+読者が飽きない読了時間で、「共感→理解→行動」の流れを作り、
+SEO効果も高く、AI感のない自然な記事にします。
 
-  input_required:
-    theme: "__THEME__"
-    memo: "__MEMO__"
-    kosha_name: "__KOSHA__"
-    shichou_name: "__SHICHOU__"
-    cta_url: "__CTA_URL__"
-    cta_tel: "__CTA_TEL__"
+input_required:
+theme: "__THEME__"
+memo: "__MEMO__"
+kosha_name: "__KOSHA__"
+shichou_name: "__SHICHOU__"
+cta_url: "__CTA_URL__"
+cta_tel: "__CTA_TEL__"
 
-  article_goal:
-    - "保護者が『うちの子の話かもしれない』と感じられるリアルな記事にすること"
-    - "導入100字・本文制限なし・締め200字で『共感→理解→行動』の流れを構成すること"
-    - "①共感（あるある・プロ視点）②原因理解 ③解決策の３要素を含めること"
-    - "子どもの状態や背景を、専門用語を使いすぎずにわかりやすく言語化すること"
-    - "必要に応じて英才個別学院のサポート内容に触れ、最後に『少し相談してみようかな』と感じてもらえるようにすること"
+article_goal:
+- "保護者が『うちの子の話かもしれない』と感じられるリアルな記事にすること"
+  - "導入100字・本文制限なし・締め200字で『共感→理解→行動』の流れを構成すること"
+  - "①共感（あるある・プロ視点）②原因理解 ③解決策の３要素を含めること"
+  - "子どもの状態や背景を、専門用語を使いすぎずにわかりやすく言語化すること"
+  - "必要に応じて英才個別学院のサポート内容に触れ、最後に『少し相談してみようかな』と感じてもらえるようにすること"
 
-  output_constraints:
-    allowed_html_tags:
-      - h2
-      - h3
-      - p
-      - ul
-      - li
-      - blockquote
-      - table
-      - strong
-      - a
-      - "div class=\"bubble-left\""
-      - "div class=\"bubble-right\""
-    prohibited_html_tags:
-      - html
-      - body
-      - style
-      - script
-      - img
-      - span
-      - b
-      - i
-      - u
-      - mark
-      - header
-      - footer
-      - main
-      - section
-    style_rules:
-      - "記事は<h2>や<h3>からではなく、必ず<p>タグから書き始めること"
-      - "本文中では『室長』という敬称は使わない。名乗るときは名前（__SHICHOU__）だけ、または『私』を使う"
-      - "句点「。」の後は、読みやすさのためにできるだけ改行する（リスト内を除く）"
-      - "<p>タグの中は原則1〜3文程度にとどめ、1文を極端に長くしないこと"
-      - "画像挿入箇所は <p style=\"color:red\">■■■■■画像：◯◯■■■■■</p> のように、赤字で目立つプレースホルダのみを書く。実際の<img>タグは使わない"
-      - "リンク（<a>タグ）は記事末尾のCTAボタン内のみに使用し、本文中では使用しない"
-      - "リスト（<ul><li>）、装飾枠、吹き出し（bubble-left/bubble-right）などの要素を、読みやすさと理解を助ける目的で効果的に活用すること"
-      - "強調したい箇所は Markdown記法（**...**）ではなく、必ず <strong>...</strong> タグを使用すること。これはHTMLとして正しく太字表示するために必須"
+output_constraints:
+allowed_html_tags:
+- h2
+  - h3
+  - p
+  - ul
+  - li
+  - blockquote
+  - table
+  - strong
+  - a
+  - "div class=\"bubble-left\""
+  - "div class=\"bubble-right\""
+prohibited_html_tags:
+- html
+  - body
+  - style
+  - script
+  - img
+  - span
+  - b
+  - i
+  - u
+  - mark
+  - header
+  - footer
+  - main
+  - section
+style_rules:
+- "記事は<h2>や<h3>からではなく、必ず<p>タグから書き始めること"
+  - "本文中では『室長』という敬称は使わない。名乗るときは名前（__SHICHOU__）だけ、または『私』を使う"
+  - "句点「。」の後は、読みやすさのためにできるだけ改行する（リスト内を除く）"
+  - "<p>タグの中は原則1〜3文程度にとどめ、1文を極端に長くしないこと"
+  - "画像挿入箇所は <p style=\"color:red\">■■■■■画像：◯◯■■■■■</p> のように、赤字で目立つプレースホルダのみを書く。実際の<img>タグは使わない"
+  - "リンク（<a>タグ）は記事末尾のCTAボタン内のみに使用し、本文中では使用しない"
+  - "リスト（<ul><li>）、装飾枠、吹き出し（bubble-left/bubble-right）などの要素を、読みやすさと理解を助ける目的で効果的に活用すること"
+  - "強調したい箇所は Markdown記法（**...**）ではなく、必ず <strong>...</strong> タグを使用すること。これはHTMLとして正しく太字表示するために必須"
 
-  article_structure:
-    - "【イントロ】挨拶と今日のテーマ紹介（100字程度）。挨拶には必ず『英才個別学院 __KOSHA__』のように校舎名を含めること"
-    - "【本文】1〜3つのセクションで、現状・背景・原因・具体的なサポート方法を【theme】【memo】に合わせて深掘りして構成（見出しには<h2>または<h3>を使う）。リストでポイントをまとめる場合は、必ずその後に各項目について見出しと段落で詳細に深掘りすること。リストを使うかどうかは、その記事のテーマに最も効果的な訴求になるかを判断して選択すること。教室の強みや特徴を伝える際にも『英才個別学院 __KOSHA__』のように校舎名を含めること。深掘りパートでは、各小見出し（<h3>）の直後に必ずその内容に見合う画像挿入プレースホルダを入れること（例：<p style=\"color:red\">■■■■■画像：笑顔でテスト結果を見せている生徒と講師のイメージ画像■■■■■</p>）。【重要】深掘りパートでは『英才個別学院だからこそできること』『この教室ならではの取り組み』を具体的に伝えること。例えば、なぜその指導ができるのか、どんな工夫をしているのか、他の塾ではなかなかできない理由は何か、講師がどれだけ生徒のことを考えているかなど、教室の魅力が伝わるように丁寧に深掘りする。多少長くなっても構わないので、保護者が『この教室に任せたい』と思えるような説得力のある内容にすること"
-    - "【まとめ】本文をふりかえり、保護者に向けた前向きなメッセージで締める（200字程度）"
-    - "【CTA】記事本文の最後に、以下の形式でCTA用データを出力すること（HTMLではなくテキストで）。すべて『事実の羅列』ではなく、保護者の不安や願いに寄り添い、『この相談なら今すぐしてみたい』と感じられる感情的・ベネフィット重視のコピーにする。会話や吹き出しのような表現にする場合は、教室で保護者と話しているときのような自然な口語で書く：\n\n<!--CTA_DATA_START-->\n説明文1: （ブログ内容に合わせた一文。テストや学習への不安に寄り添い、相談するメリットが直感的に伝わる表現。30文字以内）\n説明文2: （教室に相談することで得られる安心感や変化をイメージできる一文。30文字以内）\n相談ポイント1: （無料学習相談で話せる内容や得られる変化を、保護者が『これなら相談したい』と思える具体的なフレーズで。25文字以内）\n相談ポイント2: （同上。25文字以内）\n相談ポイント3: （同上。25文字以内）\n相談ポイント4: （同上。25文字以内）\n体験ポイント1: （無料体験授業で感じられる安心・楽しさ・成長イメージを、保護者が『受けさせてみたい』と思える具体的なフレーズで。25文字以内）\n体験ポイント2: （同上。25文字以内）\n体験ポイント3: （同上。25文字以内）\n体験ポイント4: （同上。25文字以内）\n締めの言葉: （保護者の心に響く、『今日連絡してみようかな』と背中を押される感情的であたたかい一文。『お子様のために』『一緒に』などの言葉を使い、行動を促す。50文字以内）\n<!--CTA_DATA_END-->\n\n※見出し『まずはお気軽にご相談ください』とボタンは固定のため出力不要"
+article_structure:
+- "【イントロ】挨拶と今日のテーマ紹介（100字程度）。挨拶には必ず『英才個別学院 __KOSHA__』のように校舎名を含めること"
+  - "【本文】1〜3つのセクションで、現状・背景・原因・具体的なサポート方法を【theme】【memo】に合わせて深掘りして構成（見出しには<h2>または<h3>を使う）。リストでポイントをまとめる場合は、必ずその後に各項目について見出しと段落で詳細に深掘りすること。リストを使うかどうかは、その記事のテーマに最も効果的な訴求になるかを判断して選択すること。教室の強みや特徴を伝える際にも『英才個別学院 __KOSHA__』のように校舎名を含めること。深掘りパートでは、各小見出し（<h3>）の直後に必ずその内容に見合う画像挿入プレースホルダを入れること（例：<p style=\"color:red\">■■■■■画像：笑顔でテスト結果を見せている生徒と講師のイメージ画像■■■■■</p>）。【重要】深掘りパートでは『英才個別学院だからこそできること』『この教室ならではの取り組み』を具体的に伝えること。例えば、なぜその指導ができるのか、どんな工夫をしているのか、他の塾ではなかなかできない理由は何か、講師がどれだけ生徒のことを考えているかなど、教室の魅力が伝わるように丁寧に深掘りする。多少長くなっても構わないので、保護者が『この教室に任せたい』と思えるような説得力のある内容にすること"
+  - "【まとめ】本文をふりかえり、保護者に向けた前向きなメッセージで締める（200字程度）"
+  - "【CTA】記事本文の最後に、以下の形式でCTA用データを出力すること（HTMLではなくテキストで）。すべて『事実の羅列』ではなく、保護者の不安や願いに寄り添い、『この相談なら今すぐしてみたい』と感じられる感情的・ベネフィット重視のコピーにする。会話や吹き出しのような表現にする場合は、教室で保護者と話しているときのような自然な口語で書く：\n\n<!--CTA_DATA_START-->\n説明文1: （ブログ内容に合わせた一文。テストや学習への不安に寄り添い、相談するメリットが直感的に伝わる表現。30文字以内）\n説明文2: （教室に相談することで得られる安心感や変化をイメージできる一文。30文字以内）\n相談ポイント1: （無料学習相談で話せる内容や得られる変化を、保護者が『これなら相談したい』と思える具体的なフレーズで。25文字以内）\n相談ポイント2: （同上。25文字以内）\n相談ポイント3: （同上。25文字以内）\n相談ポイント4: （同上。25文字以内）\n体験ポイント1: （無料体験授業で感じられる安心・楽しさ・成長イメージを、保護者が『受けさせてみたい』と思える具体的なフレーズで。25文字以内）\n体験ポイント2: （同上。25文字以内）\n体験ポイント3: （同上。25文字以内）\n体験ポイント4: （同上。25文字以内）\n締めの言葉: （保護者の心に響く、『今日連絡してみようかな』と背中を押される感情的であたたかい一文。『お子様のために』『一緒に』などの言葉を使い、行動を促す。50文字以内）\n<!--CTA_DATA_END-->\n\n※見出し『まずはお気軽にご相談ください』とボタンは固定のため出力不要"
 
-  tone_and_style:
-    - "全体のトーンは、保護者に寄り添うやさしい口調とする（例：〜なんです／〜ですよ／〜かもしれません）"
-    - "です・ます調で統一しつつ、教室で話しているような自然な話し言葉を混ぜてよい"
-    - "難しい専門用語や四字熟語はなるべく避け、中学生でも読める表現を選ぶ"
-    - "記事ごとに言い回し・構成・描写を変えること。同じフレーズや同じ展開パターンをテンプレートのように繰り返さない"
-    - "以前書いた記事と同じセリフ・同じ会話・同じエピソードを再利用しない。その記事のために新しく考える"
-    - "読者に問いかける表現（『こんなこと、ありませんか？』『心当たりはありませんか？』など）は使ってもよいが、頻度は控えめにし、毎回表現を変える"
-    - "『〜しなければなりません』のような強い言い切りは避け、『〜していけると安心です』『〜していきたいところです』など柔らかい表現を使う"
-    - "次の表現は、CTAを含め記事全体で使用しない：『無理な勧誘は一切いたしませんので、セカンドオピニオンとして利用していただくだけでも構いません。』『費用は一切かかりませんので、安心してお越しくださいね。』"
-    - "『やる気スイッチ』『ヤル気スイッチ』など類似の表現は、記事全体（本文・見出し・CTA・会話文など）で一切使用しない"
+tone_and_style:
+- "全体のトーンは、保護者に寄り添うやさしい口調とする（例：〜なんです／〜ですよ／〜かもしれません）"
+  - "です・ます調で統一しつつ、教室で話しているような自然な話し言葉を混ぜてよい"
+  - "難しい専門用語や四字熟語はなるべく避け、中学生でも読める表現を選ぶ"
+  - "記事ごとに言い回し・構成・描写を変えること。同じフレーズや同じ展開パターンをテンプレートのように繰り返さない"
+  - "以前書いた記事と同じセリフ・同じ会話・同じエピソードを再利用しない。その記事のために新しく考える"
+  - "読者に問いかける表現（『こんなこと、ありませんか？』『心当たりはありませんか？』など）は使ってもよいが、頻度は控えめにし、毎回表現を変える"
+  - "『〜しなければなりません』のような強い言い切りは避け、『〜していけると安心です』『〜していきたいところです』など柔らかい表現を使う"
+  - "次の表現は、CTAを含め記事全体で使用しない：『無理な勧誘は一切いたしませんので、セカンドオピニオンとして利用していただくだけでも構いません。』『費用は一切かかりませんので、安心してお越しくださいね。』"
+  - "『やる気スイッチ』『ヤル気スイッチ』など類似の表現は、記事全体（本文・見出し・CTA・会話文など）で一切使用しない"
 
-  output_checklist:
-    - "イントロ→本文→まとめ→CTAのおおまかな流れになっているか"
-    - "各パートの前後に空行が2つ入っているか"
-    - "語りかけ・寄り添いトーンが維持されているか"
-    - "記事末尾にCTAプレースホルダーが入っているか"
-    - "導入100字・締め200字になっているか"
-    - "『共感→理解→行動』の流れが自然に作れているか"
+output_checklist:
+- "イントロ→本文→まとめ→CTAのおおまかな流れになっているか"
+  - "各パートの前後に空行が2つ入っているか"
+  - "語りかけ・寄り添いトーンが維持されているか"
+  - "記事末尾にCTAプレースホルダーが入っているか"
+  - "導入100字・締め200字になっているか"
+  - "『共感→理解→行動』の流れが自然に作れているか"
 
-  final_instruction: >
-    上記の構成とHTMLルールだけを守り、細かい書き方・段落構成・会話の有無・CTAの文面は毎回自由にしてよい。
+final_instruction: >
+  上記の構成とHTMLルールだけを守り、細かい書き方・段落構成・会話の有無・CTAの文面は毎回自由にしてよい。
     【theme】と【memo】に合わせて、その記事のためのオリジナルな内容を日本語HTMLで生成せよ。
-    わかりやすく、「共感→理解→行動」の流れを意識して構成すること。
-    記事本文のみを出力し、YAMLの再掲や説明は不要。
+わかりやすく、「共感→理解→行動」の流れを意識して構成すること。
+記事本文のみを出力し、YAMLの再掲や説明は不要。
 `;
 
   // =========================================================
@@ -459,7 +460,7 @@
   function buildCtaHtml(url, tel, ctaData = null) {
     const d = ctaData || defaultCtaData;
     return `
-<div data-cta-protected="true" style="background: #f8f8f8; padding: 40px 20px; margin: 40px 0;">
+  < div data - cta - protected="true" style = "background: #f8f8f8; padding: 40px 20px; margin: 40px 0;" >
   <div style="text-align: center; font-size: 26px; font-weight: bold; color: #333; margin: 0 0 12px 0;">まずはお気軽にご相談ください</div>
   <div style="text-align: center; color: #888; margin: 0 0 16px 0; font-size: 13px;">入会する・しないにかかわらず、お子さまの学習についてお力になります。</div>
   <div style="text-align: center; color: #555; margin: 0 0 10px 0; font-size: 15px;">${d['説明文1'] || defaultCtaData['説明文1']}</div>
@@ -489,103 +490,104 @@
     <a href="${url}" style="display: inline-block; background: #e67e22; color: #fff; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">無料学習相談・体験授業に申し込む</a>
     <a href="tel:${tel.replace(/-/g, '')}" style="display: inline-block; background: #fff; color: #e67e22; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; border: 2px solid #e67e22;">電話で直接申し込む</a>
   </div>
-</div>
-`.trim();
+</div >
+  `.trim();
   }
 
   // =========================================================
   // 5. CSS
   // =========================================================
   const CSS = `
-    #${TOOL_ID} {
-      font-family: system-ui, sans-serif; color: #333;
-      box-shadow: -4px 0 20px rgba(0,0,0,0.15); border-radius: 0;
-      overflow: hidden; border-left: 1px solid #e5e7eb; background: #fff;
-      position: fixed; top: 0; right: 0; width: 420px; height: 100vh;
-      z-index: 2147483647; display: flex; flex-direction: column;
-      pointer-events: auto;
-      transition: transform 0.3s ease;
+#${ TOOL_ID } {
+  font - family: system - ui, sans - serif; color: #333;
+  box - shadow: -4px 0 20px rgba(0, 0, 0, 0.15); border - radius: 0;
+  overflow: hidden; border - left: 1px solid #e5e7eb; background: #fff;
+  position: fixed; top: 0; right: 0; width: 420px; height: 100vh;
+  z - index: 2147483647; display: flex; flex - direction: column;
+  pointer - events: auto;
+  transition: transform 0.3s ease;
+}
+#${ TOOL_ID }.collapsed {
+  transform: translateX(100 %);
+}
+#${ TOOL_ID } * {
+  pointer- events: auto;
     }
-    #${TOOL_ID}.collapsed {
-      transform: translateX(100%);
-    }
-    #${TOOL_ID} * {
-      pointer-events: auto;
-    }
-    #eisai-toggle-btn {
-      position: fixed; top: 50%; right: 420px; transform: translateY(-50%);
-      z-index: 2147483646; background: #1d4ed8; color: #fff;
-      border: none; border-radius: 8px 0 0 8px; padding: 12px 8px;
-      cursor: pointer; font-size: 14px; writing-mode: vertical-rl;
-      box-shadow: -2px 0 10px rgba(0,0,0,0.2);
-      transition: right 0.3s ease;
-    }
-    #eisai-toggle-btn.collapsed {
-      right: 0;
-    }
-    #eisai-toggle-btn:hover {
-      background: #1e40af;
-    }
-    .eisai-header {
-      background: #f9fafb; padding: 10px 14px; display: flex;
-      justify-content: space-between; align-items: center; font-size: 13px;
-      border-bottom: 1px solid #e5e7eb; user-select: none;
-    }
-    .eisai-label { font-size: 11px; display: block; margin-bottom: 3px; font-weight: bold; color: #555; }
-    .eisai-input { width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
-    .eisai-input-wrap { margin-bottom: 10px; }
-    .eisai-type-wrap { margin: 8px 0 4px; }
-    .eisai-type-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-    .eisai-type-btn {
-      flex: 1 1 calc(50% - 6px);
-      min-width: 140px;
-      padding: 6px 8px;
-      font-size: 11px;
-      border-radius: 999px;
-      border: 1px solid #d1d5db;
-      background: #f9fafb;
-      cursor: pointer;
-      text-align: center;
-      white-space: nowrap;
-    }
-    .eisai-type-btn:hover {
-      background: #e0e7ff;
-      border-color: #6366f1;
-    }
-    .eisai-type-btn-active {
-      background: #1d4ed8;
-      color: #ffffff;
-      border-color: #1d4ed8;
-    }
-    .eisai-type-btn-active:hover {
-      background: #1e40af;
-      border-color: #1e40af;
-    }
-    .eisai-primary-btn {
-      width: 100%; padding: 10px; background: #1d4ed8; color: #fff;
-      border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
-      margin-top: 10px; font-size: 14px;
-    }
-    .eisai-primary-btn:hover { background: #1e40af; }
-    .eisai-status {
-      padding: 8px; margin-top: 8px; font-size: 12px; border-radius: 6px;
-      display:none;
-    }
-    .eisai-status.show { display:block; background:#eff6ff;color:#1d4ed8;}
-    details.eisai-details { margin-bottom: 12px; border: 1px solid #eee; border-radius: 6px; }
-    details.eisai-details summary { padding: 8px; background: #fafafa; cursor: pointer; font-size: 12px; font-weight: bold; list-style: none; }
-    .eisai-details-content { padding: 8px; }
+#eisai - toggle - btn {
+  position: fixed; top: 50 %; right: 420px; transform: translateY(-50 %);
+  z - index: 2147483646; background: #1d4ed8; color: #fff;
+  border: none; border - radius: 8px 0 0 8px; padding: 12px 8px;
+  cursor: pointer; font - size: 14px; writing - mode: vertical - rl;
+  box - shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
+  transition: right 0.3s ease;
+}
+#eisai - toggle - btn.collapsed {
+  right: 0;
+}
+#eisai - toggle - btn:hover {
+  background: #1e40af;
+}
+    .eisai - header {
+  background: #f9fafb; padding: 10px 14px; display: flex;
+  justify - content: space - between; align - items: center; font - size: 13px;
+  border - bottom: 1px solid #e5e7eb; user - select: none;
+}
+    .eisai - label { font - size: 11px; display: block; margin - bottom: 3px; font - weight: bold; color: #555; }
+    .eisai - input { width: 100 %; padding: 6px 8px; border: 1px solid #ddd; border - radius: 4px; box - sizing: border - box; font - size: 13px; }
+    .eisai - input - wrap { margin - bottom: 10px; }
+    .eisai - type - wrap { margin: 8px 0 4px; }
+    .eisai - type - row { display: flex; flex - wrap: wrap; gap: 6px; margin - top: 4px; }
+    .eisai - type - btn {
+  flex: 1 1 calc(50 % - 6px);
+  min - width: 140px;
+  padding: 6px 8px;
+  font - size: 11px;
+  border - radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  cursor: pointer;
+  text - align: center;
+  white - space: nowrap;
+}
+    .eisai - type - btn:hover {
+  background: #e0e7ff;
+  border - color: #6366f1;
+}
+    .eisai - type - btn - active {
+  background: #1d4ed8;
+  color: #ffffff;
+  border - color: #1d4ed8;
+}
+    .eisai - type - btn - active:hover {
+  background: #1e40af;
+  border - color: #1e40af;
+}
+    .eisai - primary - btn {
+  width: 100 %; padding: 10px; background: #1d4ed8; color: #fff;
+  border: none; border - radius: 8px; font - weight: 600; cursor: pointer;
+  margin - top: 10px; font - size: 14px;
+}
+    .eisai - primary - btn:hover { background: #1e40af; }
+    .eisai - status {
+  padding: 8px; margin - top: 8px; font - size: 12px; border - radius: 6px;
+  display: none;
+}
+    .eisai - status.show { display: block; background: #eff6ff; color:#1d4ed8; }
+details.eisai - details { margin - bottom: 12px; border: 1px solid #eee; border - radius: 6px; }
+details.eisai - details summary { padding: 8px; background: #fafafa; cursor: pointer; font - size: 12px; font - weight: bold; list - style: none; }
+    .eisai - details - content { padding: 8px; }
 
-    .eisai-btn-pulse {
-      animation: eisai-pulse 0.9s ease-in-out 0s 4;
-    }
+    .eisai - btn - pulse {
+  animation: eisai - pulse 0.9s ease -in -out 0s 4;
+}
 
-    @keyframes eisai-pulse {
-      0%   { transform: scale(1);   box-shadow: 0 0 0 rgba(37,99,235,0.0); }
-      50%  { transform: scale(1.10); box-shadow: 0 0 16px rgba(37,99,235,0.70); }
-      100% { transform: scale(1);   box-shadow: 0 0 0 rgba(37,99,235,0.0); }
+@keyframes eisai - pulse {
+  0 % { transform: scale(1); box- shadow: 0 0 0 rgba(37, 99, 235, 0.0);
+}
+50 % { transform: scale(1.10); box- shadow: 0 0 16px rgba(37, 99, 235, 0.70); }
+100 % { transform: scale(1); box- shadow: 0 0 0 rgba(37, 99, 235, 0.0); }
     }
-  `;
+`;
 
   // =========================================================
   // 6. ウォッチャー：ブログ生成完了
@@ -747,7 +749,7 @@
     const header = createEl('div', { className: 'eisai-header' }, panel);
     const titleWrap = createEl('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } }, header);
     createEl('span', {}, titleWrap, '📝 英才ブログ生成（ブログ＋サムネイル）');
-    const verSpan = createEl('span', { style: { fontSize: '11px', color: '#6b7280' } }, titleWrap, `v${CURRENT_VERSION}`);
+    const verSpan = createEl('span', { style: { fontSize: '11px', color: '#6b7280' } }, titleWrap, `v${ CURRENT_VERSION } `);
 
     const headerRight = createEl('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } }, header);
 
@@ -773,7 +775,7 @@
 
     // 更新ボタンの動作：直接インストールページを開く（CSP制限のためバージョンチェック不可）
     updateBtn.onclick = () => {
-      const ok = confirm(`現在のバージョン: v${CURRENT_VERSION}\n\n最新版を確認・インストールしますか？\n（Tampermonkeyのインストール画面が開きます）`);
+      const ok = confirm(`現在のバージョン: v${ CURRENT_VERSION } \n\n最新版を確認・インストールしますか？\n（Tampermonkeyのインストール画面が開きます）`);
       if (ok) {
         window.open(UPDATE_URL, '_blank');
       }
@@ -898,6 +900,7 @@
       },
       [BLOG_TYPES.PERSON]: {
         label: '👤 講師・室長・生徒紹介',
+        note: '⚠️ サムネイル作成のため、紹介する人物の写真をチャットにアップロードしてください',
         fields: [
           { key: 'personInfo', label: '紹介する人の基本情報', placeholder: '例：講師・田中先生・理系科目担当・3年目', isArea: false },
           { key: 'points', label: 'その人の「らしさ」ポイント（3つ以上）', placeholder: '例：\n・説明がわかりやすい\n・生徒の話をよく聞く\n・テスト前は自習にも付き合う', isArea: true },
@@ -943,6 +946,21 @@
       if (!config) return;
 
       selectedTypeLabel.textContent = config.label;
+
+      if (config.note) {
+        const noteEl = createEl('div', {
+          style: {
+            fontSize: '12px',
+            color: '#b91c1c',
+            backgroundColor: '#fef2f2',
+            padding: '8px',
+            borderRadius: '6px',
+            marginBottom: '10px',
+            border: '1px solid #fecaca',
+            fontWeight: 'bold'
+          }
+        }, formContainer, config.note);
+      }
 
       config.fields.forEach(field => {
         const input = createInput(formContainer, field.label, field.placeholder, field.isArea);
@@ -1265,19 +1283,19 @@
       const isPersonType = currentBlogType === BLOG_TYPES.PERSON;
       const personThumbnailRules = isPersonType ? `
 ■ 人物紹介サムネイル専用ルール
-- このチャットにユーザーがアップロードした先生・講師・室長の写真を必ずベースにしてください
-- アップロードされた人物写真から人物のみを丁寧に切り抜き、元の背景は一切使用しないでください
-- 背景は透過前提で、メインカラーとサブカラーを生かしたグラデーションや図形(サークル・斜めライン)を使ったおしゃれなグラフィック背景を新しくデザインしてください
-- 構図は統一します：人物は画面右側1/3にバストアップで配置し、左2/3をテキストエリアとして確保してください
-- 先生の表情は自然な笑顔で、清潔感のある服装(白衣やシャツ、ジャケットなど)にしてください
-- 顔や髪型など、人物の特徴はアップロードされた写真にできるだけ忠実に再現してください。別人の顔に変えないでください
-- 左側のテキストエリアに以下の2行構成で名前を表示してください：
-  1行目: 日本語のフルネーム (例: 鈴木 太郎)
-  2行目: 自然なローマ字表記のフルネーム (例: Taro Suzuki)
-- ローマ字表記は、日本語の名前から推測される自然な綴りで生成してください
-- 名前とキャッチコピーは人物と重ならないように配置し、読みやすさを最優先してください
-- 人物紹介タイプ以外の記事では、このルールは無視して従来どおりのレイアウトで構いません
-` : '';
+  - このチャットにユーザーがアップロードした先生・講師・室長の写真を必ずベースにしてください
+  - アップロードされた人物写真から人物のみを丁寧に切り抜き、元の背景は一切使用しないでください
+    - 背景は透過前提で、メインカラーとサブカラーを生かしたグラデーションや図形(サークル・斜めライン)を使ったおしゃれなグラフィック背景を新しくデザインしてください
+      - 構図は統一します：人物は画面右側1 / 3にバストアップで配置し、左2 / 3をテキストエリアとして確保してください
+        - 先生の表情は自然な笑顔で、清潔感のある服装(白衣やシャツ、ジャケットなど)にしてください
+          - 顔や髪型など、人物の特徴はアップロードされた写真にできるだけ忠実に再現してください。別人の顔に変えないでください
+            - 左側のテキストエリアに以下の2行構成で名前を表示してください：
+1行目: 日本語のフルネーム(例: 鈴木 太郎)
+2行目: 自然なローマ字表記のフルネーム(例: Taro Suzuki)
+  - ローマ字表記は、日本語の名前から推測される自然な綴りで生成してください
+    - 名前とキャッチコピーは人物と重ならないように配置し、読みやすさを最優先してください
+      - 人物紹介タイプ以外の記事では、このルールは無視して従来どおりのレイアウトで構いません
+        ` : '';
 
       const input = document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
       if (!input) {
@@ -1292,52 +1310,52 @@
 以下のブログ記事の内容に基づき、定義されたスタイルで最高品質のサムネイル画像を生成するためのプロンプトを作成してください。
 
 ■ ブログ記事内容
-${lastBlogHtml || 'ブログ記事が生成されていません。先にブログを生成してください。'}
+${ lastBlogHtml || 'ブログ記事が生成されていません。先にブログを生成してください。' }
 
 ■ 適用するスタイルパラメータ（英語）
-1. Visual Style: ${VISUAL_STYLES[style] || style}
-2. Emotion/Appeal: ${APPEAL_STYLES[appeal] || appeal}
-3. Brand Rules: ${mainColor === 'お任せ' || subColor === 'お任せ' ? 'Color scheme optimized for appeal style' : `${COLOR_STYLES[mainColor]?.sub} and ${COLOR_STYLES[subColor]?.main} color scheme`}, Teacher as clean university student (male/female) wearing plain white lab coat with no text, professional appearance, clean composition, --ar 3:2
-4. Text Design: Impactful text design: Bold 3D letters with drop shadows, gradient fills (${mainColor === 'お任せ' ? 'optimized gradient for appeal style' : COLOR_STYLES[mainColor]?.gradient}), thick outlines, dynamic positioning, maximum visibility, eye-catching typography, professional yet striking appearance
-5. Classroom Setting: ${style === '実写スタイル' ? CLASSROOM_DESCRIPTION : 'Modern educational environment appropriate for ' + style}
-6. Tutoring Style: ${TUTORING_STYLE}
-7. Color Scheme: ${mainColor === 'お任せ' || subColor === 'お任せ' ? 'Colors automatically selected based on appeal style: warm colors for empathy, bright colors for smile, urgent colors for anxiety, cool colors for positive, premium colors for highest' : `Main color ${COLOR_STYLES[mainColor]?.main} (${COLOR_STYLES[mainColor]?.hex}), Sub color ${COLOR_STYLES[subColor]?.main} (${COLOR_STYLES[subColor]?.hex})`}
+1. Visual Style: ${ VISUAL_STYLES[style] || style }
+2. Emotion / Appeal: ${ APPEAL_STYLES[appeal] || appeal }
+3. Brand Rules: ${ mainColor === 'お任せ' || subColor === 'お任せ' ? 'Color scheme optimized for appeal style' : `${COLOR_STYLES[mainColor]?.sub} and ${COLOR_STYLES[subColor]?.main} color scheme` }, Teacher as clean university student(male / female) wearing plain white lab coat with no text, professional appearance, clean composition, --ar 3: 2
+4. Text Design: Impactful text design: Bold 3D letters with drop shadows, gradient fills(${ mainColor === 'お任せ' ? 'optimized gradient for appeal style' : COLOR_STYLES[mainColor]?.gradient}), thick outlines, dynamic positioning, maximum visibility, eye - catching typography, professional yet striking appearance
+5. Classroom Setting: ${ style === '実写スタイル' ? CLASSROOM_DESCRIPTION : 'Modern educational environment appropriate for ' + style }
+6. Tutoring Style: ${ TUTORING_STYLE }
+7. Color Scheme: ${ mainColor === 'お任せ' || subColor === 'お任せ' ? 'Colors automatically selected based on appeal style: warm colors for empathy, bright colors for smile, urgent colors for anxiety, cool colors for positive, premium colors for highest' : `Main color ${COLOR_STYLES[mainColor]?.main} (${COLOR_STYLES[mainColor]?.hex}), Sub color ${COLOR_STYLES[subColor]?.main} (${COLOR_STYLES[subColor]?.hex})` }
 
 ■ ユーザー入力情報
-メインキャッチ：${mainCatch}
-サブキャッチ：${subCatch}
-ポイント：${points}
-${personThumbnailRules}
+メインキャッチ：${ mainCatch }
+サブキャッチ：${ subCatch }
+ポイント：${ points }
+${ personThumbnailRules }
 
 ■ キャッチフレーズ作成の原則（最高品質のテキスト生成）
 【メインキャッチフレーズ】
-- 文字数：10-15文字（超短く、インパクト重視）
+- 文字数：10 - 15文字（超短く、インパクト重視）
 - 心理トリガー：好奇心、不安煽り、期待感、緊急性
-- 表現技法：「たった〇日で」「〇人が知らない」「ついに明らかに」
-- 具体例：「たった2週間で33点アップ！」「99%の生徒が知らない勉強法」「ついに解明！伸びる子の共通点」
+  - 表現技法：「たった〇日で」「〇人が知らない」「ついに明らかに」
+- 具体例：「たった2週間で33点アップ！」「99 % の生徒が知らない勉強法」「ついに解明！伸びる子の共通点」
 
 【サブキャッチフレーズ】
-- 文字数：15-25文字（補足情報、具体性）
+- 文字数：15 - 25文字（補足情報、具体性）
 - 役割：メインの裏付け、信頼性構築、共感誘導
-- 表現技法：数字・具体性、体験談、対比構造
-- 具体例：「計算ミスが激減した理由とは」「苦手科目が得意に変わる瞬間」「他塾との違いがわかる事例」
+  - 表現技法：数字・具体性、体験談、対比構造
+    - 具体例：「計算ミスが激減した理由とは」「苦手科目が得意に変わる瞬間」「他塾との違いがわかる事例」
 
 【ポイント・特徴】
-- 文字数：8-12文字（キーワード、短いフレーズ）
+- 文字数：8 - 12文字（キーワード、短いフレーズ）
 - 役割：視覚的アクセント、情報補足
-- 表現技法：キーワード集中、記号使用、短いフレーズ
-- 具体例：「・毎日10分」「・途中式必須」「・類題演習」
+  - 表現技法：キーワード集中、記号使用、短いフレーズ
+    - 具体例：「・毎日10分」「・途中式必須」「・類題演習」
 - 注意：教室で行ったことをそのまま書かず、効果的なキーワードに変換
-- おまかせモード：Pointsは一切生成しないでください。空白のままにしてください
-- 手動入力モード：入力されている場合は必ずサムネイルに組み込む
+  - おまかせモード：Pointsは一切生成しないでください。空白のままにしてください
+    - 手動入力モード：入力されている場合は必ずサムネイルに組み込む
 
 【訴求スタイルとの連携】
 - 共感：苦悩→解決のストーリー、温かい言葉選び
-- 驚き：衝撃的な数字、予想外の事実、感嘆符活用
-- 笑顔：成功体験、ポジティブな未来、達成感
-- 不安煽る：損失回避、競争、期限効果
-- ポジティブ：成長実感、可能性拡大、自信喚起
-- 最高：圧倒的成果、No.1実績、伝説的エピソード
+  - 驚き：衝撃的な数字、予想外の事実、感嘆符活用
+    - 笑顔：成功体験、ポジティブな未来、達成感
+      - 不安煽る：損失回避、競争、期限効果
+        - ポジティブ：成長実感、可能性拡大、自信喚起
+          - 最高：圧倒的成果、No.1実績、伝説的エピソード
 
 ■ 思考と生成プロセス（Gemini 3 Thinking Mode）
 1. 【学生年代の判定】ブログ内容から学生の年代を判定：「小学生」「中学生」「高校生」のいずれかに特定
@@ -1348,36 +1366,36 @@ ${personThumbnailRules}
 6. 【キャッチフレーズ最適化】「おまかせ」の場合はブログ内容から最も訴求力のあるキャッチフレーズを自動生成。入力がある場合は改善・最適化
 7. 【ポイントの処理】おまかせモード：Pointsは一切生成しないでください。空白のままにしてください。手動入力モード：入力がある場合は必ず組み込む
 8. 【カラースタイルの適用】お任せモード：訴求スタイルに応じて最適なカラーを自動選択（共感→暖色系、笑顔→明るい色、不安煽る→緊急性のある色、ポジティブ→寒色系、最高→高級感のある色）。手動選択：指定されたメイン・サブカラーを適用
-9. 【結合】[Visual Style] + [Emotion/Appeal] + [Dynamic Brand Rules] + [Dynamic Text Design] + [Classroom Setting] + [Tutoring Style] + [Color Scheme] + [学生年代] + [教師仕様] + [最適化されたキャッチフレーズ] + [ポイント（条件付き）]を結合
+9. 【結合】[Visual Style] + [Emotion / Appeal] + [Dynamic Brand Rules] + [Dynamic Text Design] + [Classroom Setting] + [Tutoring Style] + [Color Scheme] + [学生年代] + [教師仕様] + [最適化されたキャッチフレーズ] + [ポイント（条件付き）]を結合
 
 ■ 画像生成プロンプトの要件
-- 英才個別学院のブランドイメージに合致した、教育的で信頼感のある雰囲気
-- 生徒・保護者の興味を引く、プロフェッショナルな学習塾の雰囲気
-- 【重要】画像サイズは必ず3:2比率で指定
-- 視認性の高いテキスト配置、読みやすさを最優先
-- 構図は画面全体を使い、不自然な空白エリアを作らないでください
-- 【重要: 画像全体を使用し、右下にロゴ用スペースや空白は不要です】
+  - 英才個別学院のブランドイメージに合致した、教育的で信頼感のある雰囲気
+    - 生徒・保護者の興味を引く、プロフェッショナルな学習塾の雰囲気
+      - 【重要】画像サイズは必ず3: 2比率で指定
+        - 視認性の高いテキスト配置、読みやすさを最優先
+          - 構図は画面全体を使い、不自然な空白エリアを作らないでください
+            - 【重要: 画像全体を使用し、右下にロゴ用スペースや空白は不要です】
 - 【最重要: 塾名「英才個別学院」や類似の文字を背景や画像内に一切表示しないでください】
 
 ■ テキストデザインの指定（最大インパクト・超目立つ配置）
-- メインキャッチ：【超巨大サイズ】画面の30-50%を占める超太字3D効果、オレンジから白へのグラデーション、極太の黒いアウトライン、強烈なドロップシャドウ、画面中央〜上部に大胆に配置
-- サブキャッチ：【大きめサイズ】画面の15-25%を占める太字、白ベースにオレンジのアクセント、強めのシャドウ効果、メインキャッチの下または横に目立つ配置
-- ポイント：スタイリッシュなフォント、オレンジ色、配置を工夫して目立たせる、効果的な場合のみ表示
-- 全体：【YouTubeサムネイル級の超ダイナミック配置】テキストが主役、背景は引き立て役、最大の視認性
-- 重要：テキスト配置は完全に自由。メイン・サブキャッチを画面の主役として最大限目立たせる。場所の制約なし
-- テキストは斜め配置、重なり、サイズ変化など自由に使ってインパクトを最大化
-- ポイントは教室の行動をそのまま書かず、効果的なキーワードに変換。不要なら省略可
-- ラベル（「メイン」「サブ」「ポイント」など）は表示せず、フレーズのみをレンダリング
-- 【禁止】同じテキストを複数回表示しないでください。各キャッチフレーズは1回のみ表示
-- 【禁止】テキストの二重表示、重複表示、コピー表示は絶対にしないでください
+- メインキャッチ：【超巨大サイズ】画面の30 - 50 % を占める超太字3D効果、オレンジから白へのグラデーション、極太の黒いアウトライン、強烈なドロップシャドウ、画面中央〜上部に大胆に配置
+  - サブキャッチ：【大きめサイズ】画面の15 - 25 % を占める太字、白ベースにオレンジのアクセント、強めのシャドウ効果、メインキャッチの下または横に目立つ配置
+    - ポイント：スタイリッシュなフォント、オレンジ色、配置を工夫して目立たせる、効果的な場合のみ表示
+      - 全体：【YouTubeサムネイル級の超ダイナミック配置】テキストが主役、背景は引き立て役、最大の視認性
+        - 重要：テキスト配置は完全に自由。メイン・サブキャッチを画面の主役として最大限目立たせる。場所の制約なし
+          - テキストは斜め配置、重なり、サイズ変化など自由に使ってインパクトを最大化
+            - ポイントは教室の行動をそのまま書かず、効果的なキーワードに変換。不要なら省略可
+              - ラベル（「メイン」「サブ」「ポイント」など）は表示せず、フレーズのみをレンダリング
+                - 【禁止】同じテキストを複数回表示しないでください。各キャッチフレーズは1回のみ表示
+                  - 【禁止】テキストの二重表示、重複表示、コピー表示は絶対にしないでください
 
 ■ 出力形式
 以下の形式でプロンプトを作成してください：
 
 ---
-以下のプロンプトで画像を生成してください
+  以下のプロンプトで画像を生成してください
 
-[ここに詳細な画像生成プロンプト]
+  [ここに詳細な画像生成プロンプト]
 
 このプロンプトで画像を生成してください。
 ---
@@ -1411,7 +1429,7 @@ ${personThumbnailRules}
       const firstField = config.fields[0];
       const firstValue = typeData[firstField.key] || '';
       if (!firstValue.trim()) {
-        alert(`「${firstField.label}」を入力してください`);
+        alert(`「${ firstField.label }」を入力してください`);
         return;
       }
 
@@ -1445,7 +1463,7 @@ ${personThumbnailRules}
       config.fields.forEach(field => {
         const val = typeData[field.key] || '';
         if (val.trim()) {
-          formContent += `${field.label}: ${val}\n`;
+          formContent += `${ field.label }: ${ val } \n`;
         }
       });
 
@@ -1454,45 +1472,45 @@ ${personThumbnailRules}
         [BLOG_TYPES.GROWTH]: `【記事タイプ】成長ストーリー型
 【構成指示】
 - 導入：生徒の課題や悩みに共感する書き出し
-- 本文：ビフォー→取り組み→アフターの流れで構成
-- 見出し例：「〇〇さんの挑戦」「教室で取り組んだこと」「結果と変化」
+  - 本文：ビフォー→取り組み→アフターの流れで構成
+    - 見出し例：「〇〇さんの挑戦」「教室で取り組んだこと」「結果と変化」
 - 締め：同じ悩みを持つ保護者への励ましメッセージ`,
         [BLOG_TYPES.EVENT]: `【記事タイプ】イベント紹介型
 【構成指示】
 - 導入：イベントの目的や対象者への呼びかけ
-- 本文：内容・流れ・得られるものを具体的に紹介
-- 見出し例：「〇〇講習の特徴」「参加するとどうなる？」
+  - 本文：内容・流れ・得られるものを具体的に紹介
+    - 見出し例：「〇〇講習の特徴」「参加するとどうなる？」
 - 締め：参加を検討している保護者への後押しメッセージ`,
         [BLOG_TYPES.PERSON]: `【記事タイプ】人物紹介型
 【構成指示】
 - 導入：紹介する人との出会いや印象
-- 本文：その人の特徴・エピソードを具体的に紹介
-- 見出し例：「〇〇先生ってこんな人」「印象に残ったエピソード」
+  - 本文：その人の特徴・エピソードを具体的に紹介
+    - 見出し例：「〇〇先生ってこんな人」「印象に残ったエピソード」
 - 締め：保護者への安心感を与えるメッセージ`,
         [BLOG_TYPES.SERVICE]: `【記事タイプ】サービス紹介型
 【構成指示】
 - 導入：対象となる悩みへの共感
-- 本文：サービス内容・流れ・利用後のイメージを紹介
-- 見出し例：「こんなお悩みありませんか？」「相談の流れ」「利用された方の声」
+  - 本文：サービス内容・流れ・利用後のイメージを紹介
+    - 見出し例：「こんなお悩みありませんか？」「相談の流れ」「利用された方の声」
 - 締め：気軽に相談できることを伝えるメッセージ`,
         [BLOG_TYPES.SCORE]: `【記事タイプ】点数アップ速報型
 【構成指示】
 - 導入：テスト結果への喜びと生徒への称賛
-- 本文：点数アップ一覧を見やすく紹介し、代表ケースを深掘り
-- 見出し例：「今回のテスト結果速報！」「特に頑張った生徒たち」
+  - 本文：点数アップ一覧を見やすく紹介し、代表ケースを深掘り
+    - 見出し例：「今回のテスト結果速報！」「特に頑張った生徒たち」
 - 締め：次のテストに向けた意気込みと保護者へのメッセージ`,
         [BLOG_TYPES.OTHER]: `【記事タイプ】自由テーマ型
 【構成指示】
 - 導入：テーマに合わせた書き出し
-- 本文：伝えたい内容を自然な流れで構成
-- 締め：保護者への前向きなメッセージ`
+  - 本文：伝えたい内容を自然な流れで構成
+    - 締め：保護者への前向きなメッセージ`
       };
 
       const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
       let yaml = MASTER_YAML;
       // タイプ別情報を追加
-      yaml = yaml.replace('input_required:', `article_type: "${currentBlogType}"\n\n${typeInstruction}\n\n【入力された情報】\n${formContent}\ninput_required:`);
+      yaml = yaml.replace('input_required:', `article_type: "${currentBlogType}"\n\n${ typeInstruction } \n\n【入力された情報】\n${ formContent } \ninput_required: `);
       yaml = yaml.replace(/__THEME__/g, esc(config.label.replace(/^[^\s]+\s/, '')));
       yaml = yaml.replace(/__MEMO__/g, esc(formContent));
       yaml = yaml.replace(/__KOSHA__/g, esc(kosha));
