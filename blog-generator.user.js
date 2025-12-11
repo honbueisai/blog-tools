@@ -782,10 +782,10 @@
     createEl('summary', {}, details, '⚙️ 教室情報設定（1回入力すれば保存されます）');
     const dContent = createEl('div', { className: 'eisai-details-content' }, details);
 
-    const nameIn    = createInput(dContent, '校舎名（記事に反映されます）', '例：◯◯校　※校まで必ずいれる', false);
-    const managerIn = createInput(dContent, '室長名（本文では名前のみ使用）', '例：●●', false);
-    const urlIn     = createInput(dContent, 'CTAリンク先URL（https://必須）', '例：https://eisai.org/…', false);
-    const telIn     = createInput(dContent, '電話番号（CTAの電話ボタン用）', '例：ハイフンなしで登録', false);
+    const nameIn    = createInput(dContent, '校舎名（記事に反映されます）', '', false);
+    const managerIn = createInput(dContent, '室長名（本文では名前のみ使用）', '', false);
+    const urlIn     = createInput(dContent, 'CTAリンク先URL（https://必須）', '', false);
+    const telIn     = createInput(dContent, '電話番号（CTAの電話ボタン用）', '', false);
 
     const saveBtn = createEl('button', {
       style: {
