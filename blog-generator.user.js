@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.52
+// @version      0.56.53
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +13,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-52';
-  const BTN_ID          = 'eisai-btn-v0-56-52';
-  const STORAGE_KEY     = 'eisai_blog_info_v05652';
+  const TOOL_ID         = 'eisai-tool-v0-56-53';
+  const BTN_ID          = 'eisai-btn-v0-56-53';
+  const STORAGE_KEY     = 'eisai_blog_info_v05653';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.52';
+  const CURRENT_VERSION = '0.56.53';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -31,7 +31,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.52 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.53 起動');
 
   let lastBlogHtml = '';
 
@@ -1563,7 +1563,14 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
       sendMessageViaEnter(input);
     };
 
-    // 教室設定は手動入力のみ（自動復元なし）
+    // 教室情報設定のみ自動復元（記事タイプのフォームは毎回空欄）
+    const saved = getSetting();
+    if (saved.name || saved.manager || saved.url || saved.tel) {
+      nameIn.value    = saved.name    || '';
+      managerIn.value = saved.manager || '';
+      urlIn.value     = saved.url     || '';
+      telIn.value     = saved.tel     || '';
+    }
   }
 
   // =========================================================
