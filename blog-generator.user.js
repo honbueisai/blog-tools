@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.53
+// @version      0.56.54
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +13,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-53';
-  const BTN_ID          = 'eisai-btn-v0-56-53';
-  const STORAGE_KEY     = 'eisai_blog_info_v05653';
+  const TOOL_ID         = 'eisai-tool-v0-56-54';
+  const BTN_ID          = 'eisai-btn-v0-56-54';
+  const STORAGE_KEY     = 'eisai_blog_info_v05654';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.53';
+  const CURRENT_VERSION = '0.56.54';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -31,7 +31,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.53 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.54 起動');
 
   let lastBlogHtml = '';
 
@@ -1313,16 +1313,17 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 - 生徒・保護者の興味を引く、プロフェッショナルな学習塾の雰囲気
 - 【重要】画像サイズは必ず3:2比率で指定
 - 視認性の高いテキスト配置、読みやすさを最優先
-- 構図は上下いっぱいに使い、余白を活かしつつダイナミックに
-- 【重要: 画像の右下の角には文字や要素を一切配置しないでください】
+- 構図は画面全体を使い、不自然な空白エリアを作らないでください
+- 【重要: 画像全体を使用し、右下にロゴ用スペースや空白は不要です】
 - 【最重要: 塾名「英才個別学院」や類似の文字を背景や画像内に一切表示しないでください】
 
-■ テキストデザインの指定（最大インパクト重視）
-- メインキャッチ：超太字3D効果、オレンジから白へのグラデーション、太い黒いアウトライン、鮮明なドロップシャドウ、画面で最も目立つ位置に自由配置
-- サブキャッチ：太字、白ベースにオレンジのアクセント、適度なシャドウ効果、メインキャッチを補完する位置に自由配置
+■ テキストデザインの指定（最大インパクト・超目立つ配置）
+- メインキャッチ：【超巨大サイズ】画面の30-50%を占める超太字3D効果、オレンジから白へのグラデーション、極太の黒いアウトライン、強烈なドロップシャドウ、画面中央〜上部に大胆に配置
+- サブキャッチ：【大きめサイズ】画面の15-25%を占める太字、白ベースにオレンジのアクセント、強めのシャドウ効果、メインキャッチの下または横に目立つ配置
 - ポイント：スタイリッシュなフォント、オレンジ色、配置を工夫して目立たせる、効果的な場合のみ表示
-- 全体：ダイナミックな配置、最大の視認性、プロフェッショナルかつ衝撃的な見た目
-- 重要：テキスト配置は完全に自由。メイン・サブキャッチを最も目立つように配置。場所の制約なし
+- 全体：【YouTubeサムネイル級の超ダイナミック配置】テキストが主役、背景は引き立て役、最大の視認性
+- 重要：テキスト配置は完全に自由。メイン・サブキャッチを画面の主役として最大限目立たせる。場所の制約なし
+- テキストは斜め配置、重なり、サイズ変化など自由に使ってインパクトを最大化
 - ポイントは教室の行動をそのまま書かず、効果的なキーワードに変換。不要なら省略可
 - ラベル（「メイン」「サブ」「ポイント」など）は表示せず、フレーズのみをレンダリング
 
