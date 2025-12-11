@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.59
+// @version      0.56.60
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,12 +13,12 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-59';
-  const BTN_ID          = 'eisai-btn-v0-56-59';
-  const STORAGE_KEY     = 'eisai_blog_info_v05659';
+  const TOOL_ID = 'eisai-tool-v0-56-60';
+  const BTN_ID = 'eisai-btn-v0-56-60';
+  const STORAGE_KEY = 'eisai_blog_info_v05660';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.59';
-  const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
+  const CURRENT_VERSION = '0.56.60';
+  const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
     GROWTH: 'growth_story',
@@ -322,34 +322,50 @@
 
   function getSetting() {
     try {
-      // バージョン依存のストレージから読み込み
+      // バージョン依存のストレージから読み込み（互換性のため）
       const versionedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
       // 永続ストレージから教室情報を読み込み
       const classroomData = JSON.parse(localStorage.getItem(CLASSROOM_STORAGE_KEY) || '{}');
+
       // マージして返す（教室情報を優先）
-      return { ...versionedData, ...classroomData };
+      // 旧キー(kosha, shichou)がある場合は新キー(name, manager)にマッピングしてフォールバック
+      return {
+        ...versionedData,
+        name: classroomData.name || classroomData.kosha || versionedData.kosha || '',
+        manager: classroomData.manager || classroomData.shichou || versionedData.shichou || '',
+        url: classroomData.url || versionedData.url || '',
+        tel: classroomData.tel || versionedData.tel || ''
+      };
     } catch {
-      return {};
+      return { name: '', manager: '', url: '', tel: '' };
     }
   }
 
   function saveSetting(info) {
     try {
       // 現在のストレージデータを取得
-      const currentData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      // 教室情報だけを永続ストレージに保存
+      const currentPersistent = JSON.parse(localStorage.getItem(CLASSROOM_STORAGE_KEY) || '{}');
+
+      // 教室情報だけを永続ストレージに保存（すべてのフィールドを網羅）
       const classroomData = {
-        kosha: info.kosha || currentData.kosha,
-        shichou: info.shichou || currentData.shichou
+        name: info.name !== undefined ? info.name : currentPersistent.name,
+        manager: info.manager !== undefined ? info.manager : currentPersistent.manager,
+        url: info.url !== undefined ? info.url : currentPersistent.url,
+        tel: info.tel !== undefined ? info.tel : currentPersistent.tel
       };
+
+      // 永続化保存
       localStorage.setItem(CLASSROOM_STORAGE_KEY, JSON.stringify(classroomData));
-      // その他のデータをバージョン依存ストレージに保存
-      const versionedData = { ...info };
-      delete versionedData.kosha;
-      delete versionedData.shichou;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(versionedData));
+
+      // バージョン依存ストレージにも念のため保存（後方互換性）
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        ...classroomData,
+        kosha: classroomData.name,
+        shichou: classroomData.manager
+      }));
+
     } catch (e) {
-      console.error(e);
+      console.error('Save Setting Error:', e);
     }
   }
 
@@ -374,7 +390,7 @@
     // まずコメントタグ形式を試す
     let match = text.match(/<!--CTA_DATA_START-->([\s\S]*?)<!--CTA_DATA_END-->/);
     let dataText = match ? match[1] : null;
-    
+
     // コメントタグがない場合、キーワードで検出
     if (!dataText) {
       const patterns = [
@@ -384,11 +400,11 @@
         /体験ポイント1[:：]\s*(.+)/,
         /締めの言葉[:：]\s*(.+)/
       ];
-      
+
       // 少なくとも3つ以上のパターンがマッチすればCTAデータとみなす
       let matchCount = 0;
       patterns.forEach(p => { if (p.test(text)) matchCount++; });
-      
+
       if (matchCount >= 3) {
         // 説明文1から締めの言葉までの範囲を抽出
         const startMatch = text.match(/説明文1[:：]/);
@@ -400,9 +416,9 @@
         }
       }
     }
-    
+
     if (!dataText) return null;
-    
+
     const data = {};
     const lines = dataText.trim().split('\n');
     lines.forEach(line => {
@@ -413,7 +429,7 @@
         if (key && value) data[key] = value;
       }
     });
-    
+
     // 最低限のデータがあるか確認
     return Object.keys(data).length >= 3 ? data : null;
   }
@@ -594,7 +610,7 @@
 
       if (stableCount >= 3 && text.length > 500) {
         clearInterval(timer);
-        
+
         // ★ ブログHTMLを抽出・デコード・CTA差し替え
         try {
           let raw = '';
@@ -609,14 +625,14 @@
           let decoded = raw;
           // 一般的なエンティティを手動でデコード
           decoded = decoded.replace(/&lt;/g, '<')
-                        .replace(/&gt;/g, '>')
-                        .replace(/&amp;/g, '&')
-                        .replace(/&quot;/g, '"')
-                        .replace(/&#39;/g, "'");
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'");
 
           // CTAデータをパース（変動部分）
           const ctaData = parseCtaData(raw);
-          
+
           // CTAデータ部分を削除（コメントタグ形式）
           decoded = decoded.replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '');
           // CTAデータ部分を削除（コメントタグなし形式）
@@ -639,7 +655,7 @@
           // CTAデータがあれば変動、なければデフォルト
           const ctaHtml = buildCtaHtml(ctaUrl, ctaTel, ctaData);
           lastBlogHtml = decoded + '\n\n' + ctaHtml;
-          
+
         } catch (e) {
           console.error('ブログHTML処理エラー:', e);
           return;
@@ -689,10 +705,10 @@
           lastPromptNode = latest; // 最新の出力ノードを保存
           isGeneratingPrompt = false; // セッションを終了
           imgExecBtn.style.display = 'block';
-          
+
           // プロンプト出力完了アナウンス
           alert('画像生成用プロンプトの出力が完了しました。\n\n１．この画面の内容を画面を閉じたら進めてください。\n２．思考モードをオンにする。\n３．画像生成モード（バナナマーク）をオンにする。\n４．「このプロンプトで画像を生成する」ボタンを押して生成をスタート。\n\nそれでは、進めてください。');
-          
+
           statusDiv.textContent = '✅ サムネイル指示の生成が完了しました。内容を確認して「このプロンプトで画像を生成する」ボタンを押してください。';
           statusDiv.classList.add('show');
         }
@@ -721,7 +737,7 @@
     const toggleBtn = createEl('button', { id: 'eisai-toggle-btn' }, document.body);
     toggleBtn.textContent = '📝 ブログツール';
     if (isCollapsed) toggleBtn.classList.add('collapsed');
-    
+
     toggleBtn.onclick = () => {
       const collapsed = panel.classList.toggle('collapsed');
       toggleBtn.classList.toggle('collapsed');
@@ -782,15 +798,22 @@
     createEl('summary', {}, details, '⚙️ 教室情報設定（1回入力すれば保存されます）');
     const dContent = createEl('div', { className: 'eisai-details-content' }, details);
 
-    const nameIn    = createInput(dContent, '校舎名（記事に反映されます）', '例：◯◯校　※校まで必ずいれる', false);
+    const nameIn = createInput(dContent, '校舎名（記事に反映されます）', '例：◯◯校　※校まで必ずいれる', false);
     const managerIn = createInput(dContent, '室長名（本文では名前のみ使用）', '例：●●', false);
-    const urlIn     = createInput(dContent, 'CTAリンク先URL（https://必須）', '例：https://eisai.org/…', false);
-    const telIn     = createInput(dContent, '電話番号（CTAの電話ボタン用）', '例：ハイフンなしで登録', false);
+    const urlIn = createInput(dContent, 'CTAリンク先URL（https://必須）', '例：https://eisai.org/…', false);
+    const telIn = createInput(dContent, '電話番号（CTAの電話ボタン用）', '例：ハイフンなしで登録', false);
+
+    // ★ 初期値を設定から読み込んで反映 ★
+    const saved = getSetting();
+    if (saved.name) nameIn.value = saved.name;
+    if (saved.manager) managerIn.value = saved.manager;
+    if (saved.url) urlIn.value = saved.url;
+    if (saved.tel) telIn.value = saved.tel;
 
     const saveBtn = createEl('button', {
       style: {
         padding: '6px 10px', fontSize: '12px', cursor: 'pointer',
-        background:'#f3f4f6', border:'1px solid #d1d5db', borderRadius:'4px', marginTop:'4px'
+        background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', marginTop: '4px'
       }
     }, dContent, '教室情報を保存');
     saveBtn.onclick = () => {
@@ -832,7 +855,7 @@
 
     // ステップ2: 詳細入力（タイプ別フォーム）
     const step2 = createEl('div', { id: 'eisai-step2', style: { display: 'none' } }, content);
-    
+
     // 選択中のタイプ表示
     const selectedTypeLabel = createEl('div', {
       style: {
@@ -937,7 +960,7 @@
 
     // 初期フォーム表示
     renderTypeForm(currentBlogType);
-    
+
     // デフォルト値は空欄のまま（ユーザーが入力するまで）
 
     // タイプボタンクリック時にフォームも切り替え
@@ -978,7 +1001,7 @@
     }, step2BtnWrap, 'Geminiへ送信して記事生成');
 
     // ステップ切り替え
-    nextBtn.onclick = function() {
+    nextBtn.onclick = function () {
       console.log('次へボタンがクリックされました');
       step1.style.display = 'none';
       step2.style.display = 'block';
@@ -1078,13 +1101,13 @@
       className: 'eisai-input',
       style: { width: '100%', marginBottom: '8px' }
     }, imgSection);
-    
+
     // お任せオプションを追加
     const omakaseMainOpt = document.createElement('option');
     omakaseMainOpt.value = 'お任せ';
     omakaseMainOpt.textContent = 'お任せ';
     mainColorSelect.appendChild(omakaseMainOpt);
-    
+
     Object.keys(COLOR_STYLES).forEach(label => {
       const opt = document.createElement('option');
       opt.value = label;
@@ -1098,13 +1121,13 @@
       className: 'eisai-input',
       style: { width: '100%', marginBottom: '8px' }
     }, imgSection);
-    
+
     // お任せオプションを追加
     const omakaseSubOpt = document.createElement('option');
     omakaseSubOpt.value = 'お任せ';
     omakaseSubOpt.textContent = 'お任せ';
     subColorSelect.appendChild(omakaseSubOpt);
-    
+
     Object.keys(COLOR_STYLES).forEach(label => {
       const opt = document.createElement('option');
       opt.value = label;
@@ -1201,14 +1224,14 @@
         background: '#22c55e',
         color: '#ffffff',
         border: 'none',
-        borderRadius:'8px',
-        fontWeight:'600',
-        fontSize:'14px',
-        cursor:'pointer'
+        borderRadius: '8px',
+        fontWeight: '600',
+        fontSize: '14px',
+        cursor: 'pointer'
       }
     }, imgSection, '▶ 画像生成用プロンプトを作成');
 
-    
+
     const imgExecBtn = createEl('button', {
       style: {
         width: '100%',
@@ -1216,11 +1239,11 @@
         background: '#0f766e',
         color: '#ffffff',
         border: 'none',
-        borderRadius:'6px',
-        fontWeight:'500',
-        fontSize:'14px',
-        cursor:'pointer',
-        display:'none',
+        borderRadius: '6px',
+        fontWeight: '500',
+        fontSize: '14px',
+        cursor: 'pointer',
+        display: 'none',
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
       }
     }, footer, 'このプロンプトで画像を生成する');
@@ -1231,7 +1254,7 @@
       const appeal = appealSelect.value;
       const mainColor = mainColorSelect.value;
       const subColor = subColorSelect.value;
-      
+
       // トグル状態をチェック
       const isOmakase = toggleSwitch.checked;
       const mainCatch = isOmakase ? 'おまかせ' : (mainCatchInput.value.trim() || 'おまかせ');
@@ -1364,7 +1387,7 @@ ${personThumbnailRules}
       statusDiv.textContent = '🎯 画像生成用プロンプトを作成しています...';
       statusDiv.classList.add('show');
       imgExecBtn.style.display = 'none';
-      
+
       // プロンプト生成セッションを開始
       isGeneratingPrompt = true;
       lastPromptNode = null; // 以前のプロンプトをクリア
@@ -1383,7 +1406,7 @@ ${personThumbnailRules}
       // タイプ別フォームから入力値を取得
       const typeData = formInputs[currentBlogType] || {};
       const config = TYPE_FORMS[currentBlogType];
-      
+
       // 必須項目チェック（最初のフィールドは必須）
       const firstField = config.fields[0];
       const firstValue = typeData[firstField.key] || '';
@@ -1392,11 +1415,11 @@ ${personThumbnailRules}
         return;
       }
 
-      const info    = getSetting();
-      const kosha   = (info.name || '').trim();
+      const info = getSetting();
+      const kosha = (info.name || '').trim();
       const shichou = (info.manager || '').trim();
-      let ctaUrl    = (info.url || '').trim();
-      const ctaTel  = (info.tel || '').trim();
+      let ctaUrl = (info.url || '').trim();
+      const ctaTel = (info.tel || '').trim();
 
       if (!kosha) {
         alert('校舎名を設定してください\n例：◯◯校 ※校までいれてください。');
@@ -1485,10 +1508,10 @@ ${personThumbnailRules}
 
       statusDiv.textContent = '📨 ブログ生成用YAMLを送信しました。生成が完了したら、下にコピー用ボタンが出ます。';
       statusDiv.classList.add('show');
-      copyBtn.style.display   = 'none';
-      imgSection.style.display= 'none';
-      imgExecBtn.style.display= 'none';
-      lastBlogHtml            = '';
+      copyBtn.style.display = 'none';
+      imgSection.style.display = 'none';
+      imgExecBtn.style.display = 'none';
+      lastBlogHtml = '';
 
       input.focus();
       document.execCommand('selectAll', false, null);
@@ -1556,7 +1579,7 @@ ${personThumbnailRules}
         alert('Geminiの出力が見つかりませんでした。サムネイル指示の生成が完了してからもう一度試してください。');
         return;
       }
-      
+
       // 保存された最新のプロンプト出力を使用（なければ最新の出力を使用）
       const latest = lastPromptNode || nodes[nodes.length - 1];
       const prompt = latest.innerText || latest.textContent || '';
@@ -1585,14 +1608,7 @@ ${personThumbnailRules}
       sendMessageViaEnter(input);
     };
 
-    // 教室情報設定のみ自動復元（記事タイプのフォームは毎回空欄）
-    const saved = getSetting();
-    if (saved.name || saved.manager || saved.url || saved.tel) {
-      nameIn.value    = saved.name    || '';
-      managerIn.value = saved.manager || '';
-      urlIn.value     = saved.url     || '';
-      telIn.value     = saved.tel     || '';
-    }
+
   }
 
   // =========================================================
@@ -1637,7 +1653,7 @@ ${personThumbnailRules}
     btn.title = '英才ブログ生成ツールを開く';
 
     const svgNS = "http://www.w3.org/2000/svg";
-    const svg   = document.createElementNS(svgNS, 'svg');
+    const svg = document.createElementNS(svgNS, 'svg');
     svg.setAttribute('width', '32');
     svg.setAttribute('height', '32');
     svg.setAttribute('viewBox', '0 0 32 32');
