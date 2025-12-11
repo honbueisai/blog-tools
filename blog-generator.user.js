@@ -2,12 +2,12 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.56.64
+// @version      0.56.65
 // @description  英才ブログ生成ツール (CTA修正版)
 // @author       Yuan
 // @match        https://cms.eisaia.com/*
-// @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
-// @downloadURL  https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
+// @updateURL    https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js
+// @downloadURL  https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
@@ -15,12 +15,12 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-56-64';
-  const BTN_ID = 'eisai-btn-v0-56-64';
-  const STORAGE_KEY = 'eisai_blog_info_v05664';
+  const TOOL_ID = 'eisai-tool-v0-56-65';
+  const BTN_ID = 'eisai-btn-v0-56-65';
+  const STORAGE_KEY = 'eisai_blog_info_v05665';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.64';
-  const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
+  const CURRENT_VERSION = '0.56.65';
+  const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
     GROWTH: 'growth_story',
