@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.56.66
+// @version      0.56.67
 // @description  英才ブログ生成ツール (CTA修正版)
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-56-66';
-  const BTN_ID = 'eisai-btn-v0-56-66';
-  const STORAGE_KEY = 'eisai_blog_info_v05666';
+  const TOOL_ID = 'eisai-tool-v0-56-67';
+  const BTN_ID = 'eisai-btn-v0-56-67';
+  const STORAGE_KEY = 'eisai_blog_info_v05667';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.66';
+  const CURRENT_VERSION = '0.56.67';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -208,14 +208,45 @@
   // =========================================================
   const MASTER_YAML = [
     "version: \"5.0-minimal-eisai\"",
-    "appealStyles: " + JSON.stringify(appealStyles, null, 2),
-    "imageStyles: " + JSON.stringify(imageStyles, null, 2),
-    "blog_instruction: |",
-    "  ブログ記事を作成してください。",
-    "  ...",
-    "thumbnail_instruction: |",
-    "  サムネイルを作成してください。",
-    "  ..."
+    "role: \"Professional Cram School Blog Writer\"",
+    "tone_and_manner: \"Empathic, Professional, Encouraging, Trustworthy\"",
+    "target_audience: \"Parents of junior high and high school students\"",
+    "",
+    "basic_info:",
+    "  classroom_name: \"__KOSHA__\"",
+    "  manager_name: \"__SHICHOU__\"",
+    "  cta_url: \"__CTA_URL__\"",
+    "  cta_tel: \"__CTA_TEL__\"",
+    "",
+    "input_required:",
+    "",
+    "instruction: |",
+    "  上記の設定と【入力された情報】に基づき、保護者の心に響くブログ記事を作成してください。",
+    "  記事のテーマは「__THEME__」です。",
+    "  ",
+    "  【出力要件】",
+    "  1. フォーマット: HTML形式（<html>タグ不要、<h1>から書き始める）",
+    "  2. 構成:",
+    "     - <h1>: 魅力的なタイトル（32文字以内推奨）",
+    "     - 導入: 読者の悩みに寄り添う共感パート",
+    "     - 本文: 具体的なエピソード、解決策、教室の取り組み（見出し<h2>, <h3>を活用）",
+    "     - 結び: 前向きなメッセージと行動喚起",
+    "  3. CTAセクション（重要）:",
+    "     記事の最後には、記事の内容に即したCTAデータを以下の形式で必ず出力してください。",
+    "     <!--CTA_DATA_START-->",
+    "     説明文1：[記事の内容に合わせた、不安を解消する一言]",
+    "     説明文2：[教室見学や相談へのハードルを下げる優しい一言]",
+    "     相談ポイント1：[記事関連の相談内容1]",
+    "     相談ポイント2：[記事関連の相談内容2]",
+    "     体験ポイント1：[体験で得られるメリット1]",
+    "     体験ポイント2：[体験で得られるメリット2]",
+    "     締めの言葉：[校舎名]室長 [室長名]より、心を込めた最後のメッセージ",
+    "     <!--CTA_DATA_END-->",
+    "",
+    "  【禁止事項】",
+    "  - 嘘や架空の実績を書かない",
+    "  - 不自然な日本語やAI特有の硬い表現を避ける",
+    "  - マークダウンのコードブロック（```html）で囲まない（そのままブラウザでレンダリングできる形式で）"
   ].join("\n");
   /*
     blog_instruction:
