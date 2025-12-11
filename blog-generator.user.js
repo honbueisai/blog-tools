@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         英才ブログ生成ツール - ブログ＋サムネイル生成完全版
 // @namespace    http://eisai.blog.generator/
-// @version      0.56.58
+// @version      0.56.59
 // @description  ブログ生成 → HTMLコピー → サムネイル用キャッチフレーズ分析 → 自然言語で画像生成まで繋ぐツール（サイドパネルUI）
 // @match        https://gemini.google.com/*
 // @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js
@@ -13,11 +13,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID         = 'eisai-tool-v0-56-58';
-  const BTN_ID          = 'eisai-btn-v0-56-58';
-  const STORAGE_KEY     = 'eisai_blog_info_v05658';
+  const TOOL_ID         = 'eisai-tool-v0-56-59';
+  const BTN_ID          = 'eisai-btn-v0-56-59';
+  const STORAGE_KEY     = 'eisai_blog_info_v05659';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.58';
+  const CURRENT_VERSION = '0.56.59';
   const UPDATE_URL      = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -31,7 +31,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.58 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.59 起動');
 
   let lastBlogHtml = '';
 
@@ -1238,6 +1238,24 @@
       const subCatch = isOmakase ? 'おまかせ' : (subCatchInput.value.trim() || 'おまかせ');
       const points = isOmakase ? 'おまかせ' : (pointsInput.value.trim() || 'おまかせ');
 
+      // 人物紹介（講師・室長・生徒）タイプ専用のサムネイルルール
+      const isPersonType = currentBlogType === BLOG_TYPES.PERSON;
+      const personThumbnailRules = isPersonType ? `
+■ 人物紹介サムネイル専用ルール
+- このチャットにユーザーがアップロードした先生・講師・室長の写真を必ずベースにしてください
+- アップロードされた人物写真から人物のみを丁寧に切り抜き、元の背景は一切使用しないでください
+- 背景は透過前提で、メインカラーとサブカラーを生かしたグラデーションや図形(サークル・斜めライン)を使ったおしゃれなグラフィック背景を新しくデザインしてください
+- 構図は統一します：人物は画面右側1/3にバストアップで配置し、左2/3をテキストエリアとして確保してください
+- 先生の表情は自然な笑顔で、清潔感のある服装(白衣やシャツ、ジャケットなど)にしてください
+- 顔や髪型など、人物の特徴はアップロードされた写真にできるだけ忠実に再現してください。別人の顔に変えないでください
+- 左側のテキストエリアに以下の2行構成で名前を表示してください：
+  1行目: 日本語のフルネーム (例: 鈴木 太郎)
+  2行目: 自然なローマ字表記のフルネーム (例: Taro Suzuki)
+- ローマ字表記は、日本語の名前から推測される自然な綴りで生成してください
+- 名前とキャッチコピーは人物と重ならないように配置し、読みやすさを最優先してください
+- 人物紹介タイプ以外の記事では、このルールは無視して従来どおりのレイアウトで構いません
+` : '';
+
       const input = document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
       if (!input) {
         alert('Geminiの入力欄が見つかりませんでした');
@@ -1266,6 +1284,7 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 メインキャッチ：${mainCatch}
 サブキャッチ：${subCatch}
 ポイント：${points}
+${personThumbnailRules}
 
 ■ キャッチフレーズ作成の原則（最高品質のテキスト生成）
 【メインキャッチフレーズ】
