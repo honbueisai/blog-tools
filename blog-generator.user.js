@@ -2,10 +2,10 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.56.65
+// @version      0.56.66
 // @description  英才ブログ生成ツール (CTA修正版)
 // @author       Yuan
-// @match        https://cms.eisaia.com/*
+// @match        https://gemini.google.com/*
 // @updateURL    https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js
 // @downloadURL  https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js
 // @grant        none
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-56-65';
-  const BTN_ID = 'eisai-btn-v0-56-65';
-  const STORAGE_KEY = 'eisai_blog_info_v05665';
+  const TOOL_ID = 'eisai-tool-v0-56-66';
+  const BTN_ID = 'eisai-btn-v0-56-66';
+  const STORAGE_KEY = 'eisai_blog_info_v05666';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.65';
+  const CURRENT_VERSION = '0.56.66';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
