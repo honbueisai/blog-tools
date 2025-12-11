@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.56.63
+// @version      0.56.64
 // @description  英才ブログ生成ツール (CTA修正版)
 // @author       Yuan
 // @match        https://cms.eisaia.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-56-63';
-  const BTN_ID = 'eisai-btn-v0-56-63';
-  const STORAGE_KEY = 'eisai_blog_info_v05663';
+  const TOOL_ID = 'eisai-tool-v0-56-64';
+  const BTN_ID = 'eisai-btn-v0-56-64';
+  const STORAGE_KEY = 'eisai_blog_info_v05664';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.63';
+  const CURRENT_VERSION = '0.56.64';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -422,94 +422,93 @@
   // =========================================================
   const CSS = `
 #${TOOL_ID} {
-  font - family: system - ui, sans - serif; color: #333;
-  box - shadow: -4px 0 20px rgba(0, 0, 0, 0.15); border - radius: 0;
-  overflow: hidden; border - left: 1px solid #e5e7eb; background: #fff;
+  font-family: system-ui, sans-serif; color: #333;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15); border-radius: 0;
+  overflow: hidden; border-left: 1px solid #e5e7eb; background: #fff;
   position: fixed; top: 0; right: 0; width: 420px; height: 100vh;
-  z - index: 2147483647; display: flex; flex - direction: column;
-  pointer - events: auto;
+  z-index: 2147483647; display: flex; flex-direction: column;
+  pointer-events: auto;
   transition: transform 0.3s ease;
 }
 #${TOOL_ID}.collapsed {
-  transform: translateX(100 %);
+  transform: translateX(100%);
 }
 #${TOOL_ID} * {
-  pointer- events: auto;
-    }
-#eisai - toggle - btn {
-  position: fixed; top: 50 %; right: 420px; transform: translateY(-50 %);
-  z - index: 2147483646; background: #1d4ed8; color: #fff;
-  border: none; border - radius: 8px 0 0 8px; padding: 12px 8px;
-  cursor: pointer; font - size: 14px; writing - mode: vertical - rl;
-  box - shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
+  pointer-events: auto;
+}
+#eisai-toggle-btn {
+  position: fixed; top: 50%; right: 420px; transform: translateY(-50%);
+  z-index: 2147483646; background: #1d4ed8; color: #fff;
+  border: none; border-radius: 8px 0 0 8px; padding: 12px 8px;
+  cursor: pointer; font-size: 14px; writing-mode: vertical-rl;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
   transition: right 0.3s ease;
 }
-#eisai - toggle - btn.collapsed {
+#eisai-toggle-btn.collapsed {
   right: 0;
 }
-#eisai - toggle - btn:hover {
+#eisai-toggle-btn:hover {
   background: #1e40af;
 }
-    .eisai - header {
+.eisai-header {
   background: #f9fafb; padding: 10px 14px; display: flex;
-  justify - content: space - between; align - items: center; font - size: 13px;
-  border - bottom: 1px solid #e5e7eb; user - select: none;
+  justify-content: space-between; align-items: center; font-size: 13px;
+  border-bottom: 1px solid #e5e7eb; user-select: none;
 }
-    .eisai - label { font - size: 11px; display: block; margin - bottom: 3px; font - weight: bold; color: #555; }
-    .eisai - input { width: 100 %; padding: 6px 8px; border: 1px solid #ddd; border - radius: 4px; box - sizing: border - box; font - size: 13px; }
-    .eisai - input - wrap { margin - bottom: 10px; }
-    .eisai - type - wrap { margin: 8px 0 4px; }
-    .eisai - type - row { display: flex; flex - wrap: wrap; gap: 6px; margin - top: 4px; }
-    .eisai - type - btn {
-  flex: 1 1 calc(50 % - 6px);
-  min - width: 140px;
+.eisai-label { font-size: 11px; display: block; margin-bottom: 3px; font-weight: bold; color: #555; }
+.eisai-input { width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
+.eisai-input-wrap { margin-bottom: 10px; }
+.eisai-type-wrap { margin: 8px 0 4px; }
+.eisai-type-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.eisai-type-btn {
+  flex: 1 1 calc(50% - 6px);
+  min-width: 140px;
   padding: 6px 8px;
-  font - size: 11px;
-  border - radius: 999px;
+  font-size: 11px;
+  border-radius: 999px;
   border: 1px solid #d1d5db;
   background: #f9fafb;
   cursor: pointer;
-  text - align: center;
-  white - space: nowrap;
+  text-align: center;
+  white-space: nowrap;
 }
-    .eisai - type - btn:hover {
+.eisai-type-btn:hover {
   background: #e0e7ff;
-  border - color: #6366f1;
+  border-color: #6366f1;
 }
-    .eisai - type - btn - active {
+.eisai-type-btn-active {
   background: #1d4ed8;
   color: #ffffff;
-  border - color: #1d4ed8;
+  border-color: #1d4ed8;
 }
-    .eisai - type - btn - active:hover {
+.eisai-type-btn-active:hover {
   background: #1e40af;
-  border - color: #1e40af;
+  border-color: #1e40af;
 }
-    .eisai - primary - btn {
-  width: 100 %; padding: 10px; background: #1d4ed8; color: #fff;
-  border: none; border - radius: 8px; font - weight: 600; cursor: pointer;
-  margin - top: 10px; font - size: 14px;
+.eisai-primary-btn {
+  width: 100%; padding: 10px; background: #1d4ed8; color: #fff;
+  border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
+  margin-top: 10px; font-size: 14px;
 }
-    .eisai - primary - btn:hover { background: #1e40af; }
-    .eisai - status {
-  padding: 8px; margin - top: 8px; font - size: 12px; border - radius: 6px;
+.eisai-primary-btn:hover { background: #1e40af; }
+.eisai-status {
+  padding: 8px; margin-top: 8px; font-size: 12px; border-radius: 6px;
   display: none;
 }
-    .eisai - status.show { display: block; background: #eff6ff; color:#1d4ed8; }
-details.eisai - details { margin - bottom: 12px; border: 1px solid #eee; border - radius: 6px; }
-details.eisai - details summary { padding: 8px; background: #fafafa; cursor: pointer; font - size: 12px; font - weight: bold; list - style: none; }
-    .eisai - details - content { padding: 8px; }
+.eisai-status.show { display: block; background: #eff6ff; color:#1d4ed8; }
+details.eisai-details { margin-bottom: 12px; border: 1px solid #eee; border-radius: 6px; }
+details.eisai-details summary { padding: 8px; background: #fafafa; cursor: pointer; font-size: 12px; font-weight: bold; list-style: none; }
+.eisai-details-content { padding: 8px; }
 
-    .eisai - btn - pulse {
-  animation: eisai - pulse 0.9s ease -in -out 0s 4;
+.eisai-btn-pulse {
+  animation: eisai-pulse 0.9s ease-in-out 0s 4;
 }
 
-@keyframes eisai - pulse {
-  0 % { transform: scale(1); box- shadow: 0 0 0 rgba(37, 99, 235, 0.0);
+@keyframes eisai-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(37, 99, 235, 0.0); }
+  50% { transform: scale(1.10); box-shadow: 0 0 16px rgba(37, 99, 235, 0.70); }
+  100% { transform: scale(1); box-shadow: 0 0 0 rgba(37, 99, 235, 0.0); }
 }
-50 % { transform: scale(1.10); box- shadow: 0 0 16px rgba(37, 99, 235, 0.70); }
-100 % { transform: scale(1); box- shadow: 0 0 0 rgba(37, 99, 235, 0.0); }
-    }
 `;
 
   // =========================================================
