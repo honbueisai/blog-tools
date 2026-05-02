@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.56.69
+// @version      0.56.68
 // @description  英才ブログ生成ツール (CTA修正版)
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -14,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-56-69';
-  const BTN_ID = 'eisai-btn-v0-56-69';
-  const STORAGE_KEY = 'eisai_blog_info_v05669';
+  const TOOL_ID = 'eisai-tool-v0-56-68';
+  const BTN_ID = 'eisai-btn-v0-56-68';
+  const STORAGE_KEY = 'eisai_blog_info_v05668';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.69';
+  const CURRENT_VERSION = '0.56.68';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -32,7 +32,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.69 起動');
+  console.log('🚀 英才ブログ生成ツール v0.56.68 起動');
 
   let lastBlogHtml = '';
 
@@ -274,50 +274,6 @@
     }));
   }
 
-  function decodeHtmlText(raw) {
-    return (raw || '')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'");
-  }
-
-  function findLatestBlogResponseNode() {
-    const selectors = [
-      '.model-response-text',
-      '.markdown-main-panel',
-      'message-content',
-      '[data-message-author-role="model"]',
-      '[class*="model-response"]',
-      '[class*="response-content"]',
-      '[class*="markdown"]'
-    ];
-    const seen = new Set();
-    const candidates = [];
-
-    selectors.forEach(selector => {
-      try {
-        document.querySelectorAll(selector).forEach(node => {
-          if (!seen.has(node)) {
-            seen.add(node);
-            candidates.push(node);
-          }
-        });
-      } catch (e) {
-        console.warn('[Eisai] 応答候補セレクタを読み飛ばしました:', selector, e);
-      }
-    });
-
-    const usable = candidates.filter(node => {
-      const text = (node.textContent || node.innerText || '').trim();
-      if (text.length < 20) return false;
-      return node.getClientRects().length > 0 || node.offsetParent !== null;
-    });
-
-    return (usable.length ? usable : candidates).pop() || null;
-  }
-
   function parseCtaData(text) {
     let match = text.match(/<!--CTA_DATA_START-->([\s\S]*?)<!--CTA_DATA_END-->/);
     let dataText = match ? match[1] : null;
@@ -506,42 +462,15 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
   // 6. ウォッチャー：ブログ生成完了
   // =========================================================
   function watchBlogResponseAndEnableCopy(statusDiv, copyBtn) {
-    console.log('[Eisai] ブログ応答ウォッチャー開始');
     let last = '';
     let stableCount = 0;
-    let pollCount = 0;
-    const maxPollCount = 240;
-    const initialNode = findLatestBlogResponseNode();
-    const initialText = initialNode ? (initialNode.textContent || initialNode.innerText || '') : '';
 
     const timer = setInterval(() => {
-      pollCount++;
-      const latest = findLatestBlogResponseNode();
+      const nodes = document.querySelectorAll('.model-response-text, .markdown-main-panel');
+      if (!nodes.length) return;
 
-      if (!latest) {
-        if (pollCount === 30) {
-          statusDiv.textContent = '⚠️ Geminiの応答欄を検出できません。画面構成が変わった可能性があります。生成完了後も赤いボタンが出ない場合は、Gemini本文を手動コピーしてください。';
-          statusDiv.classList.add('show');
-        }
-        if (pollCount >= maxPollCount) {
-          clearInterval(timer);
-          statusDiv.textContent = '❌ タイムアウト：Geminiの応答を検出できませんでした。Gemini本文を手動コピーしてください。';
-          statusDiv.classList.add('show');
-        }
-        return;
-      }
-
+      const latest = nodes[nodes.length - 1];
       const text = latest.textContent || latest.innerText || '';
-      if (latest === initialNode && text === initialText) {
-        if (pollCount % 30 === 0) {
-          console.log('[Eisai] 新しいGemini応答待ち', { pollCount, textLength: text.length });
-        }
-        return;
-      }
-
-      if (pollCount % 10 === 0) {
-        console.log('[Eisai] 応答監視中', { pollCount, textLength: text.length, stableCount });
-      }
 
       if (text === last) {
         stableCount++;
@@ -550,23 +479,24 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         stableCount = 0;
       }
 
-      const isStableLongResponse = stableCount >= 3 && text.length > 300;
-      const isStableShortResponse = stableCount >= 10 && text.length > 100;
-      if (isStableLongResponse || isStableShortResponse) {
-        console.log('[Eisai] Gemini応答の安定を検出', { textLength: text.length, stableCount });
+      if (stableCount >= 3 && text.length > 500) {
         clearInterval(timer);
 
-        let raw = '';
-        let decoded = '';
         try {
-          const innerMarkdown = latest.matches('.markdown-main-panel') ? latest : latest.querySelector('.markdown-main-panel');
+          let raw = '';
+          const innerMarkdown = latest.querySelector('.markdown-main-panel');
           if (innerMarkdown) {
             raw = innerMarkdown.textContent || '';
           } else {
             raw = text;
           }
 
-          decoded = decodeHtmlText(raw);
+          let decoded = raw;
+          decoded = decoded.replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'");
 
           const ctaData = parseCtaData(raw);
           decoded = decoded.replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '');
@@ -578,11 +508,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           let ctaUrl = (info.url || '').trim();
           const ctaTel = (info.tel || '').trim();
           if (!ctaUrl) {
-            console.warn('[Eisai] CTA URLが未設定のため、CTAなしでコピー可能にします');
-            lastBlogHtml = decoded;
-            statusDiv.textContent = '⚠️ CTA URLが未設定のため、CTAなしのHTMLをコピーできます。次回は教室情報設定からCTAリンク先URLを保存してください。';
-            statusDiv.classList.add('show');
-            copyBtn.style.display = 'block';
+            console.warn('CTA URLが設定されていません');
             return;
           }
           if (!/^https?:\/\//i.test(ctaUrl)) ctaUrl = 'https://' + ctaUrl;
@@ -592,21 +518,10 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
         } catch (e) {
           console.error('ブログHTML処理エラー:', e);
-          lastBlogHtml = decodeHtmlText(raw || text).trim();
-          if (lastBlogHtml) {
-            statusDiv.textContent = '⚠️ HTML加工中にエラーが発生しましたが、Gemini応答本文をコピーできます。内容を確認してから貼り付けてください。';
-            statusDiv.classList.add('show');
-            copyBtn.style.display = 'block';
-          } else {
-            statusDiv.textContent = '❌ HTML加工中にエラーが発生し、コピー用本文も取得できませんでした。Gemini本文を手動コピーしてください。';
-            statusDiv.classList.add('show');
-          }
           return;
         }
 
-        statusDiv.textContent = isStableShortResponse
-          ? '✅ 短めの応答として生成完了を検出しました。内容を確認してから赤いボタンでコピーしてください。'
-          : '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。';
+        statusDiv.textContent = '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。';
         statusDiv.classList.add('show');
         copyBtn.style.display = 'block';
       }
