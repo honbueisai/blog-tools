@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.56.69
+// @version      0.56.70
 // @description  英才ブログ生成ツール (Gemini3対応 / 本文HTMLテンプレート明示)
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-btn-v0-56-68';
   const STORAGE_KEY = 'eisai_blog_info_v05668';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.68';
+  const CURRENT_VERSION = '0.56.70';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -32,7 +32,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.68 起動');
+  console.log(`🚀 英才ブログ生成ツール v${CURRENT_VERSION} 起動`);
 
   let lastBlogHtml = '';
 
