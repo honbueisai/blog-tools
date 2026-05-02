@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.78
+// @version      0.56.79
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,10 +18,13 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.78';
+  const CURRENT_VERSION = '0.56.79';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
+  const BLOG_GEM_ID = '1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf';
+  const THUMBNAIL_GEM_ID = '1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ';
+  const PENDING_BLOG_PROMPT_KEY = 'eisai_brogtest_pending_blog_prompt';
 
   const BLOG_TYPES = {
     GROWTH: 'growth_story',
@@ -34,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.78 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.79 起動');
 
   let lastBlogHtml = '';
 
@@ -301,6 +304,64 @@
       which: 13,
       bubbles: true
     }));
+  }
+
+  function isBlogGemPage() {
+    return location.pathname.indexOf('/gem/' + BLOG_GEM_ID) !== -1;
+  }
+
+  function isThumbnailGemPage() {
+    return location.pathname.indexOf('/gem/' + THUMBNAIL_GEM_ID) !== -1;
+  }
+
+  function findGeminiInput() {
+    return document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
+  }
+
+  async function waitForGeminiInput(timeoutMs = 30000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const input = findGeminiInput();
+      if (input) return input;
+      await sleep(500);
+    }
+    return null;
+  }
+
+  function savePendingBlogPrompt(prompt) {
+    localStorage.setItem(PENDING_BLOG_PROMPT_KEY, JSON.stringify({
+      prompt,
+      createdAt: Date.now()
+    }));
+  }
+
+  function loadPendingBlogPrompt() {
+    try {
+      const pending = JSON.parse(localStorage.getItem(PENDING_BLOG_PROMPT_KEY) || 'null');
+      if (!pending || !pending.prompt) return null;
+      if (Date.now() - pending.createdAt > 10 * 60 * 1000) {
+        localStorage.removeItem(PENDING_BLOG_PROMPT_KEY);
+        return null;
+      }
+      return pending;
+    } catch (e) {
+      localStorage.removeItem(PENDING_BLOG_PROMPT_KEY);
+      return null;
+    }
+  }
+
+  async function insertPromptAndSend(prompt) {
+    const input = await waitForGeminiInput();
+    if (!input) return false;
+
+    input.focus();
+    document.execCommand('selectAll', false, null);
+    document.execCommand('insertText', false, prompt);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    await sleep(500);
+    sendMessageViaEnter(input);
+    return true;
   }
 
   function decodeHtmlText(raw) {
@@ -1845,13 +1906,9 @@ ${formContent}
 締めの言葉: 校舎名と室長名を入れた、心を込めた最後のメッセージ
 <!--CTA_DATA_END-->`;
 
-      const input = document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
-      if (!input) {
-        alert('Geminiの入力欄が見つかりませんでした');
-        return;
-      }
-
-      formStatusDiv.textContent = '📨 高速テスト用プロンプトを送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。';
+      formStatusDiv.textContent = isBlogGemPage()
+        ? '📨 ブログGemへ送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。'
+        : '📨 ブログGemへ移動して送信します。Gemが開いたら自動で入力・送信されます。';
       formStatusDiv.classList.add('show');
       resultStep.style.display = 'none';
       returnResultBtn.style.display = 'none';
@@ -1860,13 +1917,18 @@ ${formContent}
       imgExecBtn.style.display = 'none';
       lastBlogHtml = '';
 
-      input.focus();
-      document.execCommand('selectAll', false, null);
-      document.execCommand('insertText', false, prompt);
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+      if (!isBlogGemPage()) {
+        savePendingBlogPrompt(prompt);
+        localStorage.setItem('eisai_collapsed', 'false');
+        location.href = BLOG_GEM_URL;
+        return;
+      }
 
-      await sleep(500);
-      sendMessageViaEnter(input);
+      const sent = await insertPromptAndSend(prompt);
+      if (!sent) {
+        alert('Geminiの入力欄が見つかりませんでした。ブログGemが開いているか確認してください。');
+        return;
+      }
 
       watchBlogResponseAndEnableCopy(formStatusDiv, copyBtn, showResultStep);
     };
@@ -1939,6 +2001,37 @@ ${formContent}
 
       sendMessageViaEnter(input);
     };
+
+    async function runPendingBlogPromptIfNeeded() {
+      if (!isBlogGemPage()) return;
+
+      const pending = loadPendingBlogPrompt();
+      if (!pending) return;
+      localStorage.removeItem(PENDING_BLOG_PROMPT_KEY);
+
+      step1.style.display = 'none';
+      step2.style.display = 'block';
+      resultStep.style.display = 'none';
+      formStatusDiv.textContent = '📨 ブログGemを開きました。保存していた入力内容を自動送信しています...';
+      formStatusDiv.classList.add('show');
+      copyBtn.style.display = 'none';
+      imgSection.style.display = 'none';
+      imgExecBtn.style.display = 'none';
+      lastBlogHtml = '';
+
+      const sent = await insertPromptAndSend(pending.prompt);
+      if (!sent) {
+        formStatusDiv.textContent = '❌ ブログGemの入力欄を検出できませんでした。ページの読み込み完了後、もう一度「Geminiへ送信して記事生成」を押してください。';
+        formStatusDiv.classList.add('show');
+        return;
+      }
+
+      formStatusDiv.textContent = '📨 ブログGemへ送信しました。生成が完了したら、完了画面に切り替わります。';
+      formStatusDiv.classList.add('show');
+      watchBlogResponseAndEnableCopy(formStatusDiv, copyBtn, showResultStep);
+    }
+
+    runPendingBlogPromptIfNeeded();
   }
 
   // =========================================================
@@ -1948,7 +2041,7 @@ ${formContent}
     const path = location.pathname;
     // /app または /app/ のみが新規チャット画面
     // /app/xxxxxxx のようなチャット中ページは除外
-    return path === '/app' || path === '/app/';
+    return path === '/app' || path === '/app/' || isBlogGemPage() || isThumbnailGemPage();
   }
 
   function ensureButton() {
@@ -1958,6 +2051,10 @@ ${formContent}
       return;
     }
     if (document.getElementById(BTN_ID)) return;
+
+    if (isBlogGemPage() && loadPendingBlogPrompt() && !document.getElementById(TOOL_ID)) {
+      buildPanel();
+    }
 
     const btn = createEl('button', {
       id: BTN_ID,
