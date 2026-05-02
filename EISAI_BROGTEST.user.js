@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.81
+// @version      0.56.82
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.81';
+  const CURRENT_VERSION = '0.56.82';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -445,6 +445,32 @@
     return looksLikeHtml(cleaned) ? cleaned : plainTextToHtml(cleaned);
   }
 
+  function sanitizeGeminiHtml(rawHtml) {
+    let html = String(rawHtml || '');
+    if (!html.trim()) return '';
+
+    html = html
+      .replace(/<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi, (_m, inner) => decodeHtmlText(inner))
+      .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, (_m, inner) =>
+        /&lt;\/?(h1|h2|h3|p|ul|ol|li|strong|em|br)\b/i.test(inner) ? decodeHtmlText(inner) : `<code>${inner}</code>`
+      );
+
+    html = html.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>/g, (_m, slash, tag) => {
+      const lower = tag.toLowerCase();
+      const allowed = new Set(['h1','h2','h3','h4','p','ul','ol','li','strong','em','br','article','section','div','blockquote']);
+      if (!allowed.has(lower)) return '';
+      return `<${slash}${lower}>`;
+    });
+
+    html = html
+      .replace(/<div>\s*<\/div>/gi, '')
+      .replace(/<p>\s*<\/p>/gi, '')
+      .replace(/<br>\s*<br>(?:\s*<br>)+/gi, '<br><br>')
+      .trim();
+
+    return html;
+  }
+
   function findLatestBlogResponseNode() {
     const selectors = [
       '.model-response-text',
@@ -732,26 +758,43 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         clearInterval(timer);
 
         let raw = '';
+        let innerHtmlRaw = '';
+        let innerTextRaw = '';
         let decoded = '';
         try {
           const innerMarkdown = latest.matches('.markdown-main-panel') ? latest : latest.querySelector('.markdown-main-panel');
           if (innerMarkdown) {
-            raw = innerMarkdown.textContent || '';
+            innerHtmlRaw = innerMarkdown.innerHTML || '';
+            innerTextRaw = innerMarkdown.textContent || '';
           } else {
-            raw = text;
+            innerHtmlRaw = latest.innerHTML || '';
+            innerTextRaw = text;
           }
+          raw = innerHtmlRaw || innerTextRaw;
 
-          decoded = decodeHtmlText(raw);
+          const ctaData = parseCtaData(innerTextRaw || decodeHtmlText(innerHtmlRaw));
+
+          decoded = sanitizeGeminiHtml(innerHtmlRaw);
           decoded = decoded.replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/i, '');
-
-          const ctaData = parseCtaData(raw);
           decoded = decoded.replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '');
-          decoded = decoded.replace(/説明文1[:：].+[\s\S]*?締めの言葉[:：].+/gi, '');
+          decoded = decoded.replace(/<p[^>]*>\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：][\s\S]*?<\/p>/gi, '');
           decoded = decoded.replace(/^\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：].*$/gim, '');
-          decoded = decoded.replace(/<p[^>]*style=['"][^'"]*color:\s*red[^'"]*['"][^>]*>\s*■+CTAセクション■+\s*<\/p>/gi, '');
-          decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '');
-          const hasRequiredHtml = /<h1[\s>]/i.test(decoded) && /<p[\s>]/i.test(decoded);
-          decoded = ensureHtmlContent(decoded);
+          decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '').trim();
+
+          let hasRequiredHtml = /<h1[\s>]/i.test(decoded) && /<p[\s>]/i.test(decoded);
+
+          if (!hasRequiredHtml) {
+            const fallbackText = decodeHtmlText(innerTextRaw)
+              .replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '')
+              .replace(/^\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：].*$/gim, '')
+              .trim();
+            const fallbackPlain = fallbackText.replace(/\s+/g, '');
+            if (fallbackPlain.length >= 300) {
+              decoded = ensureHtmlContent(fallbackText);
+              hasRequiredHtml = /<h1[\s>]/i.test(decoded) && /<p[\s>]/i.test(decoded);
+              console.warn('[Eisai] innerHTML から本文HTMLを取得できなかったため、textContent + ensureHtmlContent でフォールバックしました');
+            }
+          }
 
           const articleText = decoded
             .replace(/<[^>]*>/g, '')
@@ -759,7 +802,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
             .trim();
           if (!hasRequiredHtml || articleText.length < 300) {
             lastBlogHtml = '';
-            statusDiv.textContent = '❌ Gemの出力がブログ本文HTMLではありません。<h1>と<p>を含む本文HTMLが必要です。Gemの出力を確認して、もう一度「Geminiへ送信して記事生成」を押してください。';
+            statusDiv.textContent = '❌ Gemの出力にブログ本文が見つかりませんでした。CTA素材だけの可能性があります。Gemの本文を確認し、もう一度「Geminiへ送信して記事生成」を押してください。';
             statusDiv.classList.add('show');
             copyBtn.style.display = 'none';
             return;
@@ -1822,7 +1865,7 @@ ${personThumbnailRules}
       config.fields.forEach(field => {
         const val = typeData[field.key] || '';
         if (val.trim()) {
-          formContent += `【${field.label}】\n${val}\n\n`;
+          formContent += `${field.label}: ${val}\n\n`;
         }
       });
 
