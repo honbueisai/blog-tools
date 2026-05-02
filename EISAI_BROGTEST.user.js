@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.72
+// @version      0.56.73
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.72';
+  const CURRENT_VERSION = '0.56.73';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
 
   const BLOG_TYPES = {
@@ -32,7 +32,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.72 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.73 起動');
 
   let lastBlogHtml = '';
 
@@ -193,7 +193,10 @@
     "  - 入力情報が少ない場合は無理に長くせず、不足情報を補うための架空設定はしないでください。",
     "  ",
     "  【出力要件】",
-    "  1. フォーマット: HTML形式（<html>タグ不要、<h1>から書き始める）",
+    "  1. フォーマット: 必ずHTML形式（<html>タグ不要、<h1>から書き始める）",
+    "     - 本文は必ず <h1>, <h2>, <p>, <ul>, <li>, <strong> などのHTMLタグを実際に使って出力してください。",
+    "     - 通常の文章だけ、Markdown見出し（# や ##）、箇条書きだけの出力は禁止です。",
+    "     - ```html などのコードブロックで囲まず、貼り付け可能なHTML本文だけを出力してください。",
     "  2. 構成:",
     "     - <h1>: 魅力的なタイトル（32文字以内推奨）",
     "     - 導入: 読者の悩みに寄り添う共感パート",
@@ -214,6 +217,7 @@
     "  【禁止事項】",
     "  - 嘘や架空の実績を書かない",
     "  - 不自然な日本語やAI特有の硬い表現を避ける",
+    "  - HTMLタグなしのプレーンテキストで出力しない",
     "  - マークダウンのコードブロック（```html）で囲まない（そのままブラウザでレンダリングできる形式で）"
   ].join("\n");
 
@@ -297,6 +301,78 @@
       .replace(/&amp;/g, '&')
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'");
+  }
+
+  function escapeHtml(raw) {
+    return (raw || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function looksLikeHtml(raw) {
+    return /<\/?(article|section|h1|h2|h3|p|div|ul|ol|li|strong|em|br)\b/i.test(raw || '');
+  }
+
+  function plainTextToHtml(raw) {
+    const lines = (raw || '')
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    if (!lines.length) return '';
+
+    const html = [];
+    let usedTitle = false;
+    let listOpen = false;
+
+    function closeList() {
+      if (listOpen) {
+        html.push('</ul>');
+        listOpen = false;
+      }
+    }
+
+    lines.forEach((line, idx) => {
+      const normalized = line.replace(/^#{1,6}\s*/, '');
+      const bullet = normalized.match(/^[・\-*]\s*(.+)$/);
+
+      if (!usedTitle) {
+        closeList();
+        html.push('<h1>' + escapeHtml(normalized) + '</h1>');
+        usedTitle = true;
+        return;
+      }
+
+      if (bullet) {
+        if (!listOpen) {
+          html.push('<ul>');
+          listOpen = true;
+        }
+        html.push('<li>' + escapeHtml(bullet[1]) + '</li>');
+        return;
+      }
+
+      closeList();
+      const isHeading = idx < 12 && normalized.length <= 32 && /[:：]$/.test(normalized);
+      if (isHeading) {
+        html.push('<h2>' + escapeHtml(normalized.replace(/[:：]$/, '')) + '</h2>');
+      } else {
+        html.push('<p>' + escapeHtml(normalized) + '</p>');
+      }
+    });
+
+    closeList();
+    return html.join('\n');
+  }
+
+  function ensureHtmlContent(raw) {
+    const cleaned = (raw || '').trim();
+    if (!cleaned) return '';
+    return looksLikeHtml(cleaned) ? cleaned : plainTextToHtml(cleaned);
   }
 
   function findLatestBlogResponseNode() {
@@ -521,7 +597,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
   // =========================================================
   // 6. ウォッチャー：ブログ生成完了
   // =========================================================
-  function watchBlogResponseAndEnableCopy(statusDiv, copyBtn) {
+  function watchBlogResponseAndEnableCopy(statusDiv, copyBtn, onReady) {
     console.log('[Eisai] ブログ応答ウォッチャー開始');
     let last = '';
     let stableCount = 0;
@@ -529,6 +605,15 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     const maxPollCount = 240;
     const initialNode = findLatestBlogResponseNode();
     const initialText = initialNode ? (initialNode.textContent || initialNode.innerText || '') : '';
+    const showReady = (message) => {
+      if (onReady) {
+        onReady(message);
+      } else {
+        statusDiv.textContent = message;
+        statusDiv.classList.add('show');
+        copyBtn.style.display = 'block';
+      }
+    };
 
     const timer = setInterval(() => {
       pollCount++;
@@ -583,12 +668,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           }
 
           decoded = decodeHtmlText(raw);
+          decoded = decoded.replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/i, '');
 
           const ctaData = parseCtaData(raw);
           decoded = decoded.replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '');
           decoded = decoded.replace(/説明文1[:：].+[\s\S]*?締めの言葉[:：].+/gi, '');
           decoded = decoded.replace(/<p[^>]*style=['"][^'"]*color:\s*red[^'"]*['"][^>]*>\s*■+CTAセクション■+\s*<\/p>/gi, '');
           decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '');
+          decoded = ensureHtmlContent(decoded);
 
           const info = getSetting();
           let ctaUrl = (info.url || '').trim();
@@ -596,9 +683,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           if (!ctaUrl) {
             console.warn('[Eisai] CTA URLが未設定のため、CTAなしでコピー可能にします');
             lastBlogHtml = decoded;
-            statusDiv.textContent = '⚠️ CTA URLが未設定のため、CTAなしのHTMLをコピーできます。次回は教室情報設定からCTAリンク先URLを保存してください。';
-            statusDiv.classList.add('show');
-            copyBtn.style.display = 'block';
+            showReady('⚠️ CTA URLが未設定のため、CTAなしのHTMLをコピーできます。次回は教室情報設定からCTAリンク先URLを保存してください。');
             return;
           }
           if (!/^https?:\/\//i.test(ctaUrl)) ctaUrl = 'https://' + ctaUrl;
@@ -608,11 +693,9 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
         } catch (e) {
           console.error('ブログHTML処理エラー:', e);
-          lastBlogHtml = decodeHtmlText(raw || text).trim();
+          lastBlogHtml = ensureHtmlContent(decodeHtmlText(raw || text).trim());
           if (lastBlogHtml) {
-            statusDiv.textContent = '⚠️ HTML加工中にエラーが発生しましたが、Gemini応答本文をコピーできます。内容を確認してから貼り付けてください。';
-            statusDiv.classList.add('show');
-            copyBtn.style.display = 'block';
+            showReady('⚠️ HTML加工中にエラーが発生しましたが、Gemini応答本文をHTML化してコピーできます。内容を確認してから貼り付けてください。');
           } else {
             statusDiv.textContent = '❌ HTML加工中にエラーが発生し、コピー用本文も取得できませんでした。Gemini本文を手動コピーしてください。';
             statusDiv.classList.add('show');
@@ -620,11 +703,9 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           return;
         }
 
-        statusDiv.textContent = isStableShortResponse
+        showReady(isStableShortResponse
           ? '✅ 短めの応答として生成完了を検出しました。内容を確認してから赤いボタンでコピーしてください。'
-          : '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。';
-        statusDiv.classList.add('show');
-        copyBtn.style.display = 'block';
+          : '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。');
       }
     }, 1000);
   }
@@ -991,7 +1072,49 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       step2.style.display = 'none';
       step1.style.display = 'block';
     };
-    const statusDiv = createEl('div', { className: 'eisai-status' }, content);
+    const formStatusDiv = createEl('div', { className: 'eisai-status' }, step2);
+
+    const resultStep = createEl('div', { id: 'eisai-result-step', style: { display: 'none' } }, content);
+    createEl('div', {
+      style: {
+        padding: '12px',
+        marginBottom: '12px',
+        background: '#dcfce7',
+        borderRadius: '8px',
+        fontSize: '16px',
+        fontWeight: '700',
+        color: '#166534'
+      }
+    }, resultStep, '✅ ブログ生成完了');
+    createEl('div', {
+      style: {
+        padding: '10px',
+        marginBottom: '12px',
+        background: '#f8fafc',
+        border: '1px solid #e2e8f0',
+        borderRadius: '8px',
+        fontSize: '13px',
+        color: '#475569',
+        lineHeight: '1.6'
+      }
+    }, resultStep, '入力内容は残っています。修正したい場合は「入力内容に戻る」から戻れます。');
+
+    const statusDiv = createEl('div', { className: 'eisai-status show' }, resultStep);
+
+    const editBackBtn = createEl('button', {
+      style: {
+        marginTop: '10px',
+        width: '100%',
+        padding: '10px',
+        background: '#6b7280',
+        color: '#ffffff',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: '600',
+        fontSize: '14px',
+        cursor: 'pointer'
+      }
+    }, resultStep, '入力内容に戻る');
 
     const copyToast = createEl('div', {
       id: 'eisai-copy-toast',
@@ -1005,7 +1128,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         color: '#92400e',
         whiteSpace: 'pre-line',
       }
-    }, content);
+    }, resultStep);
 
     const copyBtn = createEl('button', {
       style: {
@@ -1021,7 +1144,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         cursor: 'pointer',
         display: 'none'
       }
-    }, content, '▶ ブログHTMLをコピーする');
+    }, resultStep, '▶ ブログHTMLをコピーする');
 
     const imgSection = createEl('div', {
       id: 'eisai-image-section',
@@ -1031,7 +1154,28 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         paddingTop: '12px',
         borderTop: '1px solid #e5e7eb'
       }
-    }, content);
+    }, resultStep);
+
+    function showResultStep(message) {
+      step1.style.display = 'none';
+      step2.style.display = 'none';
+      resultStep.style.display = 'block';
+      statusDiv.textContent = message;
+      statusDiv.classList.add('show');
+      copyBtn.style.display = 'block';
+      setTimeout(() => {
+        resultStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+
+    editBackBtn.onclick = () => {
+      resultStep.style.display = 'none';
+      step1.style.display = 'none';
+      step2.style.display = 'block';
+      setTimeout(() => {
+        step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    };
 
     createEl('p', { style: { fontWeight: 'bold', marginBottom: '6px' } }, imgSection,
       '🖼 サムネイル画像生成（ブログ用）');
@@ -1372,8 +1516,9 @@ ${personThumbnailRules}
         return;
       }
 
-      statusDiv.textContent = '📨 ブログ生成用YAMLを送信しました。生成が完了したら、下にコピー用ボタンが出ます。';
-      statusDiv.classList.add('show');
+      formStatusDiv.textContent = '📨 ブログ生成用YAMLを送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。';
+      formStatusDiv.classList.add('show');
+      resultStep.style.display = 'none';
       copyBtn.style.display = 'none';
       imgSection.style.display = 'none';
       imgExecBtn.style.display = 'none';
@@ -1387,7 +1532,7 @@ ${personThumbnailRules}
       await sleep(500);
       sendMessageViaEnter(input);
 
-      watchBlogResponseAndEnableCopy(statusDiv, copyBtn);
+      watchBlogResponseAndEnableCopy(formStatusDiv, copyBtn, showResultStep);
     };
 
     copyBtn.onclick = async () => {
