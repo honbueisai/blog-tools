@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.76
+// @version      0.56.78
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,8 +18,10 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.76';
+  const CURRENT_VERSION = '0.56.78';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
+  const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
+  const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
 
   const BLOG_TYPES = {
     GROWTH: 'growth_story',
@@ -32,7 +34,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.76 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.78 起動');
 
   let lastBlogHtml = '';
 
@@ -203,15 +205,28 @@
     "     - 導入: 読者の悩みに寄り添う共感パート",
     "     - 本文: 具体的なエピソード、解決策、教室の取り組み（見出し<h2>, <h3>を活用し、各見出しの下に自然な段落を2つ以上入れる）",
     "     - 結び: 前向きなメッセージと行動喚起",
-    "  3. CTA素材・内部メモは出力しない:",
-    "     - 説明文1、説明文2、相談ポイント、体験ポイント、締めの言葉などのCTA用データは出力しないでください。",
-    "     - 記事本文として読めるHTMLだけを出力してください。",
+    "  3. CTAセクション（重要）:",
+    "     記事本文の最後に、記事内容に即したCTAデータを以下の形式で必ず出力してください。",
+    "     このCTAデータはツール側で読み取り、最終的なHTMLでは整形済みCTAに変換されます。",
+    "     <!--CTA_DATA_START-->",
+    "     説明文1：[記事の内容に合わせた、不安を解消する一言]",
+    "     説明文2：[教室見学や相談へのハードルを下げる優しい一言]",
+    "     相談ポイント1：[記事関連の相談内容1]",
+    "     相談ポイント2：[記事関連の相談内容2]",
+    "     相談ポイント3：[記事関連の相談内容3]",
+    "     相談ポイント4：[記事関連の相談内容4]",
+    "     体験ポイント1：[体験で得られるメリット1]",
+    "     体験ポイント2：[体験で得られるメリット2]",
+    "     体験ポイント3：[体験で得られるメリット3]",
+    "     体験ポイント4：[体験で得られるメリット4]",
+    "     締めの言葉：[校舎名]室長 [室長名]より、心を込めた最後のメッセージ",
+    "     <!--CTA_DATA_END-->",
     "",
     "  【禁止事項】",
     "  - 嘘や架空の実績を書かない",
     "  - 不自然な日本語やAI特有の硬い表現を避ける",
     "  - HTMLタグなしのプレーンテキストで出力しない",
-    "  - 説明文1・相談ポイント・体験ポイントなどの内部項目を出力しない",
+    "  - CTAデータ以外の場所に、説明文1・相談ポイント・体験ポイントなどの内部項目を出力しない",
     "  - マークダウンのコードブロック（```html）で囲まない（そのままブラウザでレンダリングできる形式で）"
   ].join("\n");
 
@@ -857,6 +872,52 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       details.open = false;
     };
 
+    const gemNav = createEl('div', {
+      style: {
+        display: 'flex',
+        gap: '8px',
+        margin: '0 0 12px 0'
+      }
+    }, content);
+
+    const blogGemBtn = createEl('button', {
+      type: 'button',
+      style: {
+        flex: '1',
+        padding: '8px 10px',
+        borderRadius: '999px',
+        border: '1px solid #bfdbfe',
+        background: '#eff6ff',
+        color: '#1d4ed8',
+        fontSize: '12px',
+        fontWeight: '700',
+        cursor: 'pointer'
+      }
+    }, gemNav, 'ブログGemを開く');
+
+    const thumbGemBtn = createEl('button', {
+      type: 'button',
+      style: {
+        flex: '1',
+        padding: '8px 10px',
+        borderRadius: '999px',
+        border: '1px solid #bbf7d0',
+        background: '#f0fdf4',
+        color: '#15803d',
+        fontSize: '12px',
+        fontWeight: '700',
+        cursor: 'pointer'
+      }
+    }, gemNav, 'サムネイルGemを開く');
+
+    blogGemBtn.onclick = () => {
+      window.open(BLOG_GEM_URL, '_blank');
+    };
+
+    thumbGemBtn.onclick = () => {
+      window.open(THUMBNAIL_GEM_URL, '_blank');
+    };
+
     const step1 = createEl('div', { id: 'eisai-step1' }, content);
     const typeWrap = createEl('div', { className: 'eisai-type-wrap' }, step1);
     createEl('div', { className: 'eisai-label' }, typeWrap, '記事タイプを選択');
@@ -1398,6 +1459,26 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     createEl('p', { style: { fontWeight: 'bold', marginBottom: '6px' } }, imgSection,
       '🖼 サムネイル画像生成（ブログ用）');
 
+    const openThumbGemFromSectionBtn = createEl('button', {
+      type: 'button',
+      style: {
+        width: '100%',
+        padding: '9px 10px',
+        margin: '0 0 12px 0',
+        borderRadius: '8px',
+        border: '1px solid #bbf7d0',
+        background: '#f0fdf4',
+        color: '#15803d',
+        fontSize: '13px',
+        fontWeight: '700',
+        cursor: 'pointer'
+      }
+    }, imgSection, 'サムネイルGemを開く');
+
+    openThumbGemFromSectionBtn.onclick = () => {
+      window.open(THUMBNAIL_GEM_URL, '_blank');
+    };
+
     createEl('label', { className: 'eisai-label' }, imgSection, '画像スタイルを選択');
     const styleSelect = createEl('select', {
       className: 'eisai-input',
@@ -1721,12 +1802,15 @@ ${personThumbnailRules}
       const prompt = `英才個別学院の教室ブログ本文を作成してください。
 
 【絶対条件】
-- 出力はHTML本文のみ。コードブロック、Markdown、説明文、CTA素材は出さない。
+- 出力は「HTML本文」＋「CTA_DATAブロック」のみ。
+- コードブロック、Markdown、前置き、解説は出さない。
 - <html>タグは不要。必ず<h1>から始める。
 - 本文は段落中心。箇条書きだけの記事は禁止。
 - 目安は900〜1400字。速く生成するため、長くしすぎない。
 - 入力にない実績、点数、学校名、生徒発言、キャンペーンは作らない。
-- 「説明文1」「相談ポイント」「体験ポイント」「締めの言葉」は出力しない。
+- CTAリンク、電話番号、申し込みボタンHTMLは作らない。
+- 記事本文の後ろに、下記のCTA_DATAブロックを必ず付ける。
+- 「説明文1」「相談ポイント」「体験ポイント」「締めの言葉」はCTA_DATAブロックの中だけに出す。
 
 【教室情報】
 校舎名: ${kosha}
@@ -1745,7 +1829,21 @@ ${formContent}
 <h2>見出し</h2>
 <p>教室で行った取り組みと変化を書く。</p>
 <h2>まとめ</h2>
-<p>前向きな締め。CTAリンクや電話番号は書かない。</p>`;
+<p>前向きな締め。CTAリンクや電話番号は書かない。</p>
+
+<!--CTA_DATA_START-->
+説明文1: 記事の内容に合わせた、不安を解消する一言
+説明文2: 教室見学や相談へのハードルを下げる優しい一言
+相談ポイント1: 記事内容に関連する相談内容
+相談ポイント2: 記事内容に関連する相談内容
+相談ポイント3: 記事内容に関連する相談内容
+相談ポイント4: 記事内容に関連する相談内容
+体験ポイント1: 体験授業や相談で得られるメリット
+体験ポイント2: 体験授業や相談で得られるメリット
+体験ポイント3: 体験授業や相談で得られるメリット
+体験ポイント4: 体験授業や相談で得られるメリット
+締めの言葉: 校舎名と室長名を入れた、心を込めた最後のメッセージ
+<!--CTA_DATA_END-->`;
 
       const input = document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
       if (!input) {
