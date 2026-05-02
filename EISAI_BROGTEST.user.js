@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.73
+// @version      0.56.74
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.73';
+  const CURRENT_VERSION = '0.56.74';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
 
   const BLOG_TYPES = {
@@ -32,7 +32,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.73 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.74 起動');
 
   let lastBlogHtml = '';
 
@@ -197,27 +197,21 @@
     "     - 本文は必ず <h1>, <h2>, <p>, <ul>, <li>, <strong> などのHTMLタグを実際に使って出力してください。",
     "     - 通常の文章だけ、Markdown見出し（# や ##）、箇条書きだけの出力は禁止です。",
     "     - ```html などのコードブロックで囲まず、貼り付け可能なHTML本文だけを出力してください。",
+    "     - 箇条書き中心の記事は禁止です。本文の中心は必ず段落（<p>）で書き、箇条書きは具体的な取り組みを整理する場合だけにしてください。",
     "  2. 構成:",
     "     - <h1>: 魅力的なタイトル（32文字以内推奨）",
     "     - 導入: 読者の悩みに寄り添う共感パート",
-    "     - 本文: 具体的なエピソード、解決策、教室の取り組み（見出し<h2>, <h3>を活用）",
+    "     - 本文: 具体的なエピソード、解決策、教室の取り組み（見出し<h2>, <h3>を活用し、各見出しの下に自然な段落を2つ以上入れる）",
     "     - 結び: 前向きなメッセージと行動喚起",
-    "  3. CTAセクション（重要）:",
-    "     記事の最後には、記事の内容に即したCTAデータを以下の形式で必ず出力してください。",
-    "     <!--CTA_DATA_START-->",
-    "     説明文1：[記事の内容に合わせた、不安を解消する一言]",
-    "     説明文2：[教室見学や相談へのハードルを下げる優しい一言]",
-    "     相談ポイント1：[記事関連の相談内容1]",
-    "     相談ポイント2：[記事関連の相談内容2]",
-    "     体験ポイント1：[体験で得られるメリット1]",
-    "     体験ポイント2：[体験で得られるメリット2]",
-    "     締めの言葉：[校舎名]室長 [室長名]より、心を込めた最後のメッセージ",
-    "     <!--CTA_DATA_END-->",
+    "  3. CTA素材・内部メモは出力しない:",
+    "     - 説明文1、説明文2、相談ポイント、体験ポイント、締めの言葉などのCTA用データは出力しないでください。",
+    "     - 記事本文として読めるHTMLだけを出力してください。",
     "",
     "  【禁止事項】",
     "  - 嘘や架空の実績を書かない",
     "  - 不自然な日本語やAI特有の硬い表現を避ける",
     "  - HTMLタグなしのプレーンテキストで出力しない",
+    "  - 説明文1・相談ポイント・体験ポイントなどの内部項目を出力しない",
     "  - マークダウンのコードブロック（```html）で囲まない（そのままブラウザでレンダリングできる形式で）"
   ].join("\n");
 
@@ -673,6 +667,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           const ctaData = parseCtaData(raw);
           decoded = decoded.replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '');
           decoded = decoded.replace(/説明文1[:：].+[\s\S]*?締めの言葉[:：].+/gi, '');
+          decoded = decoded.replace(/^\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：].*$/gim, '');
           decoded = decoded.replace(/<p[^>]*style=['"][^'"]*color:\s*red[^'"]*['"][^>]*>\s*■+CTAセクション■+\s*<\/p>/gi, '');
           decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '');
           decoded = ensureHtmlContent(decoded);
@@ -1064,6 +1059,22 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
     }, step2BtnWrap, 'Geminiへ送信して記事生成');
 
+    const returnResultBtn = createEl('button', {
+      style: {
+        display: 'none',
+        width: '100%',
+        padding: '10px',
+        marginTop: '8px',
+        background: '#16a34a',
+        color: '#ffffff',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: '600',
+        fontSize: '14px',
+        cursor: 'pointer'
+      }
+    }, step2, '生成完了画面に戻る');
+
     nextBtn.onclick = function () {
       step1.style.display = 'none';
       step2.style.display = 'block';
@@ -1163,10 +1174,19 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       statusDiv.textContent = message;
       statusDiv.classList.add('show');
       copyBtn.style.display = 'block';
+      returnResultBtn.style.display = 'block';
       setTimeout(() => {
         resultStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 50);
     }
+
+    returnResultBtn.onclick = () => {
+      if (!lastBlogHtml) {
+        alert('まだコピーできるブログHTMLがありません。生成完了後に使えます。');
+        return;
+      }
+      showResultStep(statusDiv.textContent || '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。');
+    };
 
     editBackBtn.onclick = () => {
       resultStep.style.display = 'none';
@@ -1519,6 +1539,7 @@ ${personThumbnailRules}
       formStatusDiv.textContent = '📨 ブログ生成用YAMLを送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。';
       formStatusDiv.classList.add('show');
       resultStep.style.display = 'none';
+      returnResultBtn.style.display = 'none';
       copyBtn.style.display = 'none';
       imgSection.style.display = 'none';
       imgExecBtn.style.display = 'none';
