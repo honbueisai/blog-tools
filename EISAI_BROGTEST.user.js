@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.80
+// @version      0.56.81
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.80';
+  const CURRENT_VERSION = '0.56.81';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.80 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.81 起動');
 
   let lastBlogHtml = '';
 
@@ -750,15 +750,16 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           decoded = decoded.replace(/^\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：].*$/gim, '');
           decoded = decoded.replace(/<p[^>]*style=['"][^'"]*color:\s*red[^'"]*['"][^>]*>\s*■+CTAセクション■+\s*<\/p>/gi, '');
           decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '');
+          const hasRequiredHtml = /<h1[\s>]/i.test(decoded) && /<p[\s>]/i.test(decoded);
           decoded = ensureHtmlContent(decoded);
 
           const articleText = decoded
             .replace(/<[^>]*>/g, '')
             .replace(/\s+/g, '')
             .trim();
-          if (articleText.length < 120) {
+          if (!hasRequiredHtml || articleText.length < 300) {
             lastBlogHtml = '';
-            statusDiv.textContent = '❌ Gemの出力にブログ本文HTMLが含まれていません。CTA素材だけ、または本文が短すぎます。Gemの出力を確認して、もう一度「Geminiへ送信して記事生成」を押してください。';
+            statusDiv.textContent = '❌ Gemの出力がブログ本文HTMLではありません。<h1>と<p>を含む本文HTMLが必要です。Gemの出力を確認して、もう一度「Geminiへ送信して記事生成」を押してください。';
             statusDiv.classList.add('show');
             copyBtn.style.display = 'none';
             return;
@@ -1870,24 +1871,48 @@ ${personThumbnailRules}
 - 締め：保護者への前向きなメッセージ`
       };
 
-      const prompt = `以下の入力情報をもとに、英才個別学院の教室ブログ記事を作成してください。
+      const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
-記事タイプ:
-${config.label}
+      const prompt = `あなたは英才個別学院の教室ブログ専門ライターです。
+以下の入力情報をもとに、保護者向けのブログ記事をWordPressに貼れるHTMLで作成してください。
 
-校舎名:
-${kosha}
+【最重要】
+- 出力の最初の文字は必ず <h1> にしてください。
+- <h1> 1個、<h2> 3個以上、<p> 8個以上を使ってください。
+- 本文は900〜1400字程度。段落中心で、箇条書きだけの記事は禁止です。
+- 「説明文1」「相談ポイント」「体験ポイント」「締めの言葉」は本文中に出さず、CTA_DATAブロックの中だけに出してください。
+- CTA_DATAだけの出力は禁止です。必ず先にブログ本文HTMLを書いてください。
+- コードブロック、Markdown、前置き、解説、確認文は不要です。
+- 入力にない実績、点数、学校名、生徒発言、キャンペーンは作らないでください。
 
-室長名:
-${shichou}
+【出力順序】
+1. ブログ本文HTML
+2. CTA_DATAブロック
 
-入力情報:
+【教室情報】
+校舎名: ${kosha}
+室長名: ${shichou}
+
+${typeInstruction}
+
+【入力情報】
 ${formContent}
 
-出力:
-Gemのカスタム指示どおり、ブログ本文HTMLを先に書き、その後にCTA_DATAブロックを付けてください。
-CTA_DATAだけの出力は禁止です。
-前置き、解説、Markdown、コードブロックは不要です。`;
+【CTA_DATAの形式】
+本文HTMLの後ろに、実際の記事内容に合わせた文言を入れてください。
+<!--CTA_DATA_START-->
+説明文1: ...
+説明文2: ...
+相談ポイント1: ...
+相談ポイント2: ...
+相談ポイント3: ...
+相談ポイント4: ...
+体験ポイント1: ...
+体験ポイント2: ...
+体験ポイント3: ...
+体験ポイント4: ...
+締めの言葉: ...
+<!--CTA_DATA_END-->`;
 
       formStatusDiv.textContent = isBlogGemPage()
         ? '📨 ブログGemへ送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。'
