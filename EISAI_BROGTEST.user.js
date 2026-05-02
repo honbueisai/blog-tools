@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.75
+// @version      0.56.76
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.75';
+  const CURRENT_VERSION = '0.56.76';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
 
   const BLOG_TYPES = {
@@ -32,7 +32,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.75 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.76 起動');
 
   let lastBlogHtml = '';
 
@@ -596,7 +596,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     let last = '';
     let stableCount = 0;
     let pollCount = 0;
-    const maxPollCount = 240;
+    const maxPollCount = 120;
     const initialNode = findLatestBlogResponseNode();
     const initialText = initialNode ? (initialNode.textContent || initialNode.innerText || '') : '';
     const showReady = (message) => {
@@ -627,6 +627,10 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
 
       const text = latest.textContent || latest.innerText || '';
+      if (pollCount === 60 && text.length < 100) {
+        statusDiv.textContent = '⚠️ 生成に時間がかかっています。Gemini側で止まっている場合は、Geminiの停止ボタンで一度止めてから、もう一度送信してください。';
+        statusDiv.classList.add('show');
+      }
       if (latest === initialNode && text === initialText) {
         if (pollCount % 30 === 0) {
           console.log('[Eisai] 新しいGemini応答待ち', { pollCount, textLength: text.length });
@@ -1659,12 +1663,11 @@ ${personThumbnailRules}
       if (!ctaTel) { alert('電話番号を設定してください\n例：00000000000 ※ハイフンなし'); return; }
       if (!/^https?:\/\//i.test(ctaUrl)) ctaUrl = 'https://' + ctaUrl;
 
-      const esc = (s) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       let formContent = '';
       config.fields.forEach(field => {
         const val = typeData[field.key] || '';
         if (val.trim()) {
-          formContent += `${field.label}: ${val} \n`;
+          formContent += `【${field.label}】\n${val}\n\n`;
         }
       });
 
@@ -1715,14 +1718,34 @@ ${personThumbnailRules}
 
       const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
-      let yaml = MASTER_YAML;
-      yaml = yaml.replace('input_required:', `article_type: "${currentBlogType}"\n\n${typeInstruction} \n\n【入力された情報】\n${formContent} \ninput_required: `);
-      yaml = yaml.replace(/__THEME__/g, esc(config.label.replace(/^[^\s]+\s/, '')));
-      yaml = yaml.replace(/__MEMO__/g, esc(formContent));
-      yaml = yaml.replace(/__KOSHA__/g, esc(kosha));
-      yaml = yaml.replace(/__SHICHOU__/g, esc(shichou));
-      yaml = yaml.replace(/__CTA_URL__/g, esc(ctaUrl));
-      yaml = yaml.replace(/__CTA_TEL__/g, esc(ctaTel));
+      const prompt = `英才個別学院の教室ブログ本文を作成してください。
+
+【絶対条件】
+- 出力はHTML本文のみ。コードブロック、Markdown、説明文、CTA素材は出さない。
+- <html>タグは不要。必ず<h1>から始める。
+- 本文は段落中心。箇条書きだけの記事は禁止。
+- 目安は900〜1400字。速く生成するため、長くしすぎない。
+- 入力にない実績、点数、学校名、生徒発言、キャンペーンは作らない。
+- 「説明文1」「相談ポイント」「体験ポイント」「締めの言葉」は出力しない。
+
+【教室情報】
+校舎名: ${kosha}
+室長名: ${shichou}
+
+${typeInstruction}
+
+【入力情報】
+${formContent}
+
+【HTML構成】
+<h1>タイトル</h1>
+<p>導入。保護者の不安に寄り添う。</p>
+<h2>見出し</h2>
+<p>現場で見えた具体的な場面を書く。</p>
+<h2>見出し</h2>
+<p>教室で行った取り組みと変化を書く。</p>
+<h2>まとめ</h2>
+<p>前向きな締め。CTAリンクや電話番号は書かない。</p>`;
 
       const input = document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
       if (!input) {
@@ -1730,7 +1753,7 @@ ${personThumbnailRules}
         return;
       }
 
-      formStatusDiv.textContent = '📨 ブログ生成用YAMLを送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。';
+      formStatusDiv.textContent = '📨 高速テスト用プロンプトを送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。';
       formStatusDiv.classList.add('show');
       resultStep.style.display = 'none';
       returnResultBtn.style.display = 'none';
@@ -1741,7 +1764,7 @@ ${personThumbnailRules}
 
       input.focus();
       document.execCommand('selectAll', false, null);
-      document.execCommand('insertText', false, yaml);
+      document.execCommand('insertText', false, prompt);
       input.dispatchEvent(new Event('input', { bubbles: true }));
 
       await sleep(500);
