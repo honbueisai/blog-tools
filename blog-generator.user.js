@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.56.70
-// @description  英才ブログ生成ツール (Gemini3対応 / 本文HTMLテンプレート明示)
+// @version      0.56.71
+// @description  英才ブログ生成ツール (Gemini3対応 / 自然言語プロンプトに刷新)
 // @author       Yuan
 // @match        https://gemini.google.com/*
 // @updateURL    https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-btn-v0-56-68';
   const STORAGE_KEY = 'eisai_blog_info_v05668';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.70';
+  const CURRENT_VERSION = '0.56.71';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -159,63 +159,57 @@
   // 2. ブログ用 MASTER_YAML
   // =========================================================
   const MASTER_YAML = [
-    "# 出力の絶対条件（最優先・必読）",
-    "# - あなたの応答の【最初の文字】は必ず `<h1>` にしてください。",
-    "# - 本文HTMLを書かず、説明文1・相談ポイント・体験ポイント・締めの言葉だけを返した応答は失敗扱いです。",
-    "# - 本文HTMLには <h2> を3個以上、<p> を8個以上、合計900字以上を含めてください。",
-    "# - 応答の末尾に <!--CTA_DATA_START--> ... <!--CTA_DATA_END--> ブロックを必ず1回だけ出力してください。",
-    "# - 出力はそのままブラウザでレンダリングできる純粋なHTMLにし、```html などのコードブロックで囲まないでください。",
+    "あなたは英才個別学院の教室ブログを書く専門ライターです。",
+    "保護者向けに、現場感のある自然な日本語で、ブログ記事をHTMLで書いてください。",
     "",
-    "version: \"5.0-eisai\"",
-    "role: \"Professional Cram School Blog Writer\"",
-    "tone_and_manner: \"Empathic, Professional, Encouraging, Trustworthy\"",
-    "target_audience: \"Parents of junior high and high school students\"",
+    "------------------------------",
+    "教室情報",
+    "------------------------------",
+    "校舎: __KOSHA__",
+    "室長: __SHICHOU__",
     "",
-    "basic_info:",
-    "  classroom_name: \"__KOSHA__\"",
-    "  manager_name: \"__SHICHOU__\"",
-    "  cta_url: \"__CTA_URL__\"",
-    "  cta_tel: \"__CTA_TEL__\"",
+    "------------------------------",
+    "入力された現場情報",
+    "------------------------------",
+    "__INPUT_BLOCK__",
     "",
-    "input_required:",
+    "------------------------------",
+    "出力フォーマット（このHTML構造をそのまま埋めて出力してください）",
+    "------------------------------",
+    "<h1>記事タイトル（32文字以内）</h1>",
+    "<p>導入文。保護者の不安に寄り添う書き出し。150〜250字。</p>",
+    "<h2>1つ目の見出し（例: 生徒の状況や課題）</h2>",
+    "<p>具体的な状況や場面の描写。300字以上。</p>",
+    "<p>そこで見えた変化や気づき。200字以上。</p>",
+    "<h2>2つ目の見出し（例: 教室で行った取り組み）</h2>",
+    "<p>教室で実施した取り組みの具体例。300字以上。</p>",
+    "<p>結果や変化につながった理由。200字以上。</p>",
+    "<h2>まとめ</h2>",
+    "<p>同じ悩みを持つ保護者への前向きなメッセージで締める。150〜250字。</p>",
+    "<!--CTA_DATA_START-->",
+    "説明文1：記事内容に合わせた、不安を解消する一言（1行）",
+    "説明文2：教室見学や相談へのハードルを下げる優しい一言（1行）",
+    "相談ポイント1：記事関連の相談内容1（1行）",
+    "相談ポイント2：記事関連の相談内容2（1行）",
+    "体験ポイント1：体験で得られるメリット1（1行）",
+    "体験ポイント2：体験で得られるメリット2（1行）",
+    "締めの言葉：__KOSHA__室長 __SHICHOU__より、心を込めた最後のメッセージ（1行）",
+    "<!--CTA_DATA_END-->",
     "",
-    "instruction: |",
-    "  上記の設定と【入力された情報】に基づき、保護者の心に響くブログ記事を作成してください。",
-    "  記事のテーマは「__THEME__」です。",
-    "  ",
-    "  【出力テンプレート（この構造をそのまま埋めて出力してください）】",
-    "  <h1>魅力的なタイトル（32文字以内）</h1>",
-    "  <p>導入文（150〜250字。保護者の不安や悩みに寄り添う共感パート）</p>",
-    "  <h2>1つ目の見出し（生徒の状況や課題）</h2>",
-    "  <p>具体的な状況や場面の描写（300字以上）</p>",
-    "  <p>そこで見えた変化や気づき（200字以上）</p>",
-    "  <h2>2つ目の見出し（教室での取り組み）</h2>",
-    "  <p>教室で実施した取り組みの具体例（300字以上）</p>",
-    "  <p>結果や変化につながった理由（200字以上）</p>",
-    "  <h2>まとめ</h2>",
-    "  <p>同じ悩みを持つ保護者への前向きなメッセージで締める（150〜250字）</p>",
-    "  <!--CTA_DATA_START-->",
-    "  説明文1：（ここに記事の内容に合わせた、不安を解消する一言を書く）",
-    "  説明文2：（ここに教室見学や相談へのハードルを下げる優しい一言を書く）",
-    "  相談ポイント1：（ここに記事関連の相談内容1を書く）",
-    "  相談ポイント2：（ここに記事関連の相談内容2を書く）",
-    "  体験ポイント1：（ここに体験で得られるメリット1を書く）",
-    "  体験ポイント2：（ここに体験で得られるメリット2を書く）",
-    "  締めの言葉：__KOSHA__室長 __SHICHOU__より、心を込めた最後のメッセージ",
-    "  <!--CTA_DATA_END-->",
-    "  ",
-    "  【出力ルール】",
-    "  - 必ず <h1> から書き始めること。CTA_DATAブロックだけを返すのは禁止。",
-    "  - 本文HTML（<h1>〜<p>...</p>のまとめ段落まで）と CTA_DATA ブロックの両方を必ず出力すること。",
-    "  - 本文中に「説明文1」「相談ポイント」「体験ポイント」「締めの言葉」を書かない。これらは CTA_DATA ブロックの中だけ。",
-    "  - 申し込みボタンHTML、電話リンク、CTAリンクは出力しない（CTAの見た目は別ツール側で生成します）。",
-    "  ",
-    "  【禁止事項】",
-    "  - 嘘や架空の実績を書かない（入力されていない点数・学校名・合格校・発言は作らない）",
-    "  - 不自然な日本語やAI特有の硬い表現を避ける",
-    "  - マークダウンのコードブロック（```html）で囲まない",
-    "  - 「もちろんです」「以下に作成します」などの前置き・後置きを書かない",
-    "  - 思考プロセスや英語の分析文を出力しない"
+    "------------------------------",
+    "絶対ルール（守れない応答は失敗扱いになります）",
+    "------------------------------",
+    "1. あなたの応答の【最初の文字】は必ず `<h1>` にしてください。前置き・解説・コードブロックは禁止です。",
+    "2. 「説明文1：…」「相談ポイント1：…」のような CTA素材だけを返してはいけません。本文HTML（<h1>〜<h2>まとめのパラグラフまで）が無い応答は失敗扱いです。",
+    "3. 本文HTMLには <h2> を3個以上、<p> を8個以上、合計900字以上を含めてください。",
+    "4. 本文HTMLの末尾に必ず <!--CTA_DATA_START--> と <!--CTA_DATA_END--> で囲んだCTA素材ブロックを1回だけ付けてください。",
+    "5. ```html などのコードブロック、Markdown見出し（#, ##）、絵文字、英語の分析文、思考プロセスは出力しないでください。",
+    "6. 「もちろんです」「以下に作成します」「こちらがHTMLです」などの前置き・後置きは禁止です。",
+    "7. 申し込みボタンHTML、電話リンク、CTAリンクのHTMLは出力しないでください（CTAの見た目は別ツール側で生成します）。",
+    "8. 入力されていない点数・学校名・合格校・生徒発言・キャンペーン・実績は作らないでください。",
+    "9. 「必ず伸びる」「絶対合格」などの断定的な広告表現は禁止です。",
+    "",
+    "それでは、上の【入力された現場情報】を使って、【出力フォーマット】の構造どおりに記事をHTMLで書いてください。応答は `<h1>` から始めてください。"
   ].join("\n");
 
   // =========================================================
@@ -1237,14 +1231,20 @@ ${personThumbnailRules}
 
       const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
+      const inputBlock = [
+        `記事タイプ: ${config.label.replace(/^[^\s]+\s/, '')}`,
+        '',
+        typeInstruction,
+        '',
+        formContent.trim()
+      ].join('\n');
+
       let yaml = MASTER_YAML;
-      yaml = yaml.replace('input_required:', `article_type: "${currentBlogType}"\n\n${typeInstruction} \n\n【入力された情報】\n${formContent} \ninput_required: `);
-      yaml = yaml.replace(/__THEME__/g, esc(config.label.replace(/^[^\s]+\s/, '')));
-      yaml = yaml.replace(/__MEMO__/g, esc(formContent));
-      yaml = yaml.replace(/__KOSHA__/g, esc(kosha));
-      yaml = yaml.replace(/__SHICHOU__/g, esc(shichou));
-      yaml = yaml.replace(/__CTA_URL__/g, esc(ctaUrl));
-      yaml = yaml.replace(/__CTA_TEL__/g, esc(ctaTel));
+      yaml = yaml.replace('__INPUT_BLOCK__', inputBlock);
+      yaml = yaml.replace(/__KOSHA__/g, kosha);
+      yaml = yaml.replace(/__SHICHOU__/g, shichou);
+      yaml = yaml.replace(/__CTA_URL__/g, ctaUrl);
+      yaml = yaml.replace(/__CTA_TEL__/g, ctaTel);
 
       const input = document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
       if (!input) {
