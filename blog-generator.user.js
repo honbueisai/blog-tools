@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.56.71
-// @description  英才ブログ生成ツール (Gemini3対応 / 自然言語プロンプトに刷新)
+// @version      0.56.72
+// @description  英才ブログ生成ツール (Gemini3対応 / 文字量を800〜1200字に調整)
 // @author       Yuan
 // @match        https://gemini.google.com/*
 // @updateURL    https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-btn-v0-56-68';
   const STORAGE_KEY = 'eisai_blog_info_v05668';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.71';
+  const CURRENT_VERSION = '0.56.72';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
 
   const BLOG_TYPES = {
@@ -177,15 +177,13 @@
     "出力フォーマット（このHTML構造をそのまま埋めて出力してください）",
     "------------------------------",
     "<h1>記事タイトル（32文字以内）</h1>",
-    "<p>導入文。保護者の不安に寄り添う書き出し。150〜250字。</p>",
+    "<p>導入文。保護者の不安に寄り添う書き出し。</p>",
     "<h2>1つ目の見出し（例: 生徒の状況や課題）</h2>",
-    "<p>具体的な状況や場面の描写。300字以上。</p>",
-    "<p>そこで見えた変化や気づき。200字以上。</p>",
+    "<p>具体的な状況や場面の描写。</p>",
     "<h2>2つ目の見出し（例: 教室で行った取り組み）</h2>",
-    "<p>教室で実施した取り組みの具体例。300字以上。</p>",
-    "<p>結果や変化につながった理由。200字以上。</p>",
+    "<p>教室で実施した取り組みと、結果や変化につながった理由。</p>",
     "<h2>まとめ</h2>",
-    "<p>同じ悩みを持つ保護者への前向きなメッセージで締める。150〜250字。</p>",
+    "<p>同じ悩みを持つ保護者への前向きなメッセージで締める。</p>",
     "<!--CTA_DATA_START-->",
     "説明文1：記事内容に合わせた、不安を解消する一言（1行）",
     "説明文2：教室見学や相談へのハードルを下げる優しい一言（1行）",
@@ -201,7 +199,7 @@
     "------------------------------",
     "1. あなたの応答の【最初の文字】は必ず `<h1>` にしてください。前置き・解説・コードブロックは禁止です。",
     "2. 「説明文1：…」「相談ポイント1：…」のような CTA素材だけを返してはいけません。本文HTML（<h1>〜<h2>まとめのパラグラフまで）が無い応答は失敗扱いです。",
-    "3. 本文HTMLには <h2> を3個以上、<p> を8個以上、合計900字以上を含めてください。",
+    "3. 本文HTMLは合計800〜1200字程度に収め、`<h2>` は3個、`<p>` は4〜7個を目安にしてください。冗長に書かないでください。",
     "4. 本文HTMLの末尾に必ず <!--CTA_DATA_START--> と <!--CTA_DATA_END--> で囲んだCTA素材ブロックを1回だけ付けてください。",
     "5. ```html などのコードブロック、Markdown見出し（#, ##）、絵文字、英語の分析文、思考プロセスは出力しないでください。",
     "6. 「もちろんです」「以下に作成します」「こちらがHTMLです」などの前置き・後置きは禁止です。",
