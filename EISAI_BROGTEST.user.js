@@ -1,12 +1,12 @@
 // ==UserScript==
-// @name         Eisai Blog Generator
-// @namespace    http://tampermonkey.net/
+// @name         EISAI_BROGTEST
+// @namespace    https://github.com/honbueisai/blog-tools/test
 // @version      0.60.00
-// @description  英才ブログ生成ツール
+// @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
-// @updateURL    https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js
-// @downloadURL  https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js
+// @updateURL    https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js
+// @downloadURL  https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
@@ -14,20 +14,19 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-60-00';
-  const BTN_ID = 'eisai-btn-v0-60-00';
-  const STORAGE_KEY = 'eisai_blog_info_v06000';
+  const TOOL_ID = 'eisai-brogtest-tool-v0-56-70';
+  const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
+  const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
   const CURRENT_VERSION = '0.60.00';
-  const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
+  const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
   const BLOG_GEM_ID = '1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf';
   const THUMBNAIL_GEM_ID = '1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ';
-  const PENDING_BLOG_PROMPT_KEY = 'eisai_blog_pending_blog_prompt';
-  const PENDING_THUMBNAIL_PROMPT_KEY = 'eisai_blog_pending_thumbnail_prompt';
-  const THUMBNAIL_SOURCE_KEY = 'eisai_blog_thumbnail_source_html';
-  const ENABLE_TEST_SAMPLE_BUTTONS = false;
+  const PENDING_BLOG_PROMPT_KEY = 'eisai_brogtest_pending_blog_prompt';
+  const PENDING_THUMBNAIL_PROMPT_KEY = 'eisai_brogtest_pending_thumbnail_prompt';
+  const THUMBNAIL_SOURCE_KEY = 'eisai_brogtest_thumbnail_source_html';
 
   const BLOG_TYPES = {
     GROWTH: 'growth_story',
@@ -40,7 +39,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.60.00 起動');
+  console.log('🚀 EISAI_BROGTEST v0.60.00 起動');
 
   let lastBlogHtml = '';
 
@@ -1410,7 +1409,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
     updateBtn.onclick = () => {
       if (!UPDATE_URL) {
-        alert('自動更新URLが設定されていません。');
+        alert('EISAI_BROGTESTはテスト版のため、自動更新は無効です。');
         return;
       }
       const ok = confirm(`現在のバージョン: v${CURRENT_VERSION} \n\n最新版を確認・インストールしますか？\n（Tampermonkeyのインストール画面が開きます）`);
@@ -1459,6 +1458,52 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       saveSetting({ name: nameIn.value, manager: managerIn.value, area: areaIn.value, url: urlIn.value, tel: telIn.value });
       alert('教室情報を保存しました');
       details.open = false;
+    };
+
+    const gemNav = createEl('div', {
+      style: {
+        display: 'flex',
+        gap: '8px',
+        margin: '0 0 12px 0'
+      }
+    }, content);
+
+    const blogGemBtn = createEl('button', {
+      type: 'button',
+      style: {
+        flex: '1',
+        padding: '8px 10px',
+        borderRadius: '999px',
+        border: '1px solid #bfdbfe',
+        background: '#eff6ff',
+        color: '#1d4ed8',
+        fontSize: '12px',
+        fontWeight: '700',
+        cursor: 'pointer'
+      }
+    }, gemNav, 'ブログGemを開く');
+
+    const thumbGemBtn = createEl('button', {
+      type: 'button',
+      style: {
+        flex: '1',
+        padding: '8px 10px',
+        borderRadius: '999px',
+        border: '1px solid #bbf7d0',
+        background: '#f0fdf4',
+        color: '#15803d',
+        fontSize: '12px',
+        fontWeight: '700',
+        cursor: 'pointer'
+      }
+    }, gemNav, 'サムネイルGemを開く');
+
+    blogGemBtn.onclick = () => {
+      window.open(BLOG_GEM_URL, '_blank');
+    };
+
+    thumbGemBtn.onclick = () => {
+      window.open(THUMBNAIL_GEM_URL, '_blank');
     };
 
     const step1 = createEl('div', { id: 'eisai-step1' }, content);
@@ -1511,7 +1556,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     const selectedTypeText = createEl('span', {}, selectedTypeLabel, '📝 結果アップ・成長ストーリー');
     const sampleButtonWrap = createEl('div', {
       style: {
-        display: ENABLE_TEST_SAMPLE_BUTTONS ? 'flex' : 'none',
+        display: 'flex',
         flexWrap: 'wrap',
         gap: '4px',
         justifyContent: 'flex-end'
@@ -1589,16 +1634,184 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
     };
 
-    const TEST_SAMPLES = {};
+    const TEST_SAMPLES = {
+      [BLOG_TYPES.GROWTH]: [
+        {
+          label: 'ペースト1',
+          values: {
+            student: '中2・篠崎第二中・Aさん・数学',
+            before: '前回の定期テストは45点。計算ミスが多く、途中式を書かずに暗算で進めてしまうことが多かった。本人も「数学は苦手だから仕方ない」と少しあきらめ気味だった。',
+            after: '今回の定期テストで84点。39点アップ。答案を返された時、本人が「初めて数学でこんな点を取れた」と少し照れながら話してくれた。',
+            actions: '・毎回の授業冒頭で計算練習を10分行った\n・途中式をノートに残すルールを作った\n・学校ワークをテスト2週間前までに1周終わらせた\n・間違えた問題だけを解き直しリストにまとめた\n・テスト前の1週間は自習に来た日に確認テストを行った',
+            reality: '最初は「どうせ数学は無理」と言っていたが、2週間ほど経つと自分から自習に来る回数が増えた。授業中も、以前は答えだけを書いていたが、途中式を見せながら「ここまでは合っていますか？」と質問できるようになった。',
+            episode: '点数が上がったことももちろん嬉しいが、一番大きな成長は、解き方を丁寧に残す習慣がついたことだと感じています。Aさん自身が「やれば変わる」と実感できたことが、次のテストにもつながると思います。'
+          }
+        },
+        {
+          label: 'ペースト2',
+          values: {
+            student: '中1・西中原中・Bくん・英語',
+            before: '入塾時は英単語を覚えることが苦手で、前回テストは52点。本文を読む前にあきらめてしまい、長文問題はほとんど空欄だった。',
+            after: '今回の定期テストで76点。24点アップ。本人が「単語を覚えると読める文が増える」と話し、テスト後も自分から単語練習を続けている。',
+            actions: '・授業前に英単語チェックを毎回実施した\n・間違えた単語だけを小さなカードにまとめた\n・教科書本文を1文ずつ日本語に直す練習をした\n・テスト範囲の本文を音読してから問題演習に入った\n・自習の日に10問だけ確認テストを行った',
+            reality: '最初は単語テストで半分も取れず悔しそうにしていたが、3週目あたりから満点の日が増えた。授業中に「この単語、前にやったやつだ」と自分で気づける場面が出てきた。',
+            episode: 'Bくんは一気に全部を変えたわけではありません。毎回の小さな確認を積み重ねたことで、英語に向き合う表情が変わってきました。'
+          }
+        }
+      ],
+      [BLOG_TYPES.EVENT]: [
+        {
+          label: 'ペースト1',
+          values: {
+            eventName: '篠崎第二中 定期テスト直前対策会・中1〜中3対象',
+            flow: '・テスト範囲表を見ながら優先順位を確認\n・学校ワークの未完了部分をチェック\n・数学と英語は苦手単元ごとに演習\n・最後に10問の確認テストを実施',
+            scene: '開始直後は学校ワークの残りに焦っている生徒もいたが、やる順番を一緒に決めると表情が落ち着いた。夕方には自分から質問に来る生徒が増えた。',
+            benefit: '・テスト前に何をすればよいか整理できる\n・家では進みにくい学校ワークを教室で進められる\n・苦手単元を先生に質問しながら確認できる',
+            example: '前回の対策会では、数学の計算分野を集中的に確認した生徒が、テスト本番で計算問題を落としにくくなりました。準備の仕方を整えることが大切です。'
+          }
+        },
+        {
+          label: 'ペースト2',
+          values: {
+            eventName: '冬期講習 学習リズム立て直し講座・中学生対象',
+            flow: '・初回面談で冬休み中の目標を決める\n・苦手単元を1人ずつ確認\n・授業後にその日の復習内容を記録\n・講習後半で確認テストを実施',
+            scene: '冬休みは生活リズムが崩れやすい時期だが、午前中から授業に来ることで表情がすっきりしている生徒が多かった。授業後に残って学校課題を進める姿も見られた。',
+            benefit: '・冬休み中に勉強のペースを作れる\n・3学期につながる苦手単元を整理できる\n・学校課題を後回しにしにくくなる',
+            example: '昨年も、冬期講習をきっかけに自習習慣がついた生徒がいました。短い休みでも、毎日の使い方で3学期のスタートは変わります。'
+          }
+        }
+      ],
+      [BLOG_TYPES.PERSON]: [
+        {
+          label: 'ペースト1',
+          values: {
+            personInfo: '講師・田中先生・数学と理科担当・大学2年生',
+            points: '・説明する前に必ず生徒の考えを聞く\n・正解だけでなく途中式の良いところをほめる\n・質問しづらい生徒にも自然に声をかける',
+            episode: 'ある中2の生徒が、最初は「質問するのが恥ずかしい」と話していました。田中先生は毎回「ここまではどう考えた？」と聞き、少しずつ生徒が自分の言葉で説明できるようになりました。',
+            message: '田中先生は、ただ解き方を教えるだけでなく、生徒が安心して間違えられる空気を作ってくれる先生です。苦手な科目でも、前向きに取り組むきっかけを作ってくれます。'
+          }
+        },
+        {
+          label: 'ペースト2',
+          values: {
+            personInfo: '室長・湯浅・武蔵新城校・学習相談担当',
+            points: '・最初に保護者と生徒の不安を丁寧に聞く\n・点数だけでなく勉強の進め方を見る\n・家庭学習で続けられる小さな行動まで決める',
+            episode: '面談で「何から手をつければいいかわからない」と話していたご家庭がありました。まず学校ワークとテスト範囲を一緒に確認し、1週間でやることを3つに絞ると、親子で少し安心した表情になりました。',
+            message: '勉強の悩みは、原因が一つとは限りません。だからこそ、まず状況を整理し、お子さまに合った一歩を一緒に見つけたいと考えています。'
+          }
+        }
+      ],
+      [BLOG_TYPES.SERVICE]: [
+        {
+          label: 'ペースト1',
+          values: {
+            serviceName: '無料学習相談会',
+            target: '・勉強しているのに点数が上がらない\n・学校ワークがいつもテスト直前に残ってしまう\n・家での声かけがケンカになりやすい\n・塾を変えるべきか迷っている',
+            flow: '・現在の成績や学習状況をヒアリング\n・学校ワークや答案を見ながら課題を整理\n・次のテストまでにやることを一緒に決める\n・必要に応じて体験授業を案内',
+            scene: '面談では、保護者の方が「本人はやっていると言うけれど結果につながらない」と話されることが多いです。実際にノートや答案を見ると、勉強時間ではなくやり方に原因があるケースもあります。',
+            goal: '相談後に、親子で「まず何から始めるか」が見える状態を目指します。入会するかどうかよりも、今の不安を整理する時間にしていただきたいです。'
+          }
+        },
+        {
+          label: 'ペースト2',
+          values: {
+            serviceName: '無料体験授業',
+            target: '・先生との相性を見てから決めたい\n・個別指導が合うか試してみたい\n・苦手単元を1回見てもらいたい\n・教室の雰囲気を知りたい',
+            flow: '・事前に苦手単元を確認\n・実際の個別指導を体験\n・授業後に理解度と課題を報告\n・今後の学習プランを提案',
+            scene: '体験前は緊張していた生徒も、先生が横で声をかけながら進めると、少しずつ手が動き始めます。授業後に「ここなら質問しやすいかも」と話してくれる生徒もいます。',
+            goal: '体験授業を通して、教室の雰囲気や先生との相性を確認していただきたいです。お子さまが前向きに通えるかどうかを大切にしています。'
+          }
+        }
+      ],
+      [BLOG_TYPES.SCORE]: [
+        {
+          label: 'ペースト1',
+          values: {
+            testName: '2学期期末テスト・篠崎第二中 中1〜中3',
+            scoreList: '中2 Aさん 数学 45点→84点（+39点）\n中1 Bくん 英語 52点→76点（+24点）\n中3 Cさん 理科 68点→88点（+20点）\n中2 Dさん 社会 72点→91点',
+            reason: '・学校ワークをテスト2週間前までに1周終わらせた\n・間違えた問題だけを解き直しリストにした\n・授業冒頭で確認テストを続けた\n・自習に来た日に先生へ質問する流れを作った',
+            comment: '今回の結果で嬉しいのは、点数だけではありません。テスト前の準備の仕方が変わり、自分から質問する生徒が増えたことが大きな成長です。',
+            pickup: 'Aさんは数学で途中式を書く習慣を徹底しました。最初は面倒がっていましたが、ミスの原因が見えるようになり、テスト本番でも落ち着いて解ける問題が増えました。'
+          }
+        },
+        {
+          label: 'ペースト2',
+          values: {
+            testName: '1学期期末テスト・武蔵新城校 通塾生結果',
+            scoreList: '中1 Eさん 英語 88点\n中2 Fくん 数学 61点→80点（+19点）\n中3 Gさん 国語 70点→86点（+16点）\n中2 Hさん 理科 92点',
+            reason: '・テスト範囲表を見て優先順位を決めた\n・苦手単元を授業で先に確認した\n・暗記科目は小テスト形式で反復した\n・テスト前の自習時間を固定した',
+            comment: '高得点を取った生徒も、点数アップした生徒も、共通しているのは準備を早めに始めたことです。直前だけでなく、普段の積み重ねが結果につながりました。',
+            pickup: 'Fくんは計算問題の取りこぼしが課題でした。毎回の授業で最初に5問だけ計算確認を続け、テスト前には自分でミスのパターンを説明できるようになりました。'
+          }
+        }
+      ],
+      [BLOG_TYPES.OTHER]: [
+        {
+          label: 'ペースト1',
+          values: {
+            theme: '定期テスト前に学校ワークを早く終わらせる大切さ',
+            target: 'テスト直前に学校ワークが残ってしまう中学生の保護者',
+            actions: '・テスト範囲表が出た日にワークのページ数を確認\n・1日ごとの進める量を一緒に決めた\n・授業のたびに進捗を確認\n・間違えた問題だけを解き直す時間を確保',
+            episode: '毎回テスト直前に焦っていた生徒が、今回は1週間前にワークを終わらせることができました。その分、苦手な単元の解き直しに時間を使うことができ、本人も少し余裕を持ってテストに向かえました。'
+          }
+        },
+        {
+          label: 'ペースト2',
+          values: {
+            theme: '自習室をうまく使える生徒が増えています',
+            target: '家だと集中できず、勉強時間の作り方に悩んでいる保護者',
+            actions: '・自習に来る曜日を固定した\n・来たら最初に今日やることを先生に伝える\n・終わったらチェックを受ける\n・質問したい問題にふせんを貼る',
+            episode: '最初は自習に来ても何をすればいいか迷っていた生徒が、最近は教室に来るとすぐに学校ワークを開くようになりました。小さなルールを決めるだけでも、勉強の始めやすさは変わります。'
+          }
+        }
+      ]
+    };
 
     function renderSampleButtons(type) {
-      void type;
-      if (!ENABLE_TEST_SAMPLE_BUTTONS) return;
+      while (sampleButtonWrap.firstChild) {
+        sampleButtonWrap.removeChild(sampleButtonWrap.firstChild);
+      }
+
+      const samples = TEST_SAMPLES[type] || [];
+      samples.forEach(sample => {
+        const btn = createEl('button', {
+          type: 'button',
+          style: {
+            padding: '3px 7px',
+            borderRadius: '999px',
+            border: '1px solid #93c5fd',
+            background: '#ffffff',
+            color: '#1d4ed8',
+            fontSize: '11px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+          }
+        }, sampleButtonWrap, sample.label);
+
+        btn.title = 'テスト用サンプルをフォームに入力';
+        btn.onclick = () => applyTypeSample(type, sample);
+      });
     }
 
     function applyTypeSample(type, sample) {
-      void type;
-      void sample;
+      formInputs[type] = formInputs[type] || {};
+      Object.keys(sample.values).forEach(key => {
+        const value = sample.values[key];
+        formInputs[type][key] = value;
+        const input = formInputs[type][key + '_el'];
+        if (input) {
+          input.value = value;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+
+      formStatusDiv.textContent = '✅ テスト用サンプルを入力しました。このまま「Geminiへ送信して記事生成」を押せます。';
+      formStatusDiv.classList.add('show');
+      resultStep.style.display = 'none';
+      copyBtn.style.display = 'none';
+      imgSection.style.display = 'none';
+      lastBlogHtml = '';
     }
 
     function renderTypeForm(type) {
@@ -1855,6 +2068,26 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     function updatePersonThumbnailNotice() {
       personThumbnailNotice.style.display = isPersonThumbnailContext() ? 'block' : 'none';
     }
+
+    const openThumbGemFromSectionBtn = createEl('button', {
+      type: 'button',
+      style: {
+        width: '100%',
+        padding: '9px 10px',
+        margin: '0 0 12px 0',
+        borderRadius: '8px',
+        border: '1px solid #bbf7d0',
+        background: '#f0fdf4',
+        color: '#15803d',
+        fontSize: '13px',
+        fontWeight: '700',
+        cursor: 'pointer'
+      }
+    }, imgSection, 'サムネイルGemを開く');
+
+    openThumbGemFromSectionBtn.onclick = () => {
+      window.open(THUMBNAIL_GEM_URL, '_blank');
+    };
 
     createEl('label', { className: 'eisai-label' }, imgSection, '画像スタイルを選択');
     const styleSelect = createEl('select', {
