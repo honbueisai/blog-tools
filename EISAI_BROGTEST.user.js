@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.85
+// @version      0.56.86
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.85';
+  const CURRENT_VERSION = '0.56.86';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.85 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.86 起動');
 
   let lastBlogHtml = '';
 
@@ -592,6 +592,11 @@
     return [];
   }
 
+  function normalizeObjectArray(value) {
+    if (!Array.isArray(value)) return [];
+    return value.filter(item => item && typeof item === 'object');
+  }
+
   function normalizeJsonCtaData(rawCta) {
     if (!rawCta || typeof rawCta !== 'object') return null;
     const consultationPoints = normalizeTextArray(rawCta.consultationPoints || rawCta.consultation_points);
@@ -629,11 +634,49 @@
     const title = String(article.title || '').trim();
     if (!title) return '';
 
+    function renderParagraph(paragraph) {
+      html.push('<p style="margin: 0 0 18px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+    }
+
+    function renderHighlight(text) {
+      html.push('<p style="margin: 0 0 18px; font-size: 16px;"><strong style="color: #dc2626; background: linear-gradient(transparent 58%, #fef3c7 58%); padding: 0 2px; font-weight: 800;">' + escapeHtml(text) + '</strong></p>');
+    }
+
+    function renderCheckList(titleText, items) {
+      if (!items.length) return;
+      html.push('<div style="border: 2px solid #1d8acb; border-radius: 8px; margin: 22px 0; overflow: hidden; background: #ffffff;">');
+      html.push('<div style="background: #1d8acb; color: #ffffff; padding: 9px 15px; font-size: 15px; font-weight: 800;">' + escapeHtml(titleText) + '</div>');
+      html.push('<ul style="list-style: none; margin: 0; padding: 15px 20px; line-height: 1.9;">');
+      items.forEach(item => {
+        html.push('<li style="margin: 0 0 8px; padding-left: 1.4em; text-indent: -1.4em;">✓ ' + escapeHtml(item) + '</li>');
+      });
+      html.push('</ul>');
+      html.push('</div>');
+    }
+
+    function renderManagerNote(note) {
+      if (!note) return;
+      html.push('<div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 16px 18px; margin: 22px 0;">');
+      html.push('<div style="color: #0369a1; font-weight: 800; margin: 0 0 8px;">室長より</div>');
+      html.push('<p style="margin: 0; font-size: 16px; line-height: 1.9;">' + escapeHtml(note) + '</p>');
+      html.push('</div>');
+    }
+
+    function renderPhotoSuggestion(suggestion) {
+      if (!suggestion || typeof suggestion !== 'object') return;
+      const label = String(suggestion.label || suggestion.title || '写真挿入候補').trim();
+      const description = String(suggestion.description || suggestion.detail || suggestion.text || '').trim();
+      if (!description) return;
+      html.push('<div data-photo-placeholder="true" style="border: 2px dashed #93c5fd; background: #eff6ff; color: #1e40af; border-radius: 8px; padding: 13px 16px; margin: 24px 0; font-size: 15px; line-height: 1.8;">');
+      html.push('<strong style="font-weight: 800;">' + escapeHtml(label) + '：</strong>' + escapeHtml(description));
+      html.push('</div>');
+    }
+
     html.push('<div data-eisai-article="true" style="font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; color: #1f2937; line-height: 1.95;">');
     html.push('<h1 style="font-size: 28px; line-height: 1.45; margin: 0 0 24px; padding: 18px 22px; border-left: 5px solid #1d8acb; background: #eef8ff; font-weight: 800;">' + escapeHtml(title) + '</h1>');
 
     normalizeTextArray(article.greeting || article.openingGreeting).forEach(paragraph => {
-      html.push('<p style="margin: 0 0 18px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+      renderParagraph(paragraph);
     });
 
     const leadParagraphs = normalizeTextArray(article.lead || article.introduction);
@@ -645,33 +688,53 @@
       html.push('</div>');
     }
 
+    const empathyBox = article.empathyBox || article.empathy_box;
+    if (empathyBox && typeof empathyBox === 'object') {
+      const label = String(empathyBox.label || empathyBox.title || '保護者の方へ').trim();
+      const paragraphs = normalizeTextArray(empathyBox.paragraphs || empathyBox.body || empathyBox.content);
+      if (paragraphs.length) {
+        html.push('<div style="background: #fff7ed; border-left: 5px solid #f97316; border-radius: 0 8px 8px 0; padding: 16px 18px; margin: 0 0 28px;">');
+        html.push('<div style="color: #c2410c; font-weight: 800; margin: 0 0 8px;">' + escapeHtml(label) + '</div>');
+        paragraphs.forEach(paragraph => {
+          html.push('<p style="margin: 0 0 10px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+        });
+        html.push('</div>');
+      }
+    }
+
     normalizeTextArray(article.summary || article.keyMessage).slice(0, 2).forEach(paragraph => {
-      html.push('<p style="margin: 0 0 20px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+      renderHighlight(paragraph);
     });
 
     const sections = Array.isArray(article.sections) ? article.sections : [];
-    sections.forEach(section => {
+    const photoSuggestions = normalizeObjectArray(article.photoSuggestions || article.photo_suggestions);
+    sections.forEach((section, index) => {
       if (!section || typeof section !== 'object') return;
+      const sectionIndex = index + 1;
       const heading = String(section.heading || section.title || '').trim();
       if (heading) html.push('<h2 style="font-size: 21px; line-height: 1.5; margin: 36px 0 18px; padding: 16px 18px; border-left: 5px solid #1d8acb; background: #eef8ff; font-weight: 800;">' + escapeHtml(heading) + '</h2>');
 
       normalizeTextArray(section.paragraphs || section.body || section.content).forEach(paragraph => {
-        html.push('<p style="margin: 0 0 18px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+        renderParagraph(paragraph);
       });
 
+      normalizeTextArray(section.highlights || section.highlight || section.emphasis).slice(0, 2).forEach(renderHighlight);
+
       const bullets = normalizeTextArray(section.bullets || section.points);
-      if (bullets.length) {
-        html.push('<ul style="margin: 0 0 22px 1.2em; padding: 0; line-height: 1.9;">');
-        bullets.forEach(point => {
-          html.push('<li style="margin: 0 0 6px;">' + escapeHtml(point) + '</li>');
-        });
-        html.push('</ul>');
-      }
+      renderCheckList(String(section.bulletTitle || section.bullet_title || 'ここがポイント').trim(), bullets);
+      renderManagerNote(String(section.managerNote || section.manager_note || '').trim());
+      photoSuggestions
+        .filter(suggestion => Number(suggestion.afterSection || suggestion.after_section || 0) === sectionIndex)
+        .forEach(renderPhotoSuggestion);
     });
 
     normalizeTextArray(article.closing || article.conclusion).forEach(paragraph => {
-      html.push('<p style="margin: 0 0 18px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+      renderParagraph(paragraph);
     });
+
+    photoSuggestions
+      .filter(suggestion => !Number(suggestion.afterSection || suggestion.after_section || 0))
+      .forEach(renderPhotoSuggestion);
 
     html.push('</div>');
 
@@ -2073,15 +2136,24 @@ ${personThumbnailRules}
 
 【本文の書き方ルール】
 - 冒頭は、保護者の不安や悩みに寄り添うところから始めてください。いきなり成果や宣伝から入らないでください。
-- 保護者が「うちの子にも当てはまるかもしれない」と感じる温度で書いてください。
+- 保護者、とくにお母さんが「うちの子にも当てはまるかもしれない」「一人で抱え込まなくていいかもしれない」と感じる温度で書いてください。
+- 家で見える不安、親子でピリピリしてしまう気持ち、声かけに迷う気持ちにやさしく触れてください。ただし保護者を責めないでください。
 - 本文は自然な段落で書いてください。箇条書きは補助だけにし、本文の中心にしないでください。
 - 各段落は2〜4文程度にしてください。短いラベルや説明文の羅列にしないでください。
 - 「何をしたか」だけでなく、「生徒がどう変わったか」「教室でどんな場面があったか」を書いてください。
 - 入力された学校名、学年、教科、点数、期間、生徒の様子、先生・室長コメントを本文に反映してください。
-- 室長目線は売り込みではなく、そばで見守っていた人の言葉として自然に入れてください。
+- 室長目線は売り込みではなく、そばで見守っていた人の言葉として自然に入れてください。「嬉しかった」「ほっとした」「印象に残った」などの感情を、過度に熱くしすぎずに入れてください。
 - 一般論だけの記事にしないでください。必ず入力情報に基づいた具体的な場面を書いてください。
 - 入力にない実績、点数、学校名、生徒発言、キャンペーンは作らないでください。
 - 大げさな広告表現、断定表現、「必ず伸びる」「絶対合格」は使わないでください。
+
+【装飾用データの作り方】
+- BROGTEST側でHTML装飾するため、読ませたい部分をJSON項目として分けてください。
+- article.empathyBox は、保護者の気持ちに寄り添う短い共感ボックスです。1つだけ作ってください。
+- section.highlights は、赤字・蛍光マーカーで強調したい一文です。各セクション0〜1個までにしてください。
+- section.bullets は、取り組み・変化・チェックポイントなど、リストで読む方がわかりやすい時だけ使ってください。
+- section.managerNote は、室長の思いや感情が伝わる短いコメントです。全セクションに入れる必要はありませんが、本文全体で1〜2個は入れてください。
+- article.photoSuggestions は、本文の途中に入れる写真候補です。1〜2個だけ作り、「どのセクションの後に」「どんな写真を入れるとよいか」を書いてください。
 
 【冒頭あいさつ】
 - article.greeting を必ず1段落入れてください。
@@ -2095,6 +2167,9 @@ ${personThumbnailRules}
 - article.lead は2段落。
 - article.sections は3〜4個。
 - 各 section.paragraphs は2段落以上。
+- section.highlights は各セクション0〜1個。
+- section.managerNote は本文全体で1〜2個。
+- article.photoSuggestions は1〜2個。
 - article.closing は2段落。
 - 本文全体は900〜1400字程度。
 - cta は短く簡潔に。articleより目立たせないでください。
@@ -2105,11 +2180,25 @@ ${personThumbnailRules}
     "title": "32文字以内のブログタイトル",
     "greeting": ["冒頭のあいさつ段落"],
     "lead": ["保護者の不安に寄り添う導入段落", "入力内容につながる導入段落"],
+    "empathyBox": {
+      "label": "お母さんへ",
+      "paragraphs": ["読み手の不安に寄り添う短い共感文"]
+    },
     "sections": [
       {
         "heading": "見出し",
         "paragraphs": ["自然な本文段落", "現場感のある本文段落"],
-        "bullets": []
+        "highlights": ["赤字・蛍光マーカーで読ませたい一文"],
+        "bulletTitle": "取り組みポイント",
+        "bullets": ["リスト化した方が読みやすい具体項目"],
+        "managerNote": "室長の思いや感情が伝わる短いコメント"
+      }
+    ],
+    "photoSuggestions": [
+      {
+        "afterSection": 2,
+        "label": "写真挿入候補",
+        "description": "この位置に入れるとよい写真の内容"
       }
     ],
     "closing": ["保護者への前向きな結び", "相談へ自然につなげる結び"]

@@ -1,5 +1,14 @@
 # 変更履歴 (CHANGELOG)
 
+## [BROGTEST 0.56.86] - 2026-05-03
+
+### 変更
+- ブログJSONに `article.empathyBox` / `sections[].highlights` / `sections[].managerNote` / `article.photoSuggestions` を追加し、保護者への共感、室長コメント、写真挿入候補を扱えるよう変更
+- BROGTEST側のHTML生成で、共感ボックス、赤字＋蛍光マーカー、チェックリスト、室長コメント枠、写真挿入候補枠を出力するよう変更
+- ブログGem用Instructionsに、保護者とくにお母さんへの共感、室長の感情、装飾用データ生成ルールを追加
+
+---
+
 ## [BROGTEST 0.56.85] - 2026-05-03
 
 ### 変更
