@@ -1,5 +1,14 @@
 # 変更履歴 (CHANGELOG)
 
+## [BROGTEST 0.56.83] - 2026-05-03
+
+### 変更
+- ブログGemへの指示をHTML直接出力からJSON出力へ変更
+- Gemini/Gemが返したJSONをBROGTEST側で `<h1>` / `<h2>` / `<p>` 形式のブログHTMLに変換する処理を追加
+- CTA文言はJSON内の `cta` から読み取り、従来どおりBROGTEST側で整形済みCTA HTMLとして付与するよう変更
+
+---
+
 ## [BROGTEST 0.56.81] - 2026-05-03
 
 ### 修正

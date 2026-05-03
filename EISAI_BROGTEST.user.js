@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.82
+// @version      0.56.83
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.82';
+  const CURRENT_VERSION = '0.56.83';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.81 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.83 起動');
 
   let lastBlogHtml = '';
 
@@ -545,6 +545,111 @@
     return Object.keys(data).length >= 3 ? data : null;
   }
 
+  function stripJsonCodeFence(raw) {
+    return String(raw || '')
+      .trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+  }
+
+  function extractJsonObjectText(raw) {
+    const cleaned = stripJsonCodeFence(raw);
+    if (!cleaned) return '';
+    if (cleaned[0] === '{' && cleaned[cleaned.length - 1] === '}') return cleaned;
+
+    const first = cleaned.indexOf('{');
+    const last = cleaned.lastIndexOf('}');
+    if (first >= 0 && last > first) return cleaned.slice(first, last + 1);
+    return '';
+  }
+
+  function parseBlogJsonResponse(raw) {
+    const jsonText = extractJsonObjectText(decodeHtmlText(raw || ''));
+    if (!jsonText) return null;
+
+    try {
+      const parsed = JSON.parse(jsonText);
+      if (!parsed || typeof parsed !== 'object') return null;
+      const title = String(parsed.title || '').trim();
+      const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
+      if (!title || sections.length < 2) return null;
+      return parsed;
+    } catch (e) {
+      console.warn('[Eisai] JSON応答の解析に失敗しました:', e);
+      return null;
+    }
+  }
+
+  function normalizeTextArray(value) {
+    if (Array.isArray(value)) {
+      return value.map(item => String(item || '').trim()).filter(Boolean);
+    }
+    if (typeof value === 'string' && value.trim()) return [value.trim()];
+    return [];
+  }
+
+  function normalizeJsonCtaData(rawCta) {
+    if (!rawCta || typeof rawCta !== 'object') return null;
+    const aliases = {
+      '説明文1': ['説明文1', 'description1', 'description_1'],
+      '説明文2': ['説明文2', 'description2', 'description_2'],
+      '相談ポイント1': ['相談ポイント1', 'consultationPoint1', 'consultation_point_1'],
+      '相談ポイント2': ['相談ポイント2', 'consultationPoint2', 'consultation_point_2'],
+      '相談ポイント3': ['相談ポイント3', 'consultationPoint3', 'consultation_point_3'],
+      '相談ポイント4': ['相談ポイント4', 'consultationPoint4', 'consultation_point_4'],
+      '体験ポイント1': ['体験ポイント1', 'trialPoint1', 'trial_point_1'],
+      '体験ポイント2': ['体験ポイント2', 'trialPoint2', 'trial_point_2'],
+      '体験ポイント3': ['体験ポイント3', 'trialPoint3', 'trial_point_3'],
+      '体験ポイント4': ['体験ポイント4', 'trialPoint4', 'trial_point_4'],
+      '締めの言葉': ['締めの言葉', 'closingMessage', 'closing_message']
+    };
+    const data = {};
+    Object.keys(aliases).forEach(key => {
+      const found = aliases[key].find(alias => rawCta[alias] !== undefined && String(rawCta[alias]).trim());
+      if (found) data[key] = String(rawCta[found]).trim();
+    });
+    return Object.keys(data).length >= 3 ? data : null;
+  }
+
+  function renderBlogJsonHtml(data) {
+    const html = [];
+    const title = String(data.title || '').trim();
+    if (!title) return '';
+
+    html.push('<h1>' + escapeHtml(title) + '</h1>');
+
+    normalizeTextArray(data.lead || data.introduction).forEach(paragraph => {
+      html.push('<p>' + escapeHtml(paragraph) + '</p>');
+    });
+
+    const sections = Array.isArray(data.sections) ? data.sections : [];
+    sections.forEach(section => {
+      if (!section || typeof section !== 'object') return;
+      const heading = String(section.heading || section.title || '').trim();
+      if (heading) html.push('<h2>' + escapeHtml(heading) + '</h2>');
+
+      normalizeTextArray(section.paragraphs || section.body).forEach(paragraph => {
+        html.push('<p>' + escapeHtml(paragraph) + '</p>');
+      });
+
+      const bullets = normalizeTextArray(section.bullets || section.points);
+      if (bullets.length) {
+        html.push('<ul>');
+        bullets.forEach(point => {
+          html.push('<li>' + escapeHtml(point) + '</li>');
+        });
+        html.push('</ul>');
+      }
+    });
+
+    normalizeTextArray(data.closing || data.conclusion).forEach(paragraph => {
+      html.push('<p>' + escapeHtml(paragraph) + '</p>');
+    });
+
+    return html.join('\n').trim();
+  }
+
   const defaultCtaData = {
     '説明文1': 'テストや勉強のお悩みを一緒に整理します。',
     '説明文2': 'お子さまに合った一歩目を一緒に見つけていきましょう。',
@@ -772,18 +877,27 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           }
           raw = innerHtmlRaw || innerTextRaw;
 
-          const ctaData = parseCtaData(innerTextRaw || decodeHtmlText(innerHtmlRaw));
+          let ctaData = null;
+          const blogJson = parseBlogJsonResponse(innerTextRaw || decodeHtmlText(innerHtmlRaw));
 
-          decoded = sanitizeGeminiHtml(innerHtmlRaw);
-          decoded = decoded.replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/i, '');
-          decoded = decoded.replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '');
-          decoded = decoded.replace(/<p[^>]*>\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：][\s\S]*?<\/p>/gi, '');
-          decoded = decoded.replace(/^\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：].*$/gim, '');
-          decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '').trim();
+          if (blogJson) {
+            decoded = renderBlogJsonHtml(blogJson);
+            ctaData = normalizeJsonCtaData(blogJson.cta || blogJson.ctaData || blogJson.cta_data);
+            console.log('[Eisai] JSON応答からブログHTMLを生成しました');
+          } else {
+            ctaData = parseCtaData(innerTextRaw || decodeHtmlText(innerHtmlRaw));
+
+            decoded = sanitizeGeminiHtml(innerHtmlRaw);
+            decoded = decoded.replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/i, '');
+            decoded = decoded.replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '');
+            decoded = decoded.replace(/<p[^>]*>\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：][\s\S]*?<\/p>/gi, '');
+            decoded = decoded.replace(/^\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：].*$/gim, '');
+            decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '').trim();
+          }
 
           let hasRequiredHtml = /<h1[\s>]/i.test(decoded) && /<p[\s>]/i.test(decoded);
 
-          if (!hasRequiredHtml) {
+          if (!blogJson && !hasRequiredHtml) {
             const fallbackText = decodeHtmlText(innerTextRaw)
               .replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '')
               .replace(/^\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：].*$/gim, '')
@@ -1917,20 +2031,51 @@ ${personThumbnailRules}
       const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
       const prompt = `あなたは英才個別学院の教室ブログ専門ライターです。
-以下の入力情報をもとに、保護者向けのブログ記事をWordPressに貼れるHTMLで作成してください。
+以下の入力情報をもとに、保護者向けのブログ記事素材をJSONで作成してください。
+最終的なHTML化とCTA装飾は拡張機能側で行います。あなたはJSONだけを返してください。
 
 【最重要】
-- 出力の最初の文字は必ず <h1> にしてください。
-- <h1> 1個、<h2> 3個以上、<p> 8個以上を使ってください。
-- 本文は900〜1400字程度。段落中心で、箇条書きだけの記事は禁止です。
-- 「説明文1」「相談ポイント」「体験ポイント」「締めの言葉」は本文中に出さず、CTA_DATAブロックの中だけに出してください。
-- CTA_DATAだけの出力は禁止です。必ず先にブログ本文HTMLを書いてください。
+- 出力はJSONオブジェクト1つだけにしてください。
 - コードブロック、Markdown、前置き、解説、確認文は不要です。
+- title, lead, sections, closing, cta の5項目を必ず入れてください。
+- lead / sections[].paragraphs / closing は、自然なブログ本文として読める文章にしてください。
+- 本文は合計900〜1400字程度。段落中心で、箇条書きだけの記事は禁止です。
+- sectionsは3個以上、各sections[].paragraphsは2個以上にしてください。
+- 「説明文1」「相談ポイント」「体験ポイント」「締めの言葉」は本文側に入れず、ctaの中だけに入れてください。
 - 入力にない実績、点数、学校名、生徒発言、キャンペーンは作らないでください。
 
-【出力順序】
-1. ブログ本文HTML
-2. CTA_DATAブロック
+【JSON形式】
+{
+  "title": "32文字以内のブログタイトル",
+  "lead": ["導入段落1", "導入段落2"],
+  "sections": [
+    {
+      "heading": "見出し",
+      "paragraphs": ["本文段落1", "本文段落2"],
+      "bullets": ["必要な場合のみ短い箇条書き"]
+    }
+  ],
+  "closing": ["結びの段落1", "結びの段落2"],
+  "cta": {
+    "説明文1": "記事内容に合わせた、不安を解消する一言",
+    "説明文2": "教室見学や相談へのハードルを下げる優しい一言",
+    "相談ポイント1": "記事関連の相談内容1",
+    "相談ポイント2": "記事関連の相談内容2",
+    "相談ポイント3": "記事関連の相談内容3",
+    "相談ポイント4": "記事関連の相談内容4",
+    "体験ポイント1": "体験で得られるメリット1",
+    "体験ポイント2": "体験で得られるメリット2",
+    "体験ポイント3": "体験で得られるメリット3",
+    "体験ポイント4": "体験で得られるメリット4",
+    "締めの言葉": "校舎名と室長名を含む最後のメッセージ"
+  }
+}
+
+【禁止】
+- HTMLタグを出力しないでください。
+- CTA_DATA_START / CTA_DATA_END を出力しないでください。
+- 説明文1、相談ポイント、体験ポイントだけの出力は禁止です。
+- JSON以外の文章を出力しないでください。
 
 【教室情報】
 校舎名: ${kosha}
@@ -1939,23 +2084,7 @@ ${personThumbnailRules}
 ${typeInstruction}
 
 【入力情報】
-${formContent}
-
-【CTA_DATAの形式】
-本文HTMLの後ろに、実際の記事内容に合わせた文言を入れてください。
-<!--CTA_DATA_START-->
-説明文1: ...
-説明文2: ...
-相談ポイント1: ...
-相談ポイント2: ...
-相談ポイント3: ...
-相談ポイント4: ...
-体験ポイント1: ...
-体験ポイント2: ...
-体験ポイント3: ...
-体験ポイント4: ...
-締めの言葉: ...
-<!--CTA_DATA_END-->`;
+${formContent}`;
 
       formStatusDiv.textContent = isBlogGemPage()
         ? '📨 ブログGemへ送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。'
