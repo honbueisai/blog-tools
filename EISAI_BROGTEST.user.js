@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.97
+// @version      0.56.98
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.97';
+  const CURRENT_VERSION = '0.56.98';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -39,7 +39,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.97 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.98 起動');
 
   let lastBlogHtml = '';
 
@@ -1580,7 +1580,6 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       },
       [BLOG_TYPES.PERSON]: {
         label: '👤 講師・室長・生徒紹介',
-        note: '⚠️ サムネイル作成のため、紹介する人物の写真をチャットにアップロードしてください',
         hint: '経歴よりも「どんな声かけをする人か」「生徒とどう関わるか」を入れると温度感が出ます。',
         fields: [
           { key: 'personInfo', label: '紹介する人の基本情報', placeholder: '例：講師・田中先生・理系科目担当・3年目', isArea: false },
@@ -2034,6 +2033,21 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
     createEl('p', { style: { fontWeight: 'bold', marginBottom: '6px' } }, imgSection,
       '🖼 サムネイル画像生成（ブログ用）');
+
+    const personThumbnailNotice = createEl('div', {
+      style: {
+        display: 'none',
+        fontSize: '12px',
+        color: '#b91c1c',
+        backgroundColor: '#fef2f2',
+        padding: '8px',
+        borderRadius: '6px',
+        marginBottom: '10px',
+        border: '1px solid #fecaca',
+        fontWeight: 'bold',
+        lineHeight: '1.6'
+      }
+    }, imgSection, '⚠️ 講師・室長・生徒紹介のサムネイルを作る場合は、画像生成前に紹介する人物の写真をこのGemチャットへアップロードしてください。');
 
     const openThumbGemFromSectionBtn = createEl('button', {
       type: 'button',
@@ -2577,6 +2591,7 @@ ${formContent}`;
       }
 
       imgSection.style.display = 'block';
+      personThumbnailNotice.style.display = currentBlogType === BLOG_TYPES.PERSON ? 'block' : 'none';
       setTimeout(() => {
         const thumbSection = document.getElementById('eisai-image-section');
         if (thumbSection) {
