@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.92
+// @version      0.56.93
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.92';
+  const CURRENT_VERSION = '0.56.93';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.92 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.93 起動');
 
   let lastBlogHtml = '';
 
@@ -602,20 +602,14 @@
     if (!text) return [];
 
     function splitLongSentence(sentence) {
-      if (sentence.includes('、')) {
-        return sentence
-          .split(/(?<=、)/)
-          .map(part => part.trim())
-          .filter(Boolean);
-      }
-      if (sentence.length <= 78) return [sentence];
+      if (sentence.length <= 64) return [sentence];
       const parts = sentence.split(/(?<=、)/).map(part => part.trim()).filter(Boolean);
       if (parts.length <= 1) return [sentence];
       const blocks = [];
       let block = '';
       parts.forEach(part => {
         const next = block ? block + part : part;
-        if (block && next.length > 70) {
+        if (block && next.length > 58) {
           blocks.push(block);
           block = part;
         } else {
@@ -816,17 +810,17 @@
       const suggestions = rawSuggestions
         .slice(0, 5)
         .map(suggestion => ({
-          afterSection: Math.max(0, Number(suggestion.afterSection || suggestion.after_section || 0)),
+          afterSection: Math.max(1, Number(suggestion.afterSection || suggestion.after_section || 1)),
           label: String(suggestion.label || suggestion.title || '写真挿入').trim(),
           description: String(suggestion.description || suggestion.detail || suggestion.text || '').trim()
         }))
         .filter(suggestion => suggestion.label || suggestion.description);
       const targetCount = 5;
       const fallback = [
-        { afterSection: 0, label: '冒頭写真', description: '校舎外観、教室入口、または明るい教室全体の写真。記事の最初に安心感を出せます。' },
-        { afterSection: 1, label: '学習中の手元写真', description: 'ノート、途中式、解き直しリストなど、今回の取り組みが伝わる手元写真。' },
-        { afterSection: 2, label: '教室の雰囲気写真', description: '自習スペースや授業中の様子など、実際の通塾イメージが湧く写真。' },
-        { afterSection: 3, label: '成果が伝わる写真', description: '答案用紙、確認テスト、学習計画表など、変化や成長が伝わる写真。' },
+        { afterSection: 1, label: 'ノートの写真', description: '途中式、解き直しリスト、単語練習など、今回の取り組みが伝わる手元写真。' },
+        { afterSection: 2, label: '自習風景', description: '自習席、学校ワーク、確認テストに向かう様子など、現場の空気が伝わる写真。' },
+        { afterSection: 3, label: '答案の写真', description: '答案用紙、確認テスト、学習計画表など、変化や成長が伝わる写真。' },
+        { afterSection: 4, label: '教室の写真', description: '机、教材、掲示物、自習スペースなど、通塾後のイメージが湧く写真。' },
         { afterSection: sectionCount + 1, label: '室長・先生の写真', description: '室長や先生の自然な表情の写真。最後の相談導線に安心感を添えられます。' }
       ];
       fallback.forEach(item => {
@@ -883,10 +877,6 @@
     const sections = Array.isArray(article.sections) ? article.sections : [];
     const rawPhotoSuggestions = normalizeObjectArray(article.photoSuggestions || article.photo_suggestions);
     const photoSuggestions = buildPhotoSuggestions(rawPhotoSuggestions, sections.length);
-    photoSuggestions
-      .filter(suggestion => Number(suggestion.afterSection || suggestion.after_section || 0) === 0)
-      .forEach(renderPhotoSuggestion);
-
     sections.forEach((section, index) => {
       if (!section || typeof section !== 'object') return;
       const sectionIndex = index + 1;
@@ -2341,7 +2331,7 @@ ${personThumbnailRules}
 - 本文は自然な段落で書いてください。箇条書きは補助だけにし、本文の中心にしないでください。
 - 各段落は1〜2文程度で短くしてください。長い説明を1段落に詰め込まないでください。
 - 読み手がスマホで読んでも疲れないように、こまめに話を区切ってください。
-- 本文段落は、読点「、」で自然に改行される前提で、1文を長くしすぎないでください。リスト項目はこの限りではありません。
+- 本文段落は、長くなった時だけ読点「、」の位置で自然に改行されます。読点を細かく入れすぎず、意味のまとまりが崩れない文にしてください。リスト項目はこの限りではありません。
 - 「何をしたか」だけでなく、「生徒がどう変わったか」「教室でどんな場面があったか」を書いてください。
 - 入力された学校名、学年、教科、点数、期間、生徒の様子、先生・室長コメントを本文に反映してください。
 - 室長目線は売り込みではなく、そばで見守っていた人の言葉として自然に入れてください。「嬉しかった」「ほっとした」「印象に残った」などの感情を、過度に熱くしすぎずに入れてください。
@@ -2356,9 +2346,10 @@ ${personThumbnailRules}
 - section.bullets は、手順・取り組み・チェックポイントなど、3項目以上で整理した方が読みやすい時だけ使ってください。本文で自然に読ませる方がよい内容はリスト化しないでください。
 - section.dialogues は、保護者と室長の短いやりとりにすると読みやすい場面だけ使ってください。不要なら空配列または省略してください。
 - section.managerNote は、室長の思いや感情が伝わる短いコメントです。全セクションに入れる必要はありませんが、本文全体で1〜2個は入れてください。
-- article.photoSuggestions は必須です。空配列は禁止です。最低3個、理想は5個作り、「どのセクションの後に」「どんな写真を入れるとよいか」を具体的に書いてください。
-- 写真候補は文章の流れに沿って、冒頭・取り組み・変化・成果・室長/教室の安心感が伝わる位置に分散してください。
-- photoSuggestions.label は「お悩み写真」「ノートの写真」「自習風景」「成果の写真」「室長・先生の写真」のように、写真挿入（◯◯）として1行表示して意味が伝わる短い名前にしてください。
+- article.photoSuggestions は必須です。空配列は禁止です。最低3個、理想は5個作り、「どのセクションの後に」「どんな写真を入れるとよいか」を具体的に判断してください。
+- 写真候補は文章の流れに沿って、ノート・途中式・解き直しリスト・答案・確認テスト・自習風景・教室内の教材など、実際の現場で撮れる写真を優先してください。
+- 汎用的な悩み写真、人物の頭抱え写真、フリー素材風のイメージ写真、冒頭用の雰囲気写真は作らないでください。
+- photoSuggestions.label は「ノートの写真」「答案の写真」「自習風景」「確認テストの写真」「室長・先生の写真」のように、写真挿入（◯◯）として1行表示して意味が伝わる短い名前にしてください。
 - photoSuggestions.description は内部メモ扱いです。最終HTMLには表示しないため、説明文を読ませる前提で書かないでください。
 - 読ませたい言葉は必要な箇所だけカギカッコ「」で囲んでください。囲みすぎは禁止です。
 - 点数、期間、回数などの数字はできるだけ具体的に書いてください。BROGTEST側で赤字・大きめ文字に装飾します。
@@ -2379,7 +2370,7 @@ ${personThumbnailRules}
 - section.highlights は記事全体で2〜4個まで。
 - section.dialogues は必要な時だけ0〜2セット。
 - section.managerNote は本文全体で1〜2個。
-- article.photoSuggestions は必ず3〜5個。本文の流れに合わせて、写真を入れると読みやすくなる位置を具体的に指定してください。
+- article.photoSuggestions は必ず3〜5個。本文の流れに合わせて、現場で撮れる具体的な写真を入れる位置を指定してください。先頭の導入前に入れる汎用写真は不要です。
 - article.closing は2段落。
 - 本文全体は900〜1400字程度。
 - cta は短く簡潔に。articleより目立たせないでください。
