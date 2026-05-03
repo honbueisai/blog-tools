@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>英才ブログ生成ツール 社員向けマニュアル</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 14mm 16mm;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      color: #1f2937;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+      font-size: 12.5px;
+      line-height: 1.72;
+      background: #ffffff;
+    }
+    .cover {
+      min-height: 255mm;
+      padding: 20mm 14mm;
+      background: linear-gradient(135deg, #f1f7ff 0%, #ffffff 45%, #fff7ed 100%);
+      border: 1px solid #d8e7f7;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      page-break-after: always;
+    }
+    .eyebrow {
+      display: inline-block;
+      color: #0369a1;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 34px;
+      line-height: 1.22;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin-top: 18px;
+      max-width: 560px;
+      color: #475569;
+      font-size: 15px;
+      line-height: 1.9;
+    }
+    .cover-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 34px;
+    }
+    .cover-card {
+      min-height: 94px;
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid #dbeafe;
+      box-shadow: 0 12px 26px rgba(30, 64, 175, 0.08);
+    }
+    .cover-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #1d4ed8;
+      font-size: 14px;
+    }
+    .cover-footer {
+      color: #64748b;
+      font-size: 12px;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 16px;
+    }
+    h2 {
+      margin: 26px 0 12px;
+      padding: 10px 14px;
+      color: #0f172a;
+      font-size: 19px;
+      border-left: 5px solid #2563eb;
+      background: #eff6ff;
+      page-break-after: avoid;
+    }
+    h3 {
+      margin: 18px 0 8px;
+      color: #0f172a;
+      font-size: 15px;
+      page-break-after: avoid;
+    }
+    p {
+      margin: 0 0 8px;
+    }
+    ul, ol {
+      margin: 6px 0 10px 1.4em;
+      padding: 0;
+    }
+    li {
+      margin: 3px 0;
+    }
+    .section {
+      page-break-inside: avoid;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .card {
+      padding: 13px 14px;
+      border: 1px solid #dbeafe;
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+      page-break-inside: avoid;
+    }
+    .card h3 {
+      margin-top: 0;
+      color: #1d4ed8;
+    }
+    .note {
+      padding: 12px 14px;
+      border: 1px solid #fed7aa;
+      border-radius: 10px;
+      background: #fff7ed;
+      color: #7c2d12;
+      page-break-inside: avoid;
+    }
+    .success {
+      padding: 12px 14px;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      background: #f0fdf4;
+      color: #14532d;
+      page-break-inside: avoid;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 12px 0;
+    }
+    .flow div {
+      padding: 10px;
+      border-radius: 9px;
+      background: #f8fafc;
+      border: 1px solid #dbeafe;
+      text-align: center;
+      font-weight: 700;
+      color: #1e40af;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .checklist {
+      list-style: none;
+      margin-left: 0;
+    }
+    .checklist li::before {
+      content: "□ ";
+      color: #2563eb;
+      font-weight: 700;
+    }
+    .placeholder {
+      margin: 12px 0;
+      padding: 10px 12px;
+      border: 2px dashed #2563eb;
+      border-radius: 10px;
+      background: #eff6ff;
+      color: #0f172a;
+      text-align: center;
+      font-weight: 800;
+    }
+    .linkbox {
+      margin: 8px 0;
+      padding: 9px 11px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      word-break: break-all;
+      font-size: 11px;
+    }
+    .kbd {
+      display: inline-block;
+      min-width: 22px;
+      padding: 1px 6px;
+      border-radius: 5px;
+      background: #e2e8f0;
+      border: 1px solid #cbd5e1;
+      font-weight: 700;
+      color: #334155;
+    }
+    .page-break {
+      page-break-before: always;
+    }
+    .footer-note {
+      margin-top: 18px;
+      color: #64748b;
+      font-size: 11px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <div>
+      <span class="eyebrow">EISAI BLOG TOOL MANUAL</span>
+      <h1>英才ブログ生成ツール<br>社員向けマニュアル</h1>
+      <p class="subtitle">
+        Geminiを使って、教室ブログの記事本文、CTA、写真挿入位置、サムネイル画像までを作成するための初回準備と操作手順をまとめた配布用マニュアルです。
+      </p>
+      <div class="cover-grid">
+        <div class="cover-card"><strong>初回準備</strong>Chrome、Tampermonkey、ブログ生成ツール、装飾ツールを準備します。</div>
+        <div class="cover-card"><strong>記事作成</strong>教室情報と現場メモを入力し、GeminiでブログHTMLを生成します。</div>
+        <div class="cover-card"><strong>仕上げ</strong>装飾、写真差し込み、サムネイル生成、投稿前チェックまで行います。</div>
+      </div>
+    </div>
+    <div class="cover-footer">
+      対象：英才個別学院 社員・室長・教室スタッフ ／ 推奨ブラウザ：Google Chrome
+    </div>
+  </section>
+
+  <h2>1. 初回だけ行う準備</h2>
+  <div class="two-col">
+    <div class="card">
+      <h3>Chromeを使う</h3>
+      <p>このツールはGoogle Chrome専用です。SafariやEdgeではなく、Chromeで操作してください。</p>
+      <div class="linkbox">https://www.google.com/chrome/</div>
+    </div>
+    <div class="card">
+      <h3>Tampermonkeyを入れる</h3>
+      <p>Chromeにブログ生成機能を追加するための拡張機能です。1回だけインストールします。</p>
+      <div class="linkbox">https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo</div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <h3>ブログ生成ツールを入れる</h3>
+      <p>Tampermonkeyの画面が開いたら「インストール」を押します。</p>
+      <div class="linkbox">https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js</div>
+    </div>
+    <div class="card">
+      <h3>装飾ツールをブックマーク</h3>
+      <p>開いたらブックマークします。Macは <span class="kbd">⌘</span> + <span class="kbd">D</span>、Windowsは <span class="kbd">Ctrl</span> + <span class="kbd">D</span>。</p>
+      <div class="linkbox">https://tools.eisai.org/blogs/editor-icons.html</div>
+    </div>
+  </div>
+
+  <h2>2. ブログ記事を作る基本フロー</h2>
+  <div class="flow">
+    <div>Geminiを開く</div>
+    <div>ブログツールを開く</div>
+    <div>記事タイプを選ぶ</div>
+    <div>情報を入力</div>
+    <div>Geminiへ送信</div>
+    <div>HTMLをコピー</div>
+    <div>装飾ツールへ貼付</div>
+    <div>投稿前確認</div>
+  </div>
+  <div class="success">
+    <strong>ポイント：</strong>きれいな文章を入力する必要はありません。生徒の変化、保護者の不安、教室で実際に行ったこと、印象に残った一言、点数や期間などの具体的な数字を素材として入れてください。
+  </div>
+
+  <h2>3. Geminiで記事を生成する</h2>
+  <div class="section">
+    <h3>STEP 1：Geminiを開く</h3>
+    <p>Chromeで <strong>https://gemini.google.com/app</strong> を開きます。3〜5秒待つと、左側に青い「ブログツール」ボタンが出ます。</p>
+    <p>出ない場合はページを再読み込みし、Tampermonkeyが有効か確認してください。</p>
+  </div>
+  <div class="section">
+    <h3>STEP 2：教室情報を設定する</h3>
+    <p>右側のツールパネルで「教室情報設定」を開き、校舎名、室長名、CTAリンク先URL、電話番号を保存します。電話番号はハイフンなしで入力します。</p>
+  </div>
+  <div class="section">
+    <h3>STEP 3：記事タイプを選び、必要情報を入力する</h3>
+    <p>結果アップ・成長、対策・イベント、講師・室長・生徒、サービス・相談、点数アップ速報、その他から選びます。</p>
+    <p>フォームには、現場で見た事実や素材を入力します。短くても問題ありません。</p>
+  </div>
+  <div class="section">
+    <h3>STEP 4：Geminiへ送信し、HTMLをコピーする</h3>
+    <p>「Geminiへ送信して記事生成」を押します。完了後、赤い「ブログHTMLをコピーする」を押します。</p>
+  </div>
+
+  <div class="page-break"></div>
+  <h2>4. 装飾ツールで整える</h2>
+  <div class="two-col">
+    <div class="card">
+      <h3>貼り付け</h3>
+      <p>装飾ツールを開き、左側の「GEMINI HTML貼り付け」に貼り付けます。</p>
+      <p>Mac：<span class="kbd">⌘</span> + <span class="kbd">V</span> ／ Windows：<span class="kbd">Ctrl</span> + <span class="kbd">V</span></p>
+    </div>
+    <div class="card">
+      <h3>テーマ適用</h3>
+      <p>テーマを選び、「テーマを適用」を押します。右側に装飾済みの記事が表示されます。</p>
+    </div>
+  </div>
+
+  <h2>5. 写真を差し込む</h2>
+  <p>記事内に、以下のような写真挿入マークが出ます。</p>
+  <div class="placeholder">■■■■■■■■ 写真挿入（ノートの写真） ■■■■■■■■</div>
+  <p>この行を目印に、該当する写真を差し込みます。写真挿入位置は提案なので、記事の流れに合わなければ移動してOKです。</p>
+  <div class="two-col">
+    <div class="card">
+      <h3>おすすめ写真</h3>
+      <ul>
+        <li>ノート</li>
+        <li>答案</li>
+        <li>自習風景</li>
+        <li>確認テスト</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>現場感が出る写真</h3>
+      <ul>
+        <li>教室の様子</li>
+        <li>先生と生徒の手元</li>
+        <li>室長・先生の写真</li>
+        <li>教材や学校ワーク</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>6. サムネイル画像を作る</h2>
+  <p>ブログHTMLをコピーしたあと、パネル下部に「サムネイル画像生成」が表示されます。</p>
+  <ol>
+    <li>画像スタイルを選ぶ</li>
+    <li>訴求スタイルを選ぶ</li>
+    <li>必要ならメインカラー・サブカラーを選ぶ</li>
+    <li>「画像生成用プロンプトを作成」を押す</li>
+    <li>「このプロンプトで画像を生成する」を押す</li>
+  </ol>
+  <div class="note">
+    画像の出来がいまいちな場合は、スタイルや色を変えてもう一度作成できます。記事本文は保持されるので、ブログを作り直す必要はありません。
+  </div>
+  <p>人物紹介記事でサムネイルを作る場合だけ、紹介する人物の写真をGeminiチャットへアップロードしてください。</p>
+
+  <h2>7. 投稿前チェック</h2>
+  <ul class="checklist">
+    <li>見出しが崩れていない</li>
+    <li>写真挿入マークが残っていない</li>
+    <li>CTAリンクが正しい</li>
+    <li>電話番号が正しい</li>
+    <li>スマホ表示で読みにくくない</li>
+    <li>サムネイル画像が内容と合っている</li>
+  </ul>
+
+  <h2>8. 困ったとき</h2>
+  <div class="two-col">
+    <div class="card">
+      <h3>青いボタンが出ない</h3>
+      <p>Geminiを再読み込みしてください。Tampermonkeyでスクリプトが有効か確認します。</p>
+    </div>
+    <div class="card">
+      <h3>箇条書きだけ返る</h3>
+      <p>すぐに操作せず、しばらく待ってください。ツール側が読み取ってHTML化できる場合があります。</p>
+    </div>
+    <div class="card">
+      <h3>HTMLが表示されない</h3>
+      <p>LanguageToolやGrammarlyなどを一時的にOFFにして、もう一度コピーしてください。</p>
+    </div>
+    <div class="card">
+      <h3>相談時に伝えること</h3>
+      <p>どの画面で、何をしたら、どうなったか。可能ならスクリーンショットも添えてください。</p>
+    </div>
+  </div>
+  <p class="footer-note">英才ブログ生成ツール 社員向けマニュアル</p>
+</body>
+</html>
