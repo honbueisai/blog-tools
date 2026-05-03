@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.98
+// @version      0.56.99
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.98';
+  const CURRENT_VERSION = '0.56.99';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -39,7 +39,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.98 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.99 起動');
 
   let lastBlogHtml = '';
 
@@ -332,9 +332,10 @@
     return null;
   }
 
-  function savePendingBlogPrompt(prompt) {
+  function savePendingBlogPrompt(prompt, blogType = currentBlogType) {
     localStorage.setItem(PENDING_BLOG_PROMPT_KEY, JSON.stringify({
       prompt,
+      blogType,
       createdAt: Date.now()
     }));
   }
@@ -369,28 +370,39 @@
     return loadPendingPrompt(PENDING_THUMBNAIL_PROMPT_KEY);
   }
 
-  function saveThumbnailSource(html) {
+  function saveThumbnailSource(html, blogType = currentBlogType) {
     const normalized = String(html || '').trim();
     if (!normalized) return;
     localStorage.setItem(THUMBNAIL_SOURCE_KEY, JSON.stringify({
       html: normalized,
+      blogType,
       createdAt: Date.now()
     }));
   }
 
-  function loadThumbnailSource() {
+  function loadThumbnailSourceRecord() {
     try {
       const source = JSON.parse(localStorage.getItem(THUMBNAIL_SOURCE_KEY) || 'null');
-      if (!source || !source.html) return '';
+      if (!source || !source.html) return null;
       if (Date.now() - source.createdAt > 24 * 60 * 60 * 1000) {
         localStorage.removeItem(THUMBNAIL_SOURCE_KEY);
-        return '';
+        return null;
       }
-      return String(source.html || '').trim();
+      return source;
     } catch (e) {
       localStorage.removeItem(THUMBNAIL_SOURCE_KEY);
-      return '';
+      return null;
     }
+  }
+
+  function loadThumbnailSource() {
+    const source = loadThumbnailSourceRecord();
+    return source ? String(source.html || '').trim() : '';
+  }
+
+  function loadThumbnailSourceBlogType() {
+    const source = loadThumbnailSourceRecord();
+    return source ? String(source.blogType || '') : '';
   }
 
   async function insertPromptAndSend(prompt) {
@@ -2049,6 +2061,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
     }, imgSection, '⚠️ 講師・室長・生徒紹介のサムネイルを作る場合は、画像生成前に紹介する人物の写真をこのGemチャットへアップロードしてください。');
 
+    function isPersonThumbnailContext() {
+      return currentBlogType === BLOG_TYPES.PERSON || loadThumbnailSourceBlogType() === BLOG_TYPES.PERSON;
+    }
+
+    function updatePersonThumbnailNotice() {
+      personThumbnailNotice.style.display = isPersonThumbnailContext() ? 'block' : 'none';
+    }
+
     const openThumbGemFromSectionBtn = createEl('button', {
       type: 'button',
       style: {
@@ -2217,7 +2237,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         return;
       }
 
-      const isPersonType = currentBlogType === BLOG_TYPES.PERSON;
+      const isPersonType = isPersonThumbnailContext();
       const personThumbnailRules = isPersonType ? `
 ■ 人物紹介サムネイル専用ルール
   - このチャットにユーザーがアップロードした先生・講師・室長の写真を必ずベースにしてください
@@ -2553,7 +2573,7 @@ ${formContent}`;
       lastBlogHtml = '';
 
       if (!isBlogGemPage()) {
-        savePendingBlogPrompt(prompt);
+        savePendingBlogPrompt(prompt, currentBlogType);
         localStorage.setItem('eisai_collapsed', 'false');
         location.href = BLOG_GEM_URL;
         return;
@@ -2591,7 +2611,7 @@ ${formContent}`;
       }
 
       imgSection.style.display = 'block';
-      personThumbnailNotice.style.display = currentBlogType === BLOG_TYPES.PERSON ? 'block' : 'none';
+      updatePersonThumbnailNotice();
       setTimeout(() => {
         const thumbSection = document.getElementById('eisai-image-section');
         if (thumbSection) {
@@ -2645,6 +2665,7 @@ ${formContent}`;
       const pending = loadPendingBlogPrompt();
       if (!pending) return;
       localStorage.removeItem(PENDING_BLOG_PROMPT_KEY);
+      if (pending.blogType) currentBlogType = pending.blogType;
 
       step1.style.display = 'none';
       step2.style.display = 'block';
@@ -2679,6 +2700,7 @@ ${formContent}`;
       step2.style.display = 'none';
       resultStep.style.display = 'block';
       imgSection.style.display = 'block';
+      updatePersonThumbnailNotice();
       copyBtn.style.display = 'none';
       returnResultBtn.style.display = 'none';
       imgExecBtn.style.display = 'none';
