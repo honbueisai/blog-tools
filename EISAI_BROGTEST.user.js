@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.87
+// @version      0.56.88
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.87';
+  const CURRENT_VERSION = '0.56.88';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.87 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.88 起動');
 
   let lastBlogHtml = '';
 
@@ -629,6 +629,14 @@
     return blocks;
   }
 
+  function decorateInlineText(raw) {
+    let safe = escapeHtml(raw);
+    safe = safe.replace(/「([^」]{2,38})」/g, '<strong style="background: linear-gradient(transparent 58%, #bfdbfe 58%); color: #1e3a8a; font-weight: 800; padding: 0 2px;">「$1」</strong>');
+    safe = safe.replace(/([0-9０-９]+(?:\.[0-9]+)?(?:点アップ|点|分|週間|週|日|周|回|名|人))/g, '<strong style="color: #dc2626; font-size: 110%; font-weight: 900;">$1</strong>');
+    safe = safe.replace(/(苦手|不安|自信|成長|変化|できた|わかった|習慣|笑顔|つまずき|ミス)/g, '<strong style="background: linear-gradient(transparent 62%, #fef08a 62%); font-weight: 800;">$1</strong>');
+    return safe;
+  }
+
   function normalizeJsonCtaData(rawCta) {
     if (!rawCta || typeof rawCta !== 'object') return null;
     const consultationPoints = normalizeTextArray(rawCta.consultationPoints || rawCta.consultation_points);
@@ -668,21 +676,26 @@
 
     function renderParagraph(paragraph) {
       splitReadableParagraph(paragraph).forEach(block => {
-        html.push('<p style="margin: 0 0 14px; font-size: 16px;">' + escapeHtml(block) + '</p>');
+        html.push('<p style="margin: 0 0 15px; font-size: 16px; letter-spacing: 0; line-height: 2.0;">' + decorateInlineText(block) + '</p>');
       });
     }
 
-    function renderHighlight(text) {
-      html.push('<p style="margin: 0 0 18px; font-size: 16px;"><strong style="color: #dc2626; background: linear-gradient(transparent 58%, #fef3c7 58%); padding: 0 2px; font-weight: 800;">' + escapeHtml(text) + '</strong></p>');
+    function renderHighlight(text, index = 0) {
+      const styles = [
+        'color: #dc2626; background: linear-gradient(transparent 58%, #fef3c7 58%); border-left: 4px solid #f97316;',
+        'color: #1d4ed8; background: linear-gradient(transparent 58%, #bfdbfe 58%); border-left: 4px solid #1d8acb;',
+        'color: #047857; background: linear-gradient(transparent 58%, #bbf7d0 58%); border-left: 4px solid #10b981;'
+      ];
+      html.push('<p style="margin: 18px 0 20px; padding: 8px 0 8px 12px; font-size: 17px; line-height: 1.85;"><strong style="' + styles[index % styles.length] + ' padding: 0 3px; font-weight: 900;">' + decorateInlineText(text) + '</strong></p>');
     }
 
     function renderCheckList(titleText, items) {
       if (!items.length) return;
-      html.push('<div style="border: 2px solid #1d8acb; border-radius: 8px; margin: 22px 0; overflow: hidden; background: #ffffff;">');
-      html.push('<div style="background: #1d8acb; color: #ffffff; padding: 9px 15px; font-size: 15px; font-weight: 800;">' + escapeHtml(titleText) + '</div>');
-      html.push('<ul style="list-style: none; margin: 0; padding: 15px 20px; line-height: 1.9;">');
+      html.push('<div style="border: 2px solid #1d8acb; border-radius: 10px; margin: 26px 0; overflow: hidden; background: #ffffff; box-shadow: 0 4px 14px rgba(29, 138, 203, 0.10);">');
+      html.push('<div style="background: #1d8acb; color: #ffffff; padding: 10px 16px; font-size: 16px; font-weight: 900;">' + escapeHtml(titleText) + '</div>');
+      html.push('<ul style="list-style: none; margin: 0; padding: 16px 22px; line-height: 2.0;">');
       items.forEach(item => {
-        html.push('<li style="margin: 0 0 8px; padding-left: 1.4em; text-indent: -1.4em;">✓ ' + escapeHtml(item) + '</li>');
+        html.push('<li style="margin: 0 0 9px; padding-left: 1.5em; text-indent: -1.5em; font-size: 15.5px;">✓ ' + decorateInlineText(item) + '</li>');
       });
       html.push('</ul>');
       html.push('</div>');
@@ -690,10 +703,10 @@
 
     function renderManagerNote(note) {
       if (!note) return;
-      html.push('<div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 16px 18px; margin: 22px 0;">');
-      html.push('<div style="color: #0369a1; font-weight: 800; margin: 0 0 8px;">室長より</div>');
+      html.push('<div style="background: #f0f9ff; border: 1px solid #bae6fd; border-left: 5px solid #0ea5e9; border-radius: 12px; padding: 17px 20px; margin: 24px 0; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.10);">');
+      html.push('<div style="color: #0369a1; font-weight: 900; margin: 0 0 8px; font-size: 16px;">室長より</div>');
       splitReadableParagraph(note).forEach(block => {
-        html.push('<p style="margin: 0 0 8px; font-size: 16px; line-height: 1.9;">' + escapeHtml(block) + '</p>');
+        html.push('<p style="margin: 0 0 8px; font-size: 16.5px; line-height: 1.95;">' + decorateInlineText(block) + '</p>');
       });
       html.push('</div>');
     }
@@ -703,13 +716,14 @@
       const label = String(suggestion.label || suggestion.title || '写真挿入候補').trim();
       const description = String(suggestion.description || suggestion.detail || suggestion.text || '').trim();
       if (!description) return;
-      html.push('<div data-photo-placeholder="true" style="border: 2px dashed #93c5fd; background: #eff6ff; color: #1e40af; border-radius: 8px; padding: 13px 16px; margin: 24px 0; font-size: 15px; line-height: 1.8;">');
-      html.push('<strong style="font-weight: 800;">' + escapeHtml(label) + '：</strong>' + escapeHtml(description));
+      html.push('<div data-photo-placeholder="true" style="border: 2px dashed #60a5fa; background: #eff6ff; color: #1e40af; border-radius: 12px; padding: 16px 18px; margin: 28px 0; font-size: 15px; line-height: 1.85;">');
+      html.push('<div style="font-size: 16px; font-weight: 900; margin: 0 0 6px;">' + escapeHtml(label) + '</div>');
+      html.push('<div>' + decorateInlineText(description) + '</div>');
       html.push('</div>');
     }
 
     html.push('<div data-eisai-article="true" style="font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; color: #1f2937; line-height: 1.95;">');
-    html.push('<h1 style="font-size: 28px; line-height: 1.45; margin: 0 0 24px; padding: 18px 22px; border-left: 5px solid #1d8acb; background: #eef8ff; font-weight: 800;">' + escapeHtml(title) + '</h1>');
+    html.push('<h1 style="font-size: 30px; line-height: 1.45; margin: 0 0 26px; padding: 20px 24px; border-left: 6px solid #1d8acb; background: #eef8ff; color: #0f172a; font-weight: 900;">' + decorateInlineText(title) + '</h1>');
 
     normalizeTextArray(article.greeting || article.openingGreeting).forEach(paragraph => {
       renderParagraph(paragraph);
@@ -717,10 +731,13 @@
 
     const leadParagraphs = normalizeTextArray(article.lead || article.introduction);
     if (leadParagraphs.length) {
-      html.push('<div style="background: #f8fafc; border: 1px solid #e5edf5; border-radius: 10px; padding: 18px 20px; margin: 0 0 28px;">');
-      leadParagraphs.forEach(paragraph => {
+      html.push('<div style="background: #f8fafc; border: 1px solid #e5edf5; border-radius: 12px; padding: 20px 22px; margin: 0 0 30px;">');
+      leadParagraphs.forEach((paragraph, paragraphIndex) => {
         splitReadableParagraph(paragraph).forEach(block => {
-          html.push('<p style="margin: 0 0 12px; font-size: 16px;">' + escapeHtml(block) + '</p>');
+          const leadStyle = paragraphIndex === 0
+            ? 'font-size: 17px; font-weight: 700; color: #334155;'
+            : 'font-size: 16px; color: #334155;';
+          html.push('<p style="margin: 0 0 13px; line-height: 2.0; ' + leadStyle + '">' + decorateInlineText(block) + '</p>');
         });
       });
       html.push('</div>');
@@ -731,19 +748,19 @@
       const label = String(empathyBox.label || empathyBox.title || '保護者の方へ').trim();
       const paragraphs = normalizeTextArray(empathyBox.paragraphs || empathyBox.body || empathyBox.content);
       if (paragraphs.length) {
-        html.push('<div style="background: #fff7ed; border-left: 5px solid #f97316; border-radius: 0 8px 8px 0; padding: 16px 18px; margin: 0 0 28px;">');
-        html.push('<div style="color: #c2410c; font-weight: 800; margin: 0 0 8px;">' + escapeHtml(label) + '</div>');
+        html.push('<div style="background: #fff7ed; border-left: 6px solid #f97316; border-radius: 0 10px 10px 0; padding: 18px 20px; margin: 0 0 30px;">');
+        html.push('<div style="color: #c2410c; font-weight: 900; margin: 0 0 9px; font-size: 17px;">' + escapeHtml(label) + '</div>');
         paragraphs.forEach(paragraph => {
           splitReadableParagraph(paragraph).forEach(block => {
-            html.push('<p style="margin: 0 0 10px; font-size: 16px;">' + escapeHtml(block) + '</p>');
+            html.push('<p style="margin: 0 0 10px; font-size: 16.5px; line-height: 2.0;">' + decorateInlineText(block) + '</p>');
           });
         });
         html.push('</div>');
       }
     }
 
-    normalizeTextArray(article.summary || article.keyMessage).slice(0, 2).forEach(paragraph => {
-      renderHighlight(paragraph);
+    normalizeTextArray(article.summary || article.keyMessage).slice(0, 2).forEach((paragraph, index) => {
+      renderHighlight(paragraph, index);
     });
 
     const sections = Array.isArray(article.sections) ? article.sections : [];
@@ -759,13 +776,13 @@
       if (!section || typeof section !== 'object') return;
       const sectionIndex = index + 1;
       const heading = String(section.heading || section.title || '').trim();
-      if (heading) html.push('<h2 style="font-size: 21px; line-height: 1.5; margin: 36px 0 18px; padding: 16px 18px; border-left: 5px solid #1d8acb; background: #eef8ff; font-weight: 800;">' + escapeHtml(heading) + '</h2>');
+      if (heading) html.push('<h2 style="font-size: 23px; line-height: 1.5; margin: 38px 0 18px; padding: 17px 20px; border-left: 6px solid #1d8acb; background: #eef8ff; color: #0f172a; font-weight: 900;">' + decorateInlineText(heading) + '</h2>');
 
       normalizeTextArray(section.paragraphs || section.body || section.content).forEach(paragraph => {
         renderParagraph(paragraph);
       });
 
-      normalizeTextArray(section.highlights || section.highlight || section.emphasis).slice(0, 2).forEach(renderHighlight);
+      normalizeTextArray(section.highlights || section.highlight || section.emphasis).slice(0, 2).forEach((text, highlightIndex) => renderHighlight(text, highlightIndex));
 
       const bullets = normalizeTextArray(section.bullets || section.points);
       renderCheckList(String(section.bulletTitle || section.bullet_title || 'ここがポイント').trim(), bullets);
@@ -2200,10 +2217,12 @@ ${personThumbnailRules}
 【装飾用データの作り方】
 - BROGTEST側でHTML装飾するため、読ませたい部分をJSON項目として分けてください。
 - article.empathyBox は、保護者の気持ちに寄り添う短い共感ボックスです。1つだけ作ってください。
-- section.highlights は、赤字・蛍光マーカーで強調したい一文です。各セクション0〜1個までにしてください。
+- section.highlights は、赤字・青字・緑字のマーカーで強調したい一文です。各セクション1個を基本にしてください。
 - section.bullets は、取り組み・変化・チェックポイントなど、リストで読む方がわかりやすい時だけ使ってください。
 - section.managerNote は、室長の思いや感情が伝わる短いコメントです。全セクションに入れる必要はありませんが、本文全体で1〜2個は入れてください。
 - article.photoSuggestions は必須です。空配列は禁止です。1〜2個だけ作り、「どのセクションの後に」「どんな写真を入れるとよいか」を書いてください。
+- 読ませたい言葉はカギカッコ「」で囲んでください。BROGTEST側で青マーカー風に装飾します。
+- 点数、期間、回数などの数字はできるだけ具体的に書いてください。BROGTEST側で赤字・大きめ文字に装飾します。
 
 【冒頭あいさつ】
 - article.greeting を必ず1段落入れてください。
@@ -2217,7 +2236,7 @@ ${personThumbnailRules}
 - article.lead は2段落。
 - article.sections は3〜4個。
 - 各 section.paragraphs は2段落以上。
-- section.highlights は各セクション0〜1個。
+- section.highlights は各セクション1個を基本に、不要な場合のみ0個。
 - section.managerNote は本文全体で1〜2個。
 - article.photoSuggestions は必ず1〜2個。
 - article.closing は2段落。
