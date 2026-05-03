@@ -5,7 +5,12 @@
 ### 追加
 - 初回準備向けの `INSTALL_MANUAL.md` を追加
 - 日々の作業向けの `OPERATION_MANUAL.md` を追加
-- `README.md` から2つのマニュアルへ移動できる案内を追加
+- サイボウズ共有向けの1ページMarkdown `manuals/CYBOZU_ONEPAGE_MANUAL.md` を追加
+- 印刷・配布向けのPDFマニュアル `manuals/eisai-blog-tool-manual.pdf` を追加
+- PDFの元データとして `manuals/eisai-blog-tool-manual.html` を追加
+- サイボウズ投稿に貼りやすい画像版早見表 `manuals/eisai-blog-tool-share-image.png` を追加
+- 画像版早見表の元データとして `manuals/eisai-blog-tool-share-image.html` を追加
+- `README.md` から各マニュアルへ移動できる案内を追加
 
 ---
 
