@@ -1,5 +1,15 @@
 # 変更履歴 (CHANGELOG)
 
+## [BROGTEST 0.56.84] - 2026-05-03
+
+### 変更
+- ブログ生成JSONを `article` 主役の構造へ変更し、CTAだけの出力に寄りにくい指示へ修正
+- BROGTEST側のJSON解析を `article` / `cta` 分離形式に対応
+- ブログGem用InstructionsをHTML直接出力からarticle中心JSON出力へ更新し、本文の書き方ルールを追加
+- Gem作成手順をJSON出力方式に合わせて更新
+
+---
+
 ## [BROGTEST 0.56.83] - 2026-05-03
 
 ### 変更

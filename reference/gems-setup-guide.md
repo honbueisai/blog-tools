@@ -9,9 +9,12 @@
 ## 1. 英才ブログHTML生成Gem
 
 ### 目的
-BROGTESTから送られた入力情報をもとに、ブログ本文HTMLとCTA_DATAを作成するGemです。
+BROGTESTから送られた入力情報をもとに、ブログ本文素材をJSONで作成するGemです。
 
-CTA_DATAは最終記事にそのまま貼るための文章ではなく、BROGTESTが読み取って整形済みCTA HTMLに変換するための素材です。
+GemはHTMLを直接出力しません。
+`article` を中心にしたJSONを返し、BROGTESTがそれを読み取ってブログHTMLと整形済みCTA HTMLに変換します。
+
+CTAはJSON内の `cta` に短く入れます。本文生成の主役はあくまで `article` です。
 
 ### 作成手順
 1. Geminiを開く
@@ -46,7 +49,7 @@ BROGTESTには以下の2つのGem URLを設定します。
 2. `ブログ生成Gemを開く` を押す
 3. フォームに入力
 4. `Geminiへ送信して記事生成` を押す
-5. BROGTESTがGemの出力からCTA_DATAを読み取り、整形済みCTA付きHTMLをコピー
+5. BROGTESTがGemのJSON出力から本文HTMLを組み立て、ctaを整形済みCTA付きHTMLに変換してコピー
 6. `サムネイル生成Gemを開く` を押す
 7. サムネイル生成へ進む
 

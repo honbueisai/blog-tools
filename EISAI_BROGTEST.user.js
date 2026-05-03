@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.83
+// @version      0.56.84
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.83';
+  const CURRENT_VERSION = '0.56.84';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.83 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.84 起動');
 
   let lastBlogHtml = '';
 
@@ -571,8 +571,9 @@
     try {
       const parsed = JSON.parse(jsonText);
       if (!parsed || typeof parsed !== 'object') return null;
-      const title = String(parsed.title || '').trim();
-      const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
+      const article = parsed.article && typeof parsed.article === 'object' ? parsed.article : parsed;
+      const title = String(article.title || '').trim();
+      const sections = Array.isArray(article.sections) ? article.sections : [];
       if (!title || sections.length < 2) return null;
       return parsed;
     } catch (e) {
@@ -591,9 +592,11 @@
 
   function normalizeJsonCtaData(rawCta) {
     if (!rawCta || typeof rawCta !== 'object') return null;
+    const consultationPoints = normalizeTextArray(rawCta.consultationPoints || rawCta.consultation_points);
+    const trialPoints = normalizeTextArray(rawCta.trialPoints || rawCta.trial_points);
     const aliases = {
-      '説明文1': ['説明文1', 'description1', 'description_1'],
-      '説明文2': ['説明文2', 'description2', 'description_2'],
+      '説明文1': ['説明文1', 'description1', 'description_1', 'firstDescription', 'first_description'],
+      '説明文2': ['説明文2', 'description2', 'description_2', 'secondDescription', 'second_description'],
       '相談ポイント1': ['相談ポイント1', 'consultationPoint1', 'consultation_point_1'],
       '相談ポイント2': ['相談ポイント2', 'consultationPoint2', 'consultation_point_2'],
       '相談ポイント3': ['相談ポイント3', 'consultationPoint3', 'consultation_point_3'],
@@ -609,27 +612,34 @@
       const found = aliases[key].find(alias => rawCta[alias] !== undefined && String(rawCta[alias]).trim());
       if (found) data[key] = String(rawCta[found]).trim();
     });
+    consultationPoints.slice(0, 4).forEach((point, index) => {
+      data['相談ポイント' + (index + 1)] = point;
+    });
+    trialPoints.slice(0, 4).forEach((point, index) => {
+      data['体験ポイント' + (index + 1)] = point;
+    });
     return Object.keys(data).length >= 3 ? data : null;
   }
 
   function renderBlogJsonHtml(data) {
+    const article = data && data.article && typeof data.article === 'object' ? data.article : data;
     const html = [];
-    const title = String(data.title || '').trim();
+    const title = String(article.title || '').trim();
     if (!title) return '';
 
     html.push('<h1>' + escapeHtml(title) + '</h1>');
 
-    normalizeTextArray(data.lead || data.introduction).forEach(paragraph => {
+    normalizeTextArray(article.lead || article.introduction).forEach(paragraph => {
       html.push('<p>' + escapeHtml(paragraph) + '</p>');
     });
 
-    const sections = Array.isArray(data.sections) ? data.sections : [];
+    const sections = Array.isArray(article.sections) ? article.sections : [];
     sections.forEach(section => {
       if (!section || typeof section !== 'object') return;
       const heading = String(section.heading || section.title || '').trim();
       if (heading) html.push('<h2>' + escapeHtml(heading) + '</h2>');
 
-      normalizeTextArray(section.paragraphs || section.body).forEach(paragraph => {
+      normalizeTextArray(section.paragraphs || section.body || section.content).forEach(paragraph => {
         html.push('<p>' + escapeHtml(paragraph) + '</p>');
       });
 
@@ -643,7 +653,7 @@
       }
     });
 
-    normalizeTextArray(data.closing || data.conclusion).forEach(paragraph => {
+    normalizeTextArray(article.closing || article.conclusion).forEach(paragraph => {
       html.push('<p>' + escapeHtml(paragraph) + '</p>');
     });
 
@@ -882,7 +892,8 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
           if (blogJson) {
             decoded = renderBlogJsonHtml(blogJson);
-            ctaData = normalizeJsonCtaData(blogJson.cta || blogJson.ctaData || blogJson.cta_data);
+            const articleJson = blogJson.article && typeof blogJson.article === 'object' ? blogJson.article : blogJson;
+            ctaData = normalizeJsonCtaData(blogJson.cta || blogJson.ctaData || blogJson.cta_data || articleJson.cta);
             console.log('[Eisai] JSON応答からブログHTMLを生成しました');
           } else {
             ctaData = parseCtaData(innerTextRaw || decodeHtmlText(innerHtmlRaw));
@@ -2031,47 +2042,60 @@ ${personThumbnailRules}
       const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
       const prompt = `あなたは英才個別学院の教室ブログ専門ライターです。
-以下の入力情報をもとに、保護者向けのブログ記事素材をJSONで作成してください。
-最終的なHTML化とCTA装飾は拡張機能側で行います。あなたはJSONだけを返してください。
+以下の入力情報をもとに、保護者向けブログ記事の本文素材をJSONで作成してください。
+最終的なHTML化とCTA装飾はBROGTEST側で行います。あなたはJSONだけを返してください。
 
-【最重要】
-- 出力はJSONオブジェクト1つだけにしてください。
-- コードブロック、Markdown、前置き、解説、確認文は不要です。
-- title, lead, sections, closing, cta の5項目を必ず入れてください。
-- lead / sections[].paragraphs / closing は、自然なブログ本文として読める文章にしてください。
-- 本文は合計900〜1400字程度。段落中心で、箇条書きだけの記事は禁止です。
-- sectionsは3個以上、各sections[].paragraphsは2個以上にしてください。
-- 「説明文1」「相談ポイント」「体験ポイント」「締めの言葉」は本文側に入れず、ctaの中だけに入れてください。
+【今回の最重要方針】
+- 主役は article です。cta は最後に添える補助データです。
+- まず article の本文を十分に書いてください。cta だけ、相談ポイントだけ、要約だけの出力は禁止です。
+- JSONオブジェクト1つだけを出力してください。Markdown、コードブロック、前置き、解説、HTMLタグは出力しないでください。
+
+【本文の書き方ルール】
+- 冒頭は、保護者の不安や悩みに寄り添うところから始めてください。いきなり成果や宣伝から入らないでください。
+- 保護者が「うちの子にも当てはまるかもしれない」と感じる温度で書いてください。
+- 本文は自然な段落で書いてください。箇条書きは補助だけにし、本文の中心にしないでください。
+- 各段落は2〜4文程度にしてください。短いラベルや説明文の羅列にしないでください。
+- 「何をしたか」だけでなく、「生徒がどう変わったか」「教室でどんな場面があったか」を書いてください。
+- 入力された学校名、学年、教科、点数、期間、生徒の様子、先生・室長コメントを本文に反映してください。
+- 室長目線は売り込みではなく、そばで見守っていた人の言葉として自然に入れてください。
+- 一般論だけの記事にしないでください。必ず入力情報に基づいた具体的な場面を書いてください。
 - 入力にない実績、点数、学校名、生徒発言、キャンペーンは作らないでください。
+- 大げさな広告表現、断定表現、「必ず伸びる」「絶対合格」は使わないでください。
+
+【文章量と構成】
+- article.lead は2段落。
+- article.sections は3〜4個。
+- 各 section.paragraphs は2段落以上。
+- article.closing は2段落。
+- 本文全体は900〜1400字程度。
+- cta は短く簡潔に。articleより目立たせないでください。
 
 【JSON形式】
 {
-  "title": "32文字以内のブログタイトル",
-  "lead": ["導入段落1", "導入段落2"],
-  "sections": [
-    {
-      "heading": "見出し",
-      "paragraphs": ["本文段落1", "本文段落2"],
-      "bullets": ["必要な場合のみ短い箇条書き"]
-    }
-  ],
-  "closing": ["結びの段落1", "結びの段落2"],
+  "article": {
+    "title": "32文字以内のブログタイトル",
+    "lead": ["保護者の不安に寄り添う導入段落", "入力内容につながる導入段落"],
+    "sections": [
+      {
+        "heading": "見出し",
+        "paragraphs": ["自然な本文段落", "現場感のある本文段落"],
+        "bullets": []
+      }
+    ],
+    "closing": ["保護者への前向きな結び", "相談へ自然につなげる結び"]
+  },
   "cta": {
-    "説明文1": "記事内容に合わせた、不安を解消する一言",
-    "説明文2": "教室見学や相談へのハードルを下げる優しい一言",
-    "相談ポイント1": "記事関連の相談内容1",
-    "相談ポイント2": "記事関連の相談内容2",
-    "相談ポイント3": "記事関連の相談内容3",
-    "相談ポイント4": "記事関連の相談内容4",
-    "体験ポイント1": "体験で得られるメリット1",
-    "体験ポイント2": "体験で得られるメリット2",
-    "体験ポイント3": "体験で得られるメリット3",
-    "体験ポイント4": "体験で得られるメリット4",
-    "締めの言葉": "校舎名と室長名を含む最後のメッセージ"
+    "description1": "記事内容に合わせた、不安を解消する一言",
+    "description2": "教室見学や相談へのハードルを下げる優しい一言",
+    "consultationPoints": ["相談内容1", "相談内容2", "相談内容3", "相談内容4"],
+    "trialPoints": ["体験で得られるメリット1", "体験で得られるメリット2", "体験で得られるメリット3", "体験で得られるメリット4"],
+    "closingMessage": "校舎名と室長名を含む最後のメッセージ"
   }
 }
 
 【禁止】
+- articleなしの出力は禁止です。
+- ctaだけの出力は禁止です。
 - HTMLタグを出力しないでください。
 - CTA_DATA_START / CTA_DATA_END を出力しないでください。
 - 説明文1、相談ポイント、体験ポイントだけの出力は禁止です。
