@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.56.69
-// @description  英才ブログ生成ツール (CTA修正版)
+// @version      0.60.00
+// @description  英才ブログ生成ツール
 // @author       Yuan
 // @match        https://gemini.google.com/*
 // @updateURL    https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js
@@ -14,12 +14,20 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-56-69';
-  const BTN_ID = 'eisai-btn-v0-56-69';
-  const STORAGE_KEY = 'eisai_blog_info_v05669';
+  const TOOL_ID = 'eisai-tool-v0-60-00';
+  const BTN_ID = 'eisai-btn-v0-60-00';
+  const STORAGE_KEY = 'eisai_blog_info_v06000';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.69';
+  const CURRENT_VERSION = '0.60.00';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
+  const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
+  const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
+  const BLOG_GEM_ID = '1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf';
+  const THUMBNAIL_GEM_ID = '1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ';
+  const PENDING_BLOG_PROMPT_KEY = 'eisai_blog_pending_blog_prompt';
+  const PENDING_THUMBNAIL_PROMPT_KEY = 'eisai_blog_pending_thumbnail_prompt';
+  const THUMBNAIL_SOURCE_KEY = 'eisai_blog_thumbnail_source_html';
+  const ENABLE_TEST_SAMPLE_BUTTONS = false;
 
   const BLOG_TYPES = {
     GROWTH: 'growth_story',
@@ -32,7 +40,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.56.69 起動');
+  console.log('🚀 英才ブログ生成ツール v0.60.00 起動');
 
   let lastBlogHtml = '';
 
@@ -176,28 +184,55 @@
     "  上記の設定と【入力された情報】に基づき、保護者の心に響くブログ記事を作成してください。",
     "  記事のテーマは「__THEME__」です。",
     "  ",
+    "  【最重要：現場感・リアリティ】",
+    "  - 一般論だけで終わらせず、入力された学校名・学年・教科・点数・期間・生徒の様子・先生の声を本文に反映してください。",
+    "  - 入力されていない点数、学校名、合格校、キャンペーン内容、生徒発言は作らないでください。",
+    "  - 教室で実際に行ったことを、読者がイメージできる粒度で書いてください。",
+    "  - 「頑張りました」だけで終わらず、何を・いつ・どのくらい・どう変えたのかを具体化してください。",
+    "  - 室長または先生の目線を1か所以上入れてください。",
+    "  - 保護者が抱きやすい不安に一度寄り添ってから、教室での取り組みに接続してください。",
+    "  ",
+    "  【文字量の目安】",
+    "  - 成長ストーリー・相談系: 1500〜2200字程度",
+    "  - 講習・イベント紹介: 1300〜1800字程度",
+    "  - 点数アップ速報: 1200〜1600字程度",
+    "  - 先生紹介: 900〜1300字程度",
+    "  - 休校・事務連絡などのお知らせ: 200〜500字程度",
+    "  - 入力情報が少ない場合は無理に長くせず、不足情報を補うための架空設定はしないでください。",
+    "  ",
     "  【出力要件】",
-    "  1. フォーマット: HTML形式（<html>タグ不要、<h1>から書き始める）",
+    "  1. フォーマット: 必ずHTML形式（<html>タグ不要、<h1>から書き始める）",
+    "     - 本文は必ず <h1>, <h2>, <p>, <ul>, <li>, <strong> などのHTMLタグを実際に使って出力してください。",
+    "     - 通常の文章だけ、Markdown見出し（# や ##）、箇条書きだけの出力は禁止です。",
+    "     - ```html などのコードブロックで囲まず、貼り付け可能なHTML本文だけを出力してください。",
+    "     - 箇条書き中心の記事は禁止です。本文の中心は必ず段落（<p>）で書き、箇条書きは具体的な取り組みを整理する場合だけにしてください。",
     "  2. 構成:",
     "     - <h1>: 魅力的なタイトル（32文字以内推奨）",
     "     - 導入: 読者の悩みに寄り添う共感パート",
-    "     - 本文: 具体的なエピソード、解決策、教室の取り組み（見出し<h2>, <h3>を活用）",
+    "     - 本文: 具体的なエピソード、解決策、教室の取り組み（見出し<h2>, <h3>を活用し、各見出しの下に自然な段落を2つ以上入れる）",
     "     - 結び: 前向きなメッセージと行動喚起",
     "  3. CTAセクション（重要）:",
-    "     記事の最後には、記事の内容に即したCTAデータを以下の形式で必ず出力してください。",
+    "     記事本文の最後に、記事内容に即したCTAデータを以下の形式で必ず出力してください。",
+    "     このCTAデータはツール側で読み取り、最終的なHTMLでは整形済みCTAに変換されます。",
     "     <!--CTA_DATA_START-->",
     "     説明文1：[記事の内容に合わせた、不安を解消する一言]",
     "     説明文2：[教室見学や相談へのハードルを下げる優しい一言]",
     "     相談ポイント1：[記事関連の相談内容1]",
     "     相談ポイント2：[記事関連の相談内容2]",
+    "     相談ポイント3：[記事関連の相談内容3]",
+    "     相談ポイント4：[記事関連の相談内容4]",
     "     体験ポイント1：[体験で得られるメリット1]",
     "     体験ポイント2：[体験で得られるメリット2]",
+    "     体験ポイント3：[体験で得られるメリット3]",
+    "     体験ポイント4：[体験で得られるメリット4]",
     "     締めの言葉：[校舎名]室長 [室長名]より、心を込めた最後のメッセージ",
     "     <!--CTA_DATA_END-->",
     "",
     "  【禁止事項】",
     "  - 嘘や架空の実績を書かない",
     "  - 不自然な日本語やAI特有の硬い表現を避ける",
+    "  - HTMLタグなしのプレーンテキストで出力しない",
+    "  - CTAデータ以外の場所に、説明文1・相談ポイント・体験ポイントなどの内部項目を出力しない",
     "  - マークダウンのコードブロック（```html）で囲まない（そのままブラウザでレンダリングできる形式で）"
   ].join("\n");
 
@@ -232,11 +267,12 @@
         ...versionedData,
         name: classroomData.name || classroomData.kosha || versionedData.kosha || '',
         manager: classroomData.manager || classroomData.shichou || versionedData.shichou || '',
+        area: classroomData.area || versionedData.area || '',
         url: classroomData.url || versionedData.url || '',
         tel: classroomData.tel || versionedData.tel || ''
       };
     } catch {
-      return { name: '', manager: '', url: '', tel: '' };
+      return { name: '', manager: '', area: '', url: '', tel: '' };
     }
   }
 
@@ -246,6 +282,7 @@
       const classroomData = {
         name: info.name !== undefined ? info.name : currentPersistent.name,
         manager: info.manager !== undefined ? info.manager : currentPersistent.manager,
+        area: info.area !== undefined ? info.area : currentPersistent.area,
         url: info.url !== undefined ? info.url : currentPersistent.url,
         tel: info.tel !== undefined ? info.tel : currentPersistent.tel
       };
@@ -274,6 +311,115 @@
     }));
   }
 
+  function isBlogGemPage() {
+    return location.pathname.indexOf('/gem/' + BLOG_GEM_ID) !== -1;
+  }
+
+  function isThumbnailGemPage() {
+    return location.pathname.indexOf('/gem/' + THUMBNAIL_GEM_ID) !== -1;
+  }
+
+  function findGeminiInput() {
+    return document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
+  }
+
+  async function waitForGeminiInput(timeoutMs = 30000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const input = findGeminiInput();
+      if (input) return input;
+      await sleep(500);
+    }
+    return null;
+  }
+
+  function savePendingBlogPrompt(prompt, blogType = currentBlogType) {
+    localStorage.setItem(PENDING_BLOG_PROMPT_KEY, JSON.stringify({
+      prompt,
+      blogType,
+      createdAt: Date.now()
+    }));
+  }
+
+  function savePendingThumbnailPrompt(prompt) {
+    localStorage.setItem(PENDING_THUMBNAIL_PROMPT_KEY, JSON.stringify({
+      prompt,
+      createdAt: Date.now()
+    }));
+  }
+
+  function loadPendingPrompt(key) {
+    try {
+      const pending = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!pending || !pending.prompt) return null;
+      if (Date.now() - pending.createdAt > 10 * 60 * 1000) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      return pending;
+    } catch (e) {
+      localStorage.removeItem(key);
+      return null;
+    }
+  }
+
+  function loadPendingBlogPrompt() {
+    return loadPendingPrompt(PENDING_BLOG_PROMPT_KEY);
+  }
+
+  function loadPendingThumbnailPrompt() {
+    return loadPendingPrompt(PENDING_THUMBNAIL_PROMPT_KEY);
+  }
+
+  function saveThumbnailSource(html, blogType = currentBlogType) {
+    const normalized = String(html || '').trim();
+    if (!normalized) return;
+    localStorage.setItem(THUMBNAIL_SOURCE_KEY, JSON.stringify({
+      html: normalized,
+      blogType,
+      createdAt: Date.now()
+    }));
+  }
+
+  function loadThumbnailSourceRecord() {
+    try {
+      const source = JSON.parse(localStorage.getItem(THUMBNAIL_SOURCE_KEY) || 'null');
+      if (!source || !source.html) return null;
+      if (Date.now() - source.createdAt > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(THUMBNAIL_SOURCE_KEY);
+        return null;
+      }
+      return source;
+    } catch (e) {
+      localStorage.removeItem(THUMBNAIL_SOURCE_KEY);
+      return null;
+    }
+  }
+
+  function loadThumbnailSource() {
+    const source = loadThumbnailSourceRecord();
+    return source ? String(source.html || '').trim() : '';
+  }
+
+  function loadThumbnailSourceBlogType() {
+    const source = loadThumbnailSourceRecord();
+    return source ? String(source.blogType || '') : '';
+  }
+
+  async function insertPromptAndSend(prompt) {
+    const input = await waitForGeminiInput();
+    if (!input) return false;
+
+    input.focus();
+    document.execCommand('selectAll', false, null);
+    document.execCommand('insertText', false, prompt);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    await sleep(500);
+    sendMessageViaEnter(input);
+    return true;
+  }
+
   function decodeHtmlText(raw) {
     return (raw || '')
       .replace(/&lt;/g, '<')
@@ -281,6 +427,104 @@
       .replace(/&amp;/g, '&')
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'");
+  }
+
+  function escapeHtml(raw) {
+    return (raw || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function looksLikeHtml(raw) {
+    return /<\/?(article|section|h1|h2|h3|p|div|ul|ol|li|strong|em|br)\b/i.test(raw || '');
+  }
+
+  function plainTextToHtml(raw) {
+    const lines = (raw || '')
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    if (!lines.length) return '';
+
+    const html = [];
+    let usedTitle = false;
+    let listOpen = false;
+
+    function closeList() {
+      if (listOpen) {
+        html.push('</ul>');
+        listOpen = false;
+      }
+    }
+
+    lines.forEach((line, idx) => {
+      const normalized = line.replace(/^#{1,6}\s*/, '');
+      const bullet = normalized.match(/^[・\-*]\s*(.+)$/);
+
+      if (!usedTitle) {
+        closeList();
+        html.push('<h1>' + escapeHtml(normalized) + '</h1>');
+        usedTitle = true;
+        return;
+      }
+
+      if (bullet) {
+        if (!listOpen) {
+          html.push('<ul>');
+          listOpen = true;
+        }
+        html.push('<li>' + escapeHtml(bullet[1]) + '</li>');
+        return;
+      }
+
+      closeList();
+      const isHeading = idx < 12 && normalized.length <= 32 && /[:：]$/.test(normalized);
+      if (isHeading) {
+        html.push('<h2>' + escapeHtml(normalized.replace(/[:：]$/, '')) + '</h2>');
+      } else {
+        html.push('<p>' + escapeHtml(normalized) + '</p>');
+      }
+    });
+
+    closeList();
+    return html.join('\n');
+  }
+
+  function ensureHtmlContent(raw) {
+    const cleaned = (raw || '').trim();
+    if (!cleaned) return '';
+    return looksLikeHtml(cleaned) ? cleaned : plainTextToHtml(cleaned);
+  }
+
+  function sanitizeGeminiHtml(rawHtml) {
+    let html = String(rawHtml || '');
+    if (!html.trim()) return '';
+
+    html = html
+      .replace(/<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi, (_m, inner) => decodeHtmlText(inner))
+      .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, (_m, inner) =>
+        /&lt;\/?(h1|h2|h3|p|ul|ol|li|strong|em|br)\b/i.test(inner) ? decodeHtmlText(inner) : `<code>${inner}</code>`
+      );
+
+    html = html.replace(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>/g, (_m, slash, tag) => {
+      const lower = tag.toLowerCase();
+      const allowed = new Set(['h1','h2','h3','h4','p','ul','ol','li','strong','em','br','article','section','div','blockquote']);
+      if (!allowed.has(lower)) return '';
+      return `<${slash}${lower}>`;
+    });
+
+    html = html
+      .replace(/<div>\s*<\/div>/gi, '')
+      .replace(/<p>\s*<\/p>/gi, '')
+      .replace(/<br>\s*<br>(?:\s*<br>)+/gi, '<br><br>')
+      .trim();
+
+    return html;
   }
 
   function findLatestBlogResponseNode() {
@@ -357,6 +601,390 @@
     return Object.keys(data).length >= 3 ? data : null;
   }
 
+  function stripJsonCodeFence(raw) {
+    return String(raw || '')
+      .trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+  }
+
+  function extractJsonObjectText(raw) {
+    const cleaned = stripJsonCodeFence(raw);
+    if (!cleaned) return '';
+    if (cleaned[0] === '{' && cleaned[cleaned.length - 1] === '}') return cleaned;
+
+    const first = cleaned.indexOf('{');
+    const last = cleaned.lastIndexOf('}');
+    if (first >= 0 && last > first) return cleaned.slice(first, last + 1);
+    return '';
+  }
+
+  function parseBlogJsonResponse(raw) {
+    const jsonText = extractJsonObjectText(decodeHtmlText(raw || ''));
+    if (!jsonText) return null;
+
+    try {
+      const parsed = JSON.parse(jsonText);
+      if (!parsed || typeof parsed !== 'object') return null;
+      const article = parsed.article && typeof parsed.article === 'object' ? parsed.article : parsed;
+      const title = String(article.title || '').trim();
+      const sections = Array.isArray(article.sections) ? article.sections : [];
+      if (!title || sections.length < 2) return null;
+      return parsed;
+    } catch (e) {
+      console.warn('[Eisai] JSON応答の解析に失敗しました:', e);
+      return null;
+    }
+  }
+
+  function normalizeTextArray(value) {
+    if (Array.isArray(value)) {
+      return value.map(item => String(item || '').trim()).filter(Boolean);
+    }
+    if (typeof value === 'string' && value.trim()) return [value.trim()];
+    return [];
+  }
+
+  function normalizeObjectArray(value) {
+    if (!Array.isArray(value)) return [];
+    return value.filter(item => item && typeof item === 'object');
+  }
+
+  function splitReadableParagraph(raw) {
+    const text = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (!text) return [];
+
+    function splitLongSentence(sentence) {
+      if (sentence.length <= 64) return [sentence];
+      const parts = sentence.split(/(?<=、)/).map(part => part.trim()).filter(Boolean);
+      if (parts.length <= 1) return [sentence];
+      const blocks = [];
+      let block = '';
+      parts.forEach(part => {
+        const next = block ? block + part : part;
+        if (block && next.length > 58) {
+          blocks.push(block);
+          block = part;
+        } else {
+          block = next;
+        }
+      });
+      if (block) blocks.push(block);
+      return blocks;
+    }
+
+    const sentences = [];
+    let current = '';
+    Array.from(text).forEach(char => {
+      current += char;
+      if ('。！？'.includes(char)) {
+        const sentence = current.trim();
+        if (sentence) sentences.push(sentence);
+        current = '';
+      }
+    });
+    if (current.trim()) sentences.push(current.trim());
+    if (sentences.length <= 1) return splitLongSentence(text);
+
+    const blocks = [];
+    let block = '';
+    sentences.forEach(sentence => {
+      const next = block ? block + sentence : sentence;
+      if (block && next.length > 84) {
+        blocks.push(block);
+        block = sentence;
+      } else {
+        block = next;
+      }
+    });
+    if (block) blocks.push(block);
+    return blocks.flatMap(splitLongSentence);
+  }
+
+  function decorateInlineText(raw, options = {}) {
+    let safe = escapeHtml(raw);
+    const state = options.state || { number: 0, quote: 0, keyword: 0 };
+    const limits = {
+      number: options.numberLimit ?? 4,
+      quote: options.quoteLimit ?? 4,
+      keyword: options.keywordLimit ?? 2
+    };
+
+    function replaceFirst(regex, key, renderer) {
+      let used = false;
+      safe = safe.replace(regex, function (match, captured) {
+        if (used || state[key] >= limits[key]) return match;
+        used = true;
+        state[key]++;
+        return renderer(match, captured);
+      });
+      return used;
+    }
+
+    if (options.allowNumbers !== false && replaceFirst(
+      /([0-9０-９]+(?:\.[0-9]+)?(?:点アップ|点|分|週間|週|日|周|回|名|人))/,
+      'number',
+      match => '<strong style="color: #dc2626; font-size: 108%; font-weight: 900;">' + match + '</strong>'
+    )) return safe;
+
+    if (options.allowQuotes !== false && replaceFirst(
+      /「([^」]{2,34})」/,
+      'quote',
+      (_match, captured) => '<strong style="background: linear-gradient(transparent 64%, #bfdbfe 64%); color: #1e3a8a; font-weight: 800; padding: 0 2px;">「' + captured + '」</strong>'
+    )) return safe;
+
+    if (options.allowKeywords && replaceFirst(
+      /(苦手|不安|自信|成長|変化|できた|わかった|習慣|笑顔|つまずき|ミス)/,
+      'keyword',
+      match => '<strong style="background: linear-gradient(transparent 66%, #fef08a 66%); font-weight: 800;">' + match + '</strong>'
+    )) return safe;
+
+    return safe;
+  }
+
+  function normalizeJsonCtaData(rawCta) {
+    if (!rawCta || typeof rawCta !== 'object') return null;
+    const consultationPoints = normalizeTextArray(rawCta.consultationPoints || rawCta.consultation_points);
+    const trialPoints = normalizeTextArray(rawCta.trialPoints || rawCta.trial_points);
+    const aliases = {
+      '説明文1': ['説明文1', 'description1', 'description_1', 'firstDescription', 'first_description'],
+      '説明文2': ['説明文2', 'description2', 'description_2', 'secondDescription', 'second_description'],
+      '相談ポイント1': ['相談ポイント1', 'consultationPoint1', 'consultation_point_1'],
+      '相談ポイント2': ['相談ポイント2', 'consultationPoint2', 'consultation_point_2'],
+      '相談ポイント3': ['相談ポイント3', 'consultationPoint3', 'consultation_point_3'],
+      '相談ポイント4': ['相談ポイント4', 'consultationPoint4', 'consultation_point_4'],
+      '体験ポイント1': ['体験ポイント1', 'trialPoint1', 'trial_point_1'],
+      '体験ポイント2': ['体験ポイント2', 'trialPoint2', 'trial_point_2'],
+      '体験ポイント3': ['体験ポイント3', 'trialPoint3', 'trial_point_3'],
+      '体験ポイント4': ['体験ポイント4', 'trialPoint4', 'trial_point_4'],
+      '締めの言葉': ['締めの言葉', 'closingMessage', 'closing_message']
+    };
+    const data = {};
+    Object.keys(aliases).forEach(key => {
+      const found = aliases[key].find(alias => rawCta[alias] !== undefined && String(rawCta[alias]).trim());
+      if (found) data[key] = String(rawCta[found]).trim();
+    });
+    consultationPoints.slice(0, 4).forEach((point, index) => {
+      data['相談ポイント' + (index + 1)] = point;
+    });
+    trialPoints.slice(0, 4).forEach((point, index) => {
+      data['体験ポイント' + (index + 1)] = point;
+    });
+    return Object.keys(data).length >= 3 ? data : null;
+  }
+
+  function renderBlogJsonHtml(data) {
+    const article = data && data.article && typeof data.article === 'object' ? data.article : data;
+    const html = [];
+    const title = String(article.title || '').trim();
+    if (!title) return '';
+    const decorationState = { number: 0, quote: 0, keyword: 0 };
+
+    function renderParagraph(paragraph) {
+      splitReadableParagraph(paragraph).forEach(block => {
+        html.push('<p style="margin: 0 0 18px; font-size: 16px; letter-spacing: 0; line-height: 2.12;">' + decorateInlineText(block, { state: decorationState }) + '</p>');
+      });
+    }
+
+    function renderHighlight(text, index = 0) {
+      const styles = [
+        'color: #b91c1c; background: #fff7ed; border-left: 4px solid #f97316;',
+        'color: #1e3a8a; background: #eff6ff; border-left: 4px solid #1d8acb;',
+        'color: #166534; background: #f0fdf4; border-left: 4px solid #22c55e;'
+      ];
+      html.push('<p style="margin: 20px 0 24px; padding: 12px 14px; border-radius: 8px; font-size: 16px; line-height: 1.95; ' + styles[index % styles.length] + '"><strong style="font-weight: 900;">' + escapeHtml(text) + '</strong></p>');
+    }
+
+    function renderCheckList(titleText, items) {
+      if (items.length < 3) return;
+      html.push('<div style="border: 2px solid #1d8acb; border-radius: 10px; margin: 26px 0; overflow: hidden; background: #ffffff; box-shadow: 0 4px 14px rgba(29, 138, 203, 0.10);">');
+      html.push('<div style="background: #1d8acb; color: #ffffff; padding: 10px 16px; font-size: 16px; font-weight: 900;">' + escapeHtml(titleText) + '</div>');
+      html.push('<ul style="list-style: none; margin: 0; padding: 16px 22px; line-height: 2.0;">');
+      items.forEach(item => {
+        html.push('<li style="margin: 0 0 9px; padding-left: 1.5em; text-indent: -1.5em; font-size: 15.5px;">✓ ' + decorateInlineText(item, { state: decorationState, allowKeywords: false }) + '</li>');
+      });
+      html.push('</ul>');
+      html.push('</div>');
+    }
+
+    function renderManagerNote(note) {
+      if (!note) return;
+      html.push('<div style="background: #f0f9ff; border: 1px solid #bae6fd; border-left: 5px solid #0ea5e9; border-radius: 12px; padding: 17px 20px; margin: 24px 0; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.10);">');
+      html.push('<div style="color: #0369a1; font-weight: 900; margin: 0 0 8px; font-size: 16px;">室長より</div>');
+      splitReadableParagraph(note).forEach(block => {
+        html.push('<p style="margin: 0 0 10px; font-size: 16.5px; line-height: 2.05;">' + decorateInlineText(block, { state: decorationState }) + '</p>');
+      });
+      html.push('</div>');
+    }
+
+    function normalizeDialogueArray(value) {
+      if (!Array.isArray(value)) return [];
+      return value
+        .map(item => {
+          if (!item || typeof item !== 'object') return null;
+          const speaker = String(item.speaker || item.role || '').trim();
+          const text = String(item.text || item.message || item.body || '').trim();
+          if (!speaker || !text) return null;
+          return { speaker, text };
+        })
+        .filter(Boolean)
+        .slice(0, 4);
+    }
+
+    function renderDialogues(dialogues) {
+      if (dialogues.length < 2) return;
+      html.push('<div style="margin: 28px 0; padding: 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">');
+      dialogues.forEach(dialogue => {
+        const isParent = /保護者|お母|母|親/.test(dialogue.speaker);
+        const align = isParent ? 'flex-start' : 'flex-end';
+        const bubbleColor = isParent ? '#ffffff' : '#e0f2fe';
+        const borderColor = isParent ? '#cbd5e1' : '#7dd3fc';
+        html.push('<div style="display: flex; justify-content: ' + align + '; margin: 0 0 12px;">');
+        html.push('<div style="max-width: 88%; background: ' + bubbleColor + '; border: 1px solid ' + borderColor + '; border-radius: 14px; padding: 11px 14px; line-height: 1.85;">');
+        html.push('<div style="font-size: 12px; color: #64748b; font-weight: 800; margin: 0 0 4px;">' + escapeHtml(dialogue.speaker) + '</div>');
+        html.push('<div style="font-size: 15.5px;">' + decorateInlineText(dialogue.text, { state: decorationState }) + '</div>');
+        html.push('</div></div>');
+      });
+      html.push('</div>');
+    }
+
+    function renderPhotoSuggestion(suggestion) {
+      if (!suggestion || typeof suggestion !== 'object') return;
+      const label = String(suggestion.label || suggestion.title || '写真挿入').trim();
+      const displayLabel = label && label !== '写真挿入' ? '写真挿入（' + label + '）' : '写真挿入';
+      html.push(
+        '<p data-photo-placeholder="true" style="border: 2px dashed #94a3b8; background: #f8fafc; color: #334155; border-radius: 10px; padding: 18px 20px; margin: 32px 0; font-size: 15px; line-height: 1.85; text-align: center;">' +
+        '<strong style="display: block; font-size: 15px; color: #0f172a; font-weight: 900;">■■■■■■■■ ' + escapeHtml(displayLabel) + ' ■■■■■■■■</strong>' +
+        '</p>'
+      );
+    }
+
+    function buildPhotoSuggestions(rawSuggestions, sectionCount) {
+      const suggestions = rawSuggestions
+        .slice(0, 5)
+        .map(suggestion => ({
+          afterSection: Math.max(1, Number(suggestion.afterSection || suggestion.after_section || 1)),
+          label: String(suggestion.label || suggestion.title || '写真挿入').trim(),
+          description: String(suggestion.description || suggestion.detail || suggestion.text || '').trim()
+        }))
+        .filter(suggestion => suggestion.label || suggestion.description);
+      const maxSlot = Math.max(1, sectionCount + 1);
+      const targetCount = Math.min(5, Math.max(3, suggestions.length));
+      const fallback = [
+        { afterSection: 1, label: 'ノートの写真', description: '途中式、解き直しリスト、単語練習など、今回の取り組みが伝わる手元写真。' },
+        { afterSection: 2, label: '自習風景', description: '自習席、学校ワーク、確認テストに向かう様子など、現場の空気が伝わる写真。' },
+        { afterSection: 3, label: '答案の写真', description: '答案用紙、確認テスト、学習計画表など、変化や成長が伝わる写真。' },
+        { afterSection: 4, label: '教室の写真', description: '机、教材、掲示物、自習スペースなど、通塾後のイメージが湧く写真。' },
+        { afterSection: sectionCount + 1, label: '室長・先生の写真', description: '室長や先生の自然な表情の写真。最後の相談導線に安心感を添えられます。' }
+      ];
+      fallback.forEach(item => {
+        if (suggestions.length >= targetCount) return;
+        const alreadyUsed = suggestions.some(suggestion => suggestion.afterSection === item.afterSection);
+        if (!alreadyUsed) suggestions.push(item);
+      });
+      const availableSlots = Array.from({ length: maxSlot }, (_, index) => index + 1);
+      const usedSlots = new Set();
+      const normalized = [];
+
+      suggestions.slice(0, targetCount).forEach((suggestion, index) => {
+        const desiredSlot = Math.min(maxSlot, Math.max(1, Number(suggestion.afterSection || 1)));
+        let slot = !usedSlots.has(desiredSlot) ? desiredSlot : null;
+        if (!slot) {
+          slot = availableSlots.find(candidate => candidate >= desiredSlot && !usedSlots.has(candidate))
+            || availableSlots.find(candidate => !usedSlots.has(candidate))
+            || desiredSlot;
+        }
+        usedSlots.add(slot);
+        normalized.push({
+          ...suggestion,
+          afterSection: slot,
+          order: index
+        });
+      });
+
+      return normalized.sort((a, b) => a.afterSection - b.afterSection || a.order - b.order);
+    }
+
+    html.push('<div data-eisai-article="true" style="font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; color: #1f2937; line-height: 1.95;">');
+    html.push('<h1 style="font-size: 30px; line-height: 1.45; margin: 0 0 28px; padding: 20px 24px; border-left: 6px solid #1d8acb; background: #eef8ff; color: #0f172a; font-weight: 900;">' + escapeHtml(title) + '</h1>');
+
+    normalizeTextArray(article.greeting || article.openingGreeting).forEach(paragraph => {
+      renderParagraph(paragraph);
+    });
+
+    const leadParagraphs = normalizeTextArray(article.lead || article.introduction);
+    if (leadParagraphs.length) {
+      html.push('<div style="background: #f8fafc; border: 1px solid #e5edf5; border-radius: 12px; padding: 20px 22px; margin: 0 0 30px;">');
+      leadParagraphs.forEach((paragraph, paragraphIndex) => {
+        splitReadableParagraph(paragraph).forEach(block => {
+          const leadStyle = paragraphIndex === 0
+            ? 'font-size: 17px; font-weight: 700; color: #334155;'
+            : 'font-size: 16px; color: #334155;';
+          html.push('<p style="margin: 0 0 16px; line-height: 2.12; ' + leadStyle + '">' + decorateInlineText(block, { state: decorationState }) + '</p>');
+        });
+      });
+      html.push('</div>');
+    }
+
+    const empathyBox = article.empathyBox || article.empathy_box;
+    if (empathyBox && typeof empathyBox === 'object') {
+      const label = String(empathyBox.label || empathyBox.title || '保護者の方へ').trim();
+      const paragraphs = normalizeTextArray(empathyBox.paragraphs || empathyBox.body || empathyBox.content);
+      if (paragraphs.length) {
+        html.push('<div style="background: #fff7ed; border-left: 6px solid #f97316; border-radius: 0 10px 10px 0; padding: 18px 20px; margin: 0 0 30px;">');
+        html.push('<div style="color: #c2410c; font-weight: 900; margin: 0 0 9px; font-size: 17px;">' + escapeHtml(label) + '</div>');
+        paragraphs.forEach(paragraph => {
+          splitReadableParagraph(paragraph).forEach(block => {
+            html.push('<p style="margin: 0 0 12px; font-size: 16.5px; line-height: 2.1;">' + decorateInlineText(block, { state: decorationState }) + '</p>');
+          });
+        });
+        html.push('</div>');
+      }
+    }
+
+    normalizeTextArray(article.summary || article.keyMessage).slice(0, 1).forEach((paragraph, index) => {
+      renderHighlight(paragraph, index);
+    });
+
+    const sections = Array.isArray(article.sections) ? article.sections : [];
+    const rawPhotoSuggestions = normalizeObjectArray(article.photoSuggestions || article.photo_suggestions);
+    const photoSuggestions = buildPhotoSuggestions(rawPhotoSuggestions, sections.length);
+    sections.forEach((section, index) => {
+      if (!section || typeof section !== 'object') return;
+      const sectionIndex = index + 1;
+      const heading = String(section.heading || section.title || '').trim();
+      if (heading) html.push('<h2 style="font-size: 23px; line-height: 1.5; margin: 40px 0 20px; padding: 17px 20px; border-left: 6px solid #1d8acb; background: #eef8ff; color: #0f172a; font-weight: 900;">' + escapeHtml(heading) + '</h2>');
+
+      normalizeTextArray(section.paragraphs || section.body || section.content).forEach(paragraph => {
+        renderParagraph(paragraph);
+      });
+
+      renderDialogues(normalizeDialogueArray(section.dialogues || section.dialogue || section.conversation));
+
+      normalizeTextArray(section.highlights || section.highlight || section.emphasis).slice(0, 1).forEach((text, highlightIndex) => renderHighlight(text, highlightIndex));
+
+      const bullets = normalizeTextArray(section.bullets || section.points);
+      renderCheckList(String(section.bulletTitle || section.bullet_title || 'ここがポイント').trim(), bullets);
+      renderManagerNote(String(section.managerNote || section.manager_note || '').trim());
+      photoSuggestions
+        .filter(suggestion => Number(suggestion.afterSection || suggestion.after_section || 0) === sectionIndex)
+        .forEach(renderPhotoSuggestion);
+    });
+
+    normalizeTextArray(article.closing || article.conclusion).forEach(paragraph => {
+      renderParagraph(paragraph);
+    });
+
+    photoSuggestions
+      .filter(suggestion => Number(suggestion.afterSection || suggestion.after_section || 0) > sections.length)
+      .forEach(renderPhotoSuggestion);
+
+    html.push('</div>');
+
+    return html.join('\n').trim();
+  }
+
   const defaultCtaData = {
     '説明文1': 'テストや勉強のお悩みを一緒に整理します。',
     '説明文2': 'お子さまに合った一歩目を一緒に見つけていきましょう。',
@@ -373,6 +1001,7 @@
 
   function buildCtaHtml(url, tel, ctaData = null) {
     const d = ctaData || defaultCtaData;
+    const closingMessage = getCtaClosingMessage(d);
     return (
       '<div data-cta-protected="true" style="background: #f8f8f8; padding: 40px 20px; margin: 40px 0;">' +
       '<div style="text-align: center; font-size: 26px; font-weight: bold; color: #333; margin: 0 0 12px 0;">まずはお気軽にご相談ください</div>' +
@@ -399,13 +1028,29 @@
       '</div>' +
       '</div>' +
       '</div>' +
-      '<div style="text-align: center; color: #555; margin: 0 0 28px 0; font-size: 15px;">' + (d['締めの言葉'] || defaultCtaData['締めの言葉']) + '</div>' +
+      (closingMessage ? '<div style="text-align: center; color: #555; margin: 0 0 28px 0; font-size: 15px;">' + closingMessage + '</div>' : '') +
       '<div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">' +
       '<a href="' + url + '" style="display: inline-block; background: #e67e22; color: #fff; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">無料学習相談・体験授業に申し込む</a>' +
       '<a href="tel:' + tel.replace(/-/g, '') + '" style="display: inline-block; background: #fff; color: #e67e22; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; border: 2px solid #e67e22;">電話で直接申し込む</a>' +
       '</div>' +
       '</div>'
     );
+  }
+
+  function getCtaClosingMessage(data) {
+    const raw = String((data && data['締めの言葉']) || '').trim();
+    if (!raw) return '';
+    const genericPatterns = [
+      /誠心誠意/,
+      /全力でサポート/,
+      /サポートさせていただきます/,
+      /お待ちしております/,
+      /心を込めた最後のメッセージ/,
+      /校舎名.*室長名/,
+      /英才個別学院\s*[^、。]*校\s*室長の[^、。]*(?:が|より)/
+    ];
+    if (genericPatterns.some(pattern => pattern.test(raw)) && raw.length < 55) return '';
+    return escapeHtml(raw);
   }
 
   // =========================================================
@@ -505,14 +1150,23 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
   // =========================================================
   // 6. ウォッチャー：ブログ生成完了
   // =========================================================
-  function watchBlogResponseAndEnableCopy(statusDiv, copyBtn) {
+  function watchBlogResponseAndEnableCopy(statusDiv, copyBtn, onReady) {
     console.log('[Eisai] ブログ応答ウォッチャー開始');
     let last = '';
     let stableCount = 0;
     let pollCount = 0;
-    const maxPollCount = 240;
+    const maxPollCount = 120;
     const initialNode = findLatestBlogResponseNode();
     const initialText = initialNode ? (initialNode.textContent || initialNode.innerText || '') : '';
+    const showReady = (message) => {
+      if (onReady) {
+        onReady(message);
+      } else {
+        statusDiv.textContent = message;
+        statusDiv.classList.add('show');
+        copyBtn.style.display = 'block';
+      }
+    };
 
     const timer = setInterval(() => {
       pollCount++;
@@ -532,6 +1186,10 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
 
       const text = latest.textContent || latest.innerText || '';
+      if (pollCount === 60 && text.length < 100) {
+        statusDiv.textContent = '⚠️ 生成に時間がかかっています。Gemini側で止まっている場合は、Geminiの停止ボタンで一度止めてから、もう一度送信してください。';
+        statusDiv.classList.add('show');
+      }
       if (latest === initialNode && text === initialText) {
         if (pollCount % 30 === 0) {
           console.log('[Eisai] 新しいGemini応答待ち', { pollCount, textLength: text.length });
@@ -557,22 +1215,65 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         clearInterval(timer);
 
         let raw = '';
+        let innerHtmlRaw = '';
+        let innerTextRaw = '';
         let decoded = '';
         try {
           const innerMarkdown = latest.matches('.markdown-main-panel') ? latest : latest.querySelector('.markdown-main-panel');
           if (innerMarkdown) {
-            raw = innerMarkdown.textContent || '';
+            innerHtmlRaw = innerMarkdown.innerHTML || '';
+            innerTextRaw = innerMarkdown.textContent || '';
           } else {
-            raw = text;
+            innerHtmlRaw = latest.innerHTML || '';
+            innerTextRaw = text;
+          }
+          raw = innerHtmlRaw || innerTextRaw;
+
+          let ctaData = null;
+          const blogJson = parseBlogJsonResponse(innerTextRaw || decodeHtmlText(innerHtmlRaw));
+
+          if (blogJson) {
+            decoded = renderBlogJsonHtml(blogJson);
+            const articleJson = blogJson.article && typeof blogJson.article === 'object' ? blogJson.article : blogJson;
+            ctaData = normalizeJsonCtaData(blogJson.cta || blogJson.ctaData || blogJson.cta_data || articleJson.cta);
+            console.log('[Eisai] JSON応答からブログHTMLを生成しました');
+          } else {
+            ctaData = parseCtaData(innerTextRaw || decodeHtmlText(innerHtmlRaw));
+
+            decoded = sanitizeGeminiHtml(innerHtmlRaw);
+            decoded = decoded.replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/i, '');
+            decoded = decoded.replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '');
+            decoded = decoded.replace(/<p[^>]*>\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：][\s\S]*?<\/p>/gi, '');
+            decoded = decoded.replace(/^\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：].*$/gim, '');
+            decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '').trim();
           }
 
-          decoded = decodeHtmlText(raw);
+          let hasRequiredHtml = /<h1[\s>]/i.test(decoded) && /<p[\s>]/i.test(decoded);
 
-          const ctaData = parseCtaData(raw);
-          decoded = decoded.replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '');
-          decoded = decoded.replace(/説明文1[:：].+[\s\S]*?締めの言葉[:：].+/gi, '');
-          decoded = decoded.replace(/<p[^>]*style=['"][^'"]*color:\s*red[^'"]*['"][^>]*>\s*■+CTAセクション■+\s*<\/p>/gi, '');
-          decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '');
+          if (!blogJson && !hasRequiredHtml) {
+            const fallbackText = decodeHtmlText(innerTextRaw)
+              .replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '')
+              .replace(/^\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：].*$/gim, '')
+              .trim();
+            const fallbackPlain = fallbackText.replace(/\s+/g, '');
+            if (fallbackPlain.length >= 300) {
+              decoded = ensureHtmlContent(fallbackText);
+              hasRequiredHtml = /<h1[\s>]/i.test(decoded) && /<p[\s>]/i.test(decoded);
+              console.warn('[Eisai] innerHTML から本文HTMLを取得できなかったため、textContent + ensureHtmlContent でフォールバックしました');
+            }
+          }
+
+          const articleText = decoded
+            .replace(/<[^>]*>/g, '')
+            .replace(/\s+/g, '')
+            .trim();
+          if (!hasRequiredHtml || articleText.length < 300) {
+            lastBlogHtml = '';
+            statusDiv.textContent = '❌ Gemの出力にブログ本文が見つかりませんでした。CTA素材だけの可能性があります。Gemの本文を確認し、もう一度「Geminiへ送信して記事生成」を押してください。';
+            statusDiv.classList.add('show');
+            copyBtn.style.display = 'none';
+            return;
+          }
 
           const info = getSetting();
           let ctaUrl = (info.url || '').trim();
@@ -580,23 +1281,22 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           if (!ctaUrl) {
             console.warn('[Eisai] CTA URLが未設定のため、CTAなしでコピー可能にします');
             lastBlogHtml = decoded;
-            statusDiv.textContent = '⚠️ CTA URLが未設定のため、CTAなしのHTMLをコピーできます。次回は教室情報設定からCTAリンク先URLを保存してください。';
-            statusDiv.classList.add('show');
-            copyBtn.style.display = 'block';
+            saveThumbnailSource(lastBlogHtml);
+            showReady('⚠️ CTA URLが未設定のため、CTAなしのHTMLをコピーできます。次回は教室情報設定からCTAリンク先URLを保存してください。');
             return;
           }
           if (!/^https?:\/\//i.test(ctaUrl)) ctaUrl = 'https://' + ctaUrl;
 
           const ctaHtml = buildCtaHtml(ctaUrl, ctaTel, ctaData);
           lastBlogHtml = decoded + '\n\n' + ctaHtml;
+          saveThumbnailSource(lastBlogHtml);
 
         } catch (e) {
           console.error('ブログHTML処理エラー:', e);
-          lastBlogHtml = decodeHtmlText(raw || text).trim();
+          lastBlogHtml = ensureHtmlContent(decodeHtmlText(raw || text).trim());
           if (lastBlogHtml) {
-            statusDiv.textContent = '⚠️ HTML加工中にエラーが発生しましたが、Gemini応答本文をコピーできます。内容を確認してから貼り付けてください。';
-            statusDiv.classList.add('show');
-            copyBtn.style.display = 'block';
+            saveThumbnailSource(lastBlogHtml);
+            showReady('⚠️ HTML加工中にエラーが発生しましたが、Gemini応答本文をHTML化してコピーできます。内容を確認してから貼り付けてください。');
           } else {
             statusDiv.textContent = '❌ HTML加工中にエラーが発生し、コピー用本文も取得できませんでした。Gemini本文を手動コピーしてください。';
             statusDiv.classList.add('show');
@@ -604,11 +1304,9 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           return;
         }
 
-        statusDiv.textContent = isStableShortResponse
+        showReady(isStableShortResponse
           ? '✅ 短めの応答として生成完了を検出しました。内容を確認してから赤いボタンでコピーしてください。'
-          : '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。';
-        statusDiv.classList.add('show');
-        copyBtn.style.display = 'block';
+          : '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。');
       }
     }, 1000);
   }
@@ -711,6 +1409,10 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     };
 
     updateBtn.onclick = () => {
+      if (!UPDATE_URL) {
+        alert('自動更新URLが設定されていません。');
+        return;
+      }
       const ok = confirm(`現在のバージョン: v${CURRENT_VERSION} \n\n最新版を確認・インストールしますか？\n（Tampermonkeyのインストール画面が開きます）`);
       if (ok) {
         window.open(UPDATE_URL, '_blank');
@@ -736,12 +1438,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
     const nameIn = createInput(dContent, '校舎名（記事に反映されます）', '例：◯◯校　※校まで必ずいれる', false);
     const managerIn = createInput(dContent, '室長名（本文では名前のみ使用）', '例：●●', false);
+    const areaIn = createInput(dContent, '対象エリア（冒頭あいさつ用・任意）', '例：武蔵新城・武蔵中原エリア', false);
     const urlIn = createInput(dContent, 'CTAリンク先URL（https://必須）', '例：https://eisai.org/…', false);
     const telIn = createInput(dContent, '電話番号（CTAの電話ボタン用）', '例：ハイフンなしで登録', false);
 
     const saved = getSetting();
     if (saved.name) nameIn.value = saved.name;
     if (saved.manager) managerIn.value = saved.manager;
+    if (saved.area) areaIn.value = saved.area;
     if (saved.url) urlIn.value = saved.url;
     if (saved.tel) telIn.value = saved.tel;
 
@@ -752,7 +1456,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
     }, dContent, '教室情報を保存');
     saveBtn.onclick = () => {
-      saveSetting({ name: nameIn.value, manager: managerIn.value, url: urlIn.value, tel: telIn.value });
+      saveSetting({ name: nameIn.value, manager: managerIn.value, area: areaIn.value, url: urlIn.value, tel: telIn.value });
       alert('教室情報を保存しました');
       details.open = false;
     };
@@ -791,6 +1495,10 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
     const selectedTypeLabel = createEl('div', {
       style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '8px',
         padding: '8px 12px',
         marginBottom: '12px',
         background: '#e0e7ff',
@@ -799,7 +1507,16 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         fontWeight: '600',
         color: '#3730a3'
       }
-    }, step2, '📝 結果アップ・成長ストーリー');
+    }, step2);
+    const selectedTypeText = createEl('span', {}, selectedTypeLabel, '📝 結果アップ・成長ストーリー');
+    const sampleButtonWrap = createEl('div', {
+      style: {
+        display: ENABLE_TEST_SAMPLE_BUTTONS ? 'flex' : 'none',
+        flexWrap: 'wrap',
+        gap: '4px',
+        justifyContent: 'flex-end'
+      }
+    }, selectedTypeLabel);
 
     const formContainer = createEl('div', { id: 'eisai-form-container' }, step2);
     const formInputs = {};
@@ -807,60 +1524,82 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     const TYPE_FORMS = {
       [BLOG_TYPES.GROWTH]: {
         label: '📝 結果アップ・成長ストーリー',
+        hint: '短くてもOKです。実際に見た場面、生徒の変化、先生の一言が入ると記事が現場っぽくなります。',
         fields: [
-          { key: 'student', label: '主役の生徒情報', placeholder: '例：中2・西中原中・Aさん・数学', isArea: false },
-          { key: 'before', label: 'ビフォー（課題・前回の状況）', placeholder: '例：前回テスト45点、計算ミスが多かった', isArea: false },
-          { key: 'after', label: 'アフター（成果・今回の結果）', placeholder: '例：今回78点、33点アップ！', isArea: false },
-          { key: 'actions', label: '教室で行ったこと（3つ以上）', placeholder: '例：\n・計算練習を毎回10分\n・途中式を書く習慣づけ\n・テスト前に類題演習', isArea: true },
-          { key: 'episode', label: '印象に残ったエピソード・室長コメント', placeholder: '例：最初は自信なさそうだったけど、点数を見た時の笑顔が忘れられません', isArea: true }
+          { key: 'student', label: '主役の生徒情報', placeholder: '例：中2・篠崎第二中・Aさん・数学', isArea: false },
+          { key: 'before', label: 'ビフォー（課題・前回の状況）', placeholder: '例：前回45点。計算ミスが多く、途中式を書かないことが多かった', isArea: false },
+          { key: 'after', label: 'アフター（成果・今回の結果）', placeholder: '例：今回84点。39点アップ。本人も「初めて数学が楽しい」と話していた', isArea: false },
+          { key: 'actions', label: '教室で行った具体的なこと（3つ以上）', placeholder: '例：\n・毎回の授業冒頭で計算練習を10分\n・途中式をノートに残すルールを作った\n・テスト2週間前から学校ワークを2周\n・間違えた問題だけを解き直しリスト化', isArea: true },
+          { key: 'reality', label: '現場で見えた変化・リアルな場面', placeholder: '例：最初は「どうせ無理」と言っていたが、2週間ほどで自習に来る回数が増えた。点数を見た時に少し照れながら笑っていた', isArea: true },
+          { key: 'episode', label: '印象に残ったエピソード・室長コメント', placeholder: '例：結果だけでなく、途中式を書く習慣がついたことが一番大きな成長だと感じています', isArea: true }
         ]
       },
       [BLOG_TYPES.EVENT]: {
         label: '📅 対策・イベント紹介',
+        hint: '日程や内容だけでなく、当日の雰囲気・参加した生徒の様子・現場で感じた課題を書いてください。',
         fields: [
           { key: 'eventName', label: 'イベント名・対象', placeholder: '例：冬期講習・中1〜中3対象', isArea: false },
-          { key: 'flow', label: 'イベントの流れ・内容', placeholder: '例：\n・12/25〜1/7の14日間\n・1日2コマ×週3回\n・苦手単元を集中特訓', isArea: true },
-          { key: 'benefit', label: '生徒が得られるもの', placeholder: '例：\n・冬休み明けテストで自己ベスト更新\n・苦手克服で自信がつく', isArea: true },
-          { key: 'example', label: '過去の実例・雰囲気メモ（任意）', placeholder: '例：去年参加した生徒は平均20点アップ', isArea: true }
+          { key: 'flow', label: 'イベントの流れ・内容', placeholder: '例：\n・12/25〜1/7の14日間\n・1日2コマ×週3回\n・学校ワーク確認→苦手単元演習→確認テスト', isArea: true },
+          { key: 'scene', label: '当日の雰囲気・生徒の様子', placeholder: '例：最初は眠そうな生徒もいたが、確認テストで点が取れると表情が明るくなった', isArea: true },
+          { key: 'benefit', label: '生徒・保護者にとってのメリット', placeholder: '例：\n・冬休み明けテストに向けて苦手を整理できる\n・家では進みにくい学校ワークを教室で進められる', isArea: true },
+          { key: 'example', label: '過去の実例・室長コメント（任意）', placeholder: '例：去年は講習後に英語が20点以上伸びた生徒もいました。早めに苦手を見つけることが大切です', isArea: true }
         ]
       },
       [BLOG_TYPES.PERSON]: {
         label: '👤 講師・室長・生徒紹介',
-        note: '⚠️ サムネイル作成のため、紹介する人物の写真をチャットにアップロードしてください',
+        hint: '経歴よりも「どんな声かけをする人か」「生徒とどう関わるか」を入れると温度感が出ます。',
         fields: [
           { key: 'personInfo', label: '紹介する人の基本情報', placeholder: '例：講師・田中先生・理系科目担当・3年目', isArea: false },
-          { key: 'points', label: 'その人の「らしさ」ポイント（3つ以上）', placeholder: '例：\n・説明がわかりやすい\n・生徒の話をよく聞く\n・テスト前は自習にも付き合う', isArea: true },
-          { key: 'episode', label: '印象的なエピソード', placeholder: '例：苦手だった生徒が「先生の授業だけは楽しい」と言ってくれた', isArea: true },
-          { key: 'message', label: '室長として伝えたい一言', placeholder: '例：生徒思いの先生です。安心してお任せください', isArea: false }
+          { key: 'points', label: 'その人の「らしさ」ポイント（3つ以上）', placeholder: '例：\n・説明前に必ず生徒の考えを聞く\n・できたところを具体的にほめる\n・テスト前は自習にも声をかける', isArea: true },
+          { key: 'episode', label: '印象的なエピソード', placeholder: '例：苦手だった生徒が「先生の授業だけは質問しやすい」と言ってくれた', isArea: true },
+          { key: 'message', label: '室長として伝えたい一言', placeholder: '例：ただ教えるだけでなく、生徒が前向きになれる関わり方をしてくれる先生です', isArea: true }
         ]
       },
       [BLOG_TYPES.SERVICE]: {
         label: '💼 サービス・相談メニュー紹介',
+        hint: 'サービス説明だけでなく、実際によくある相談内容や、面談で保護者が安心する場面を書いてください。',
         fields: [
           { key: 'serviceName', label: 'サービス名', placeholder: '例：無料学習相談会・無料体験授業', isArea: false },
-          { key: 'target', label: 'どんな悩みを持つ人向け？（3つ以上）', placeholder: '例：\n・勉強のやり方がわからない\n・塾選びに迷っている\n・成績が伸び悩んでいる', isArea: true },
+          { key: 'target', label: 'よくある相談・悩み（3つ以上）', placeholder: '例：\n・家で勉強しているのに点数が上がらない\n・学校ワークの進め方がわからない\n・塾選びに迷っている', isArea: true },
           { key: 'flow', label: '相談・体験の流れ', placeholder: '例：\n・①お電話で予約\n・②ヒアリング30分\n・③体験授業\n・④ご報告', isArea: true },
-          { key: 'goal', label: '利用後にどうなってほしいか', placeholder: '例：お子さまに合った勉強法が見つかり、前向きに取り組めるように', isArea: true }
+          { key: 'scene', label: '実際の面談・体験でよくある場面', placeholder: '例：保護者の方が「何から始めればいいかわからなくて」と話され、学習状況を整理すると少し安心された様子だった', isArea: true },
+          { key: 'goal', label: '利用後にどうなってほしいか', placeholder: '例：お子さまに合った勉強法が見つかり、親子で次の一歩を話しやすくなる状態', isArea: true }
         ]
       },
       [BLOG_TYPES.SCORE]: {
         label: '🎯 点数アップ速報',
+        hint: '点数一覧だけでなく、代表ケースの「何を変えたか」を入れると説得力が出ます。',
         fields: [
           { key: 'testName', label: '対象テスト', placeholder: '例：2学期期末テスト・中1〜中3', isArea: false },
           { key: 'scoreList', label: '高得点・点数アップ一覧（1行1件）', placeholder: '例：中2 Aさん 数学 45→78点（+33点）\n中1 Bくん 英語 52→71点（+19点）\n中3 Cさん 理科 88点', isArea: true },
-          { key: 'comment', label: '速報から伝えたいこと', placeholder: '例：みんな本当によく頑張りました！次も一緒に頑張ろう', isArea: true },
-          { key: 'pickup', label: '代表ケース深掘りメモ（任意）', placeholder: '例：Aさんは毎日自習に来て、計算練習を続けた結果です', isArea: true }
+          { key: 'reason', label: '点数アップにつながった取り組み', placeholder: '例：\n・学校ワークを早めに終わらせた\n・間違えた問題を授業で解き直した\n・テスト前は自習に週3回来た', isArea: true },
+          { key: 'comment', label: '速報から伝えたいこと', placeholder: '例：点数だけでなく、準備の仕方が変わってきたことが大きな成長です', isArea: true },
+          { key: 'pickup', label: '代表ケース深掘りメモ（任意）', placeholder: '例：Aさんは毎回の小テストで間違えた単元を残し、テスト前にそこだけを重点的に復習した結果です', isArea: true }
         ]
       },
       [BLOG_TYPES.OTHER]: {
         label: '📄 その他',
+        hint: '自由テーマでも、誰に・何を・なぜ伝えたいのかと、教室で実際に見えた場面を入れてください。',
         fields: [
           { key: 'theme', label: '今回のブログで伝えたいテーマ・主役', placeholder: '例：西中原中の定期テストで結果を出すには？', isArea: false },
-          { key: 'actions', label: '教室や先生が行ったこと（箇条書き）', placeholder: '例：\n・テスト範囲の確認\n・苦手単元の洗い出し\n・類題演習', isArea: true },
-          { key: 'episode', label: 'エピソード・メッセージ', placeholder: '例：生徒たちの頑張りを見て、私も元気をもらいました', isArea: true }
+          { key: 'target', label: '誰に向けて書きたいか', placeholder: '例：定期テスト前に何をすればいいか迷っている中学生の保護者', isArea: false },
+          { key: 'actions', label: '教室や先生が行ったこと（箇条書き）', placeholder: '例：\n・テスト範囲の確認\n・苦手単元の洗い出し\n・類題演習\n・学校ワークの進捗確認', isArea: true },
+          { key: 'episode', label: '現場エピソード・メッセージ', placeholder: '例：生徒たちが自習に来る回数が増え、質問の内容も具体的になってきました', isArea: true }
         ]
       }
     };
+
+    const TEST_SAMPLES = {};
+
+    function renderSampleButtons(type) {
+      void type;
+      if (!ENABLE_TEST_SAMPLE_BUTTONS) return;
+    }
+
+    function applyTypeSample(type, sample) {
+      void type;
+      void sample;
+    }
 
     function renderTypeForm(type) {
       while (formContainer.firstChild) {
@@ -870,7 +1609,8 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const config = TYPE_FORMS[type];
       if (!config) return;
 
-      selectedTypeLabel.textContent = config.label;
+      selectedTypeText.textContent = config.label;
+      renderSampleButtons(type);
 
       if (config.note) {
         createEl('div', {
@@ -885,6 +1625,21 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
             fontWeight: 'bold'
           }
         }, formContainer, config.note);
+      }
+
+      if (config.hint) {
+        createEl('div', {
+          style: {
+            fontSize: '12px',
+            color: '#374151',
+            backgroundColor: '#f8fafc',
+            padding: '8px',
+            borderRadius: '6px',
+            marginBottom: '10px',
+            border: '1px solid #e5e7eb',
+            lineHeight: '1.6'
+          }
+        }, formContainer, config.hint);
       }
 
       config.fields.forEach(field => {
@@ -937,6 +1692,22 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
     }, step2BtnWrap, 'Geminiへ送信して記事生成');
 
+    const returnResultBtn = createEl('button', {
+      style: {
+        display: 'none',
+        width: '100%',
+        padding: '10px',
+        marginTop: '8px',
+        background: '#16a34a',
+        color: '#ffffff',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: '600',
+        fontSize: '14px',
+        cursor: 'pointer'
+      }
+    }, step2, '生成完了画面に戻る');
+
     nextBtn.onclick = function () {
       step1.style.display = 'none';
       step2.style.display = 'block';
@@ -945,7 +1716,49 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       step2.style.display = 'none';
       step1.style.display = 'block';
     };
-    const statusDiv = createEl('div', { className: 'eisai-status' }, content);
+    const formStatusDiv = createEl('div', { className: 'eisai-status' }, step2);
+
+    const resultStep = createEl('div', { id: 'eisai-result-step', style: { display: 'none' } }, content);
+    createEl('div', {
+      style: {
+        padding: '12px',
+        marginBottom: '12px',
+        background: '#dcfce7',
+        borderRadius: '8px',
+        fontSize: '16px',
+        fontWeight: '700',
+        color: '#166534'
+      }
+    }, resultStep, '✅ ブログ生成完了');
+    createEl('div', {
+      style: {
+        padding: '10px',
+        marginBottom: '12px',
+        background: '#f8fafc',
+        border: '1px solid #e2e8f0',
+        borderRadius: '8px',
+        fontSize: '13px',
+        color: '#475569',
+        lineHeight: '1.6'
+      }
+    }, resultStep, '入力内容は残っています。修正したい場合は「入力内容に戻る」から戻れます。');
+
+    const statusDiv = createEl('div', { className: 'eisai-status show' }, resultStep);
+
+    const editBackBtn = createEl('button', {
+      style: {
+        marginTop: '10px',
+        width: '100%',
+        padding: '10px',
+        background: '#6b7280',
+        color: '#ffffff',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: '600',
+        fontSize: '14px',
+        cursor: 'pointer'
+      }
+    }, resultStep, '入力内容に戻る');
 
     const copyToast = createEl('div', {
       id: 'eisai-copy-toast',
@@ -959,7 +1772,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         color: '#92400e',
         whiteSpace: 'pre-line',
       }
-    }, content);
+    }, resultStep);
 
     const copyBtn = createEl('button', {
       style: {
@@ -975,7 +1788,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         cursor: 'pointer',
         display: 'none'
       }
-    }, content, '▶ ブログHTMLをコピーする');
+    }, resultStep, '▶ ブログHTMLをコピーする');
 
     const imgSection = createEl('div', {
       id: 'eisai-image-section',
@@ -985,10 +1798,63 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         paddingTop: '12px',
         borderTop: '1px solid #e5e7eb'
       }
-    }, content);
+    }, resultStep);
+
+    function showResultStep(message) {
+      step1.style.display = 'none';
+      step2.style.display = 'none';
+      resultStep.style.display = 'block';
+      statusDiv.textContent = message;
+      statusDiv.classList.add('show');
+      copyBtn.style.display = 'block';
+      returnResultBtn.style.display = 'block';
+      setTimeout(() => {
+        resultStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+
+    returnResultBtn.onclick = () => {
+      if (!lastBlogHtml) {
+        alert('まだコピーできるブログHTMLがありません。生成完了後に使えます。');
+        return;
+      }
+      showResultStep(statusDiv.textContent || '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。');
+    };
+
+    editBackBtn.onclick = () => {
+      resultStep.style.display = 'none';
+      step1.style.display = 'none';
+      step2.style.display = 'block';
+      setTimeout(() => {
+        step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    };
 
     createEl('p', { style: { fontWeight: 'bold', marginBottom: '6px' } }, imgSection,
       '🖼 サムネイル画像生成（ブログ用）');
+
+    const personThumbnailNotice = createEl('div', {
+      style: {
+        display: 'none',
+        fontSize: '12px',
+        color: '#b91c1c',
+        backgroundColor: '#fef2f2',
+        padding: '8px',
+        borderRadius: '6px',
+        marginBottom: '10px',
+        border: '1px solid #fecaca',
+        fontWeight: 'bold',
+        lineHeight: '1.6'
+      }
+    }, imgSection, '⚠️ 講師・室長・生徒紹介のサムネイルを作る場合は、画像生成前に紹介する人物の写真をこのGemチャットへアップロードしてください。');
+
+    function isPersonThumbnailContext() {
+      return currentBlogType === BLOG_TYPES.PERSON || loadThumbnailSourceBlogType() === BLOG_TYPES.PERSON;
+    }
+
+    function updatePersonThumbnailNotice() {
+      personThumbnailNotice.style.display = isPersonThumbnailContext() ? 'block' : 'none';
+    }
 
     createEl('label', { className: 'eisai-label' }, imgSection, '画像スタイルを選択');
     const styleSelect = createEl('select', {
@@ -1131,8 +1997,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const mainCatch = isOmakase ? 'おまかせ' : (mainCatchInput.value.trim() || 'おまかせ');
       const subCatch = isOmakase ? 'おまかせ' : (subCatchInput.value.trim() || 'おまかせ');
       const points = isOmakase ? 'おまかせ' : (pointsInput.value.trim() || 'おまかせ');
+      const sourceBlogHtml = lastBlogHtml || loadThumbnailSource();
 
-      const isPersonType = currentBlogType === BLOG_TYPES.PERSON;
+      if (!sourceBlogHtml) {
+        alert('サムネイル作成に使うブログ本文が見つかりませんでした。\n先にブログ生成を完了してから、もう一度お試しください。');
+        return;
+      }
+
+      const isPersonType = isPersonThumbnailContext();
       const personThumbnailRules = isPersonType ? `
 ■ 人物紹介サムネイル専用ルール
   - このチャットにユーザーがアップロードした先生・講師・室長の写真を必ずベースにしてください
@@ -1145,19 +2017,13 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
   - 名前とキャッチコピーは人物と重ならないように配置し、読みやすさを最優先してください
         ` : '';
 
-      const input = document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
-      if (!input) {
-        alert('Geminiの入力欄が見つかりませんでした');
-        return;
-      }
-
       const promptRequest = `
 @NANO BANANA PRO
 【画像生成リクエスト】
 以下のブログ記事の内容に基づき、定義されたスタイルで最高品質のサムネイル画像を生成するためのプロンプトを作成してください。
 
 ■ ブログ記事内容
-${lastBlogHtml || 'ブログ記事が生成されていません。先にブログを生成してください。'}
+${sourceBlogHtml}
 
 ■ 適用するスタイルパラメータ（英語）
 1. Visual Style: ${VISUAL_STYLES[style] || style}
@@ -1216,6 +2082,21 @@ ${personThumbnailRules}
 
 【重要】プロンプトを出力のみで、画像は生成しないでください。`;
 
+      if (!isThumbnailGemPage()) {
+        savePendingThumbnailPrompt(promptRequest);
+        localStorage.setItem('eisai_collapsed', 'false');
+        statusDiv.textContent = '🎯 サムネイルGemへ移動して、画像生成用プロンプト作成依頼を自動送信します。';
+        statusDiv.classList.add('show');
+        location.href = THUMBNAIL_GEM_URL;
+        return;
+      }
+
+      const input = document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
+      if (!input) {
+        alert('Geminiの入力欄が見つかりませんでした');
+        return;
+      }
+
       statusDiv.textContent = '🎯 画像生成用プロンプトを作成しています...';
       statusDiv.classList.add('show');
       imgExecBtn.style.display = 'none';
@@ -1246,6 +2127,7 @@ ${personThumbnailRules}
       const info = getSetting();
       const kosha = (info.name || '').trim();
       const shichou = (info.manager || '').trim();
+      const area = (info.area || '').trim();
       let ctaUrl = (info.url || '').trim();
       const ctaTel = (info.tel || '').trim();
 
@@ -1255,12 +2137,11 @@ ${personThumbnailRules}
       if (!ctaTel) { alert('電話番号を設定してください\n例：00000000000 ※ハイフンなし'); return; }
       if (!/^https?:\/\//i.test(ctaUrl)) ctaUrl = 'https://' + ctaUrl;
 
-      const esc = (s) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       let formContent = '';
       config.fields.forEach(field => {
         const val = typeData[field.key] || '';
         if (val.trim()) {
-          formContent += `${field.label}: ${val} \n`;
+          formContent += `${field.label}: ${val}\n\n`;
         }
       });
 
@@ -1269,24 +2150,28 @@ ${personThumbnailRules}
 【構成指示】
 - 導入：生徒の課題や悩みに共感する書き出し
 - 本文：ビフォー→取り組み→アフターの流れで構成
+- 現場で見えた変化・教室での具体的な取り組みを必ず入れる
 - 見出し例：「〇〇さんの挑戦」「教室で取り組んだこと」「結果と変化」
 - 締め：同じ悩みを持つ保護者への励ましメッセージ`,
         [BLOG_TYPES.EVENT]: `【記事タイプ】イベント紹介型
 【構成指示】
 - 導入：イベントの目的や対象者への呼びかけ
 - 本文：内容・流れ・得られるものを具体的に紹介
+- 当日の雰囲気・参加した生徒の様子・室長目線を入れる
 - 見出し例：「〇〇講習の特徴」「参加するとどうなる？」
 - 締め：参加を検討している保護者への後押しメッセージ`,
         [BLOG_TYPES.PERSON]: `【記事タイプ】人物紹介型
 【構成指示】
 - 導入：紹介する人との出会いや印象
 - 本文：その人の特徴・エピソードを具体的に紹介
+- 経歴だけでなく、生徒への声かけや関わり方が伝わる場面を入れる
 - 見出し例：「〇〇先生ってこんな人」「印象に残ったエピソード」
 - 締め：保護者への安心感を与えるメッセージ`,
         [BLOG_TYPES.SERVICE]: `【記事タイプ】サービス紹介型
 【構成指示】
 - 導入：対象となる悩みへの共感
 - 本文：サービス内容・流れ・利用後のイメージを紹介
+- 実際によくある相談内容や、面談・体験で安心につながる場面を入れる
 - 見出し例：「こんなお悩みありませんか？」「相談の流れ」「利用された方の声」
 - 締め：気軽に相談できることを伝えるメッセージ`,
         [BLOG_TYPES.SCORE]: `【記事タイプ】点数アップ速報型
@@ -1294,48 +2179,180 @@ ${personThumbnailRules}
 - 導入：テスト結果への喜びと生徒への称賛
 - 本文：点数アップ一覧を見やすく紹介し、代表ケースを深掘り
 - 【重要】入力された「高得点・点数アップ一覧」は、省略せずに全てリスト形式で記載すること
+- 点数だけでなく、点数アップにつながった行動・授業での取り組みを入れる
 - 見出し例：「今回のテスト結果速報！」「特に頑張った生徒たち」
 - 締め：次のテストに向けた意気込みと保護者へのメッセージ`,
         [BLOG_TYPES.OTHER]: `【記事タイプ】自由テーマ型
 【構成指示】
 - 導入：テーマに合わせた書き出し
 - 本文：伝えたい内容を自然な流れで構成
+- 入力された現場エピソードや教室で実際に見えた場面を中心に書く
 - 締め：保護者への前向きなメッセージ`
       };
 
       const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
-      let yaml = MASTER_YAML;
-      yaml = yaml.replace('input_required:', `article_type: "${currentBlogType}"\n\n${typeInstruction} \n\n【入力された情報】\n${formContent} \ninput_required: `);
-      yaml = yaml.replace(/__THEME__/g, esc(config.label.replace(/^[^\s]+\s/, '')));
-      yaml = yaml.replace(/__MEMO__/g, esc(formContent));
-      yaml = yaml.replace(/__KOSHA__/g, esc(kosha));
-      yaml = yaml.replace(/__SHICHOU__/g, esc(shichou));
-      yaml = yaml.replace(/__CTA_URL__/g, esc(ctaUrl));
-      yaml = yaml.replace(/__CTA_TEL__/g, esc(ctaTel));
+      const prompt = `あなたは英才個別学院の教室ブログ専門ライターです。
+以下の入力情報をもとに、保護者向けブログ記事の本文素材をJSONで作成してください。
+最終的なHTML化とCTA装飾はBROGTEST側で行います。あなたはJSONだけを返してください。
 
-      const input = document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
-      if (!input) {
-        alert('Geminiの入力欄が見つかりませんでした');
-        return;
+【今回の最重要方針】
+- 主役は article です。cta は最後に添える補助データです。
+- まず article の本文を十分に書いてください。cta だけ、相談ポイントだけ、要約だけの出力は禁止です。
+- JSONオブジェクト1つだけを出力してください。Markdown、コードブロック、前置き、解説、HTMLタグは出力しないでください。
+
+【本文の書き方ルール】
+- 冒頭は、保護者の不安や悩みに寄り添うところから始めてください。いきなり成果や宣伝から入らないでください。
+- 保護者、とくにお母さんが「うちの子にも当てはまるかもしれない」「一人で抱え込まなくていいかもしれない」と感じる温度で書いてください。
+- 家で見える不安、親子でピリピリしてしまう気持ち、声かけに迷う気持ちにやさしく触れてください。ただし保護者を責めないでください。
+- 文体は敬体を基本にしつつ、少し近い距離で話しかけてください。「ですよね」「かもしれません」「まずは」「少しずつ」のような自然な言葉を使ってください。
+- 「〜いたします」「〜させていただきます」「ご確認ください」「サポートいたします」などの硬い業務文は使いすぎないでください。
+- 本文は自然な段落で書いてください。箇条書きは補助だけにし、本文の中心にしないでください。
+- 各段落は1〜2文程度で短くしてください。長い説明を1段落に詰め込まないでください。
+- 読み手がスマホで読んでも疲れないように、こまめに話を区切ってください。
+- 本文段落は、長くなった時だけ読点「、」の位置で自然に改行されます。読点を細かく入れすぎず、意味のまとまりが崩れない文にしてください。リスト項目はこの限りではありません。
+- 「何をしたか」だけでなく、「生徒がどう変わったか」「教室でどんな場面があったか」を書いてください。
+- 入力された学校名、学年、教科、点数、期間、生徒の様子、先生・室長コメントを本文に反映してください。
+- 室長目線は売り込みではなく、そばで見守っていた人の言葉として自然に入れてください。「嬉しかった」「ほっとした」「印象に残った」などの感情を、過度に熱くしすぎずに入れてください。
+- 一般論だけの記事にしないでください。必ず入力情報に基づいた具体的な場面を書いてください。
+- 入力にない実績、点数、学校名、生徒発言、キャンペーンは作らないでください。
+- 大げさな広告表現、断定表現、「必ず伸びる」「絶対合格」は使わないでください。
+
+【装飾用データの作り方】
+- BROGTEST側でHTML装飾するため、読ませたい部分をJSON項目として分けてください。
+- article.empathyBox は、保護者の気持ちに寄り添う短い共感ボックスです。1つだけ作ってください。
+- section.highlights は、本当に読ませたい一文だけにしてください。記事全体で2〜4個までが目安です。各セクションに必ず入れる必要はありません。
+- section.bullets は、手順・取り組み・チェックポイントなど、3項目以上で整理した方が読みやすい時だけ使ってください。本文で自然に読ませる方がよい内容はリスト化しないでください。
+- section.dialogues は、保護者と室長の短いやりとりにすると読みやすい場面だけ使ってください。不要なら空配列または省略してください。
+- section.managerNote は、室長の思いや感情が伝わる短いコメントです。全セクションに入れる必要はありませんが、本文全体で1〜2個は入れてください。
+- article.photoSuggestions は必須です。空配列は禁止です。最低3個、理想は5個作り、「どのセクションの後に」「どんな写真を入れるとよいか」を具体的に判断してください。
+- 写真候補は文章の流れに沿って、ノート・途中式・解き直しリスト・答案・確認テスト・自習風景・教室内の教材など、実際の現場で撮れる写真を優先してください。
+- 汎用的な悩み写真、人物の頭抱え写真、フリー素材風のイメージ写真、冒頭用の雰囲気写真は作らないでください。
+- photoSuggestions.afterSection は同じ番号に集中させないでください。1つ目のセクション後に複数枚まとめるのは禁止です。本文の流れに合わせ、セクション1後、セクション2後、セクション3後、必要なら本文末尾のように分散してください。
+- ただし、すべてのセクションに写真を入れる必要はありません。写真を入れる意味が薄いセクションは飛ばし、本当に現場感が伝わる場面だけを選んでください。
+- photoSuggestions.label は「ノートの写真」「答案の写真」「自習風景」「確認テストの写真」「室長・先生の写真」のように、写真挿入（◯◯）として1行表示して意味が伝わる短い名前にしてください。
+- photoSuggestions.description は内部メモ扱いです。最終HTMLには表示しないため、説明文を読ませる前提で書かないでください。
+- 読ませたい言葉は必要な箇所だけカギカッコ「」で囲んでください。囲みすぎは禁止です。
+- 点数、期間、回数などの数字はできるだけ具体的に書いてください。BROGTEST側で赤字・大きめ文字に装飾します。
+- 装飾が多すぎると読みづらくなります。強調は1段落に1つまで、何も強調しない段落があって自然です。
+
+【冒頭あいさつ】
+- article.greeting を必ず1段落入れてください。
+- 対象エリアがある場合は「${area || '◯◯エリア'}の個別指導塾、英才個別学院 ${kosha} 室長の${shichou}です！」のように始めてください。
+- 対象エリアが空欄の場合は「英才個別学院 ${kosha} 室長の${shichou}です！」のように始めてください。
+- あいさつの後に、「今日は、〜についてお話しします。」という自然な導入を続けてください。
+- 毎回まったく同じ定型文にせず、記事内容に合わせて少し変化をつけてください。
+
+【文章量と構成】
+- article.greeting は1段落。
+- article.lead は2段落。
+- article.sections は3〜4個。
+- 各 section.paragraphs は2段落以上。
+- section.highlights は記事全体で2〜4個まで。
+- section.dialogues は必要な時だけ0〜2セット。
+- section.managerNote は本文全体で1〜2個。
+- article.photoSuggestions は必ず3〜5個。本文の流れに合わせて、現場で撮れる具体的な写真を入れる位置を指定してください。先頭の導入前に入れる汎用写真は不要です。同じセクション直後に複数枚を固めず、記事全体に分散してください。ただし全セクションに写真を入れる必要はありません。
+- article.closing は2段落。
+- 本文全体は900〜1400字程度。
+- cta は短く簡潔に。articleより目立たせないでください。
+- cta.closingMessage は記事内容に合わせた具体的な一文にしてください。
+- 「誠心誠意サポート」「全力でサポート」「お待ちしております」のような定型句しか書けない場合、cta.closingMessage は空文字 "" にしてください。
+
+【JSON形式】
+{
+  "article": {
+    "title": "32文字以内のブログタイトル",
+    "greeting": ["冒頭のあいさつ段落"],
+    "lead": ["保護者の不安に寄り添う導入段落", "入力内容につながる導入段落"],
+    "empathyBox": {
+      "label": "お母さんへ",
+      "paragraphs": ["読み手の不安に寄り添う短い共感文"]
+    },
+    "sections": [
+      {
+        "heading": "見出し",
+        "paragraphs": ["自然な本文段落", "現場感のある本文段落"],
+        "highlights": ["本当に読ませたい一文"],
+        "bulletTitle": "取り組みポイント",
+        "bullets": ["リスト化した方が読みやすい具体項目"],
+        "dialogues": [
+          { "speaker": "保護者", "text": "自然な短い相談の言葉" },
+          { "speaker": "室長", "text": "それに対する短い返答" }
+        ],
+        "managerNote": "室長の思いや感情が伝わる短いコメント"
       }
+    ],
+    "photoSuggestions": [
+      {
+        "afterSection": 0,
+        "label": "お悩み写真",
+        "description": "この位置に入れるとよい写真の内容"
+      },
+      {
+        "afterSection": 1,
+        "label": "ノートの写真",
+        "description": "この位置に入れるとよい写真の内容"
+      },
+      {
+        "afterSection": 3,
+        "label": "成果の写真",
+        "description": "この位置に入れるとよい写真の内容"
+      }
+    ],
+    "closing": ["保護者への前向きな結び", "相談へ自然につなげる結び"]
+  },
+  "cta": {
+    "description1": "記事内容に合わせた、不安を解消する一言",
+    "description2": "教室見学や相談へのハードルを下げる優しい一言",
+    "consultationPoints": ["相談内容1", "相談内容2", "相談内容3", "相談内容4"],
+    "trialPoints": ["体験で得られるメリット1", "体験で得られるメリット2", "体験で得られるメリット3", "体験で得られるメリット4"],
+    "closingMessage": "記事内容に合わせた具体的な一文。定型句しか書けない場合は空文字"
+  }
+}
 
-      statusDiv.textContent = '📨 ブログ生成用YAMLを送信しました。生成が完了したら、下にコピー用ボタンが出ます。';
-      statusDiv.classList.add('show');
+【禁止】
+- articleなしの出力は禁止です。
+- ctaだけの出力は禁止です。
+- HTMLタグを出力しないでください。
+- CTA_DATA_START / CTA_DATA_END を出力しないでください。
+- 説明文1、相談ポイント、体験ポイントだけの出力は禁止です。
+- JSON以外の文章を出力しないでください。
+
+【教室情報】
+校舎名: ${kosha}
+室長名: ${shichou}
+対象エリア: ${area || '未設定'}
+
+${typeInstruction}
+
+【入力情報】
+${formContent}`;
+
+      formStatusDiv.textContent = isBlogGemPage()
+        ? '📨 ブログGemへ送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。'
+        : '📨 ブログGemへ移動して送信します。Gemが開いたら自動で入力・送信されます。';
+      formStatusDiv.classList.add('show');
+      resultStep.style.display = 'none';
+      returnResultBtn.style.display = 'none';
       copyBtn.style.display = 'none';
       imgSection.style.display = 'none';
       imgExecBtn.style.display = 'none';
       lastBlogHtml = '';
 
-      input.focus();
-      document.execCommand('selectAll', false, null);
-      document.execCommand('insertText', false, yaml);
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+      if (!isBlogGemPage()) {
+        savePendingBlogPrompt(prompt, currentBlogType);
+        localStorage.setItem('eisai_collapsed', 'false');
+        location.href = BLOG_GEM_URL;
+        return;
+      }
 
-      await sleep(500);
-      sendMessageViaEnter(input);
+      const sent = await insertPromptAndSend(prompt);
+      if (!sent) {
+        alert('Geminiの入力欄が見つかりませんでした。ブログGemが開いているか確認してください。');
+        return;
+      }
 
-      watchBlogResponseAndEnableCopy(statusDiv, copyBtn);
+      watchBlogResponseAndEnableCopy(formStatusDiv, copyBtn, showResultStep);
     };
 
     copyBtn.onclick = async () => {
@@ -1346,6 +2363,7 @@ ${personThumbnailRules}
 
       try {
         await navigator.clipboard.writeText(lastBlogHtml);
+        saveThumbnailSource(lastBlogHtml);
       } catch (e) {
         console.error('Clipboard write failed:', e);
         alert('クリップボードへのコピーに失敗しました。\n(ブラウザの権限設定を確認してください)');
@@ -1360,6 +2378,7 @@ ${personThumbnailRules}
       }
 
       imgSection.style.display = 'block';
+      updatePersonThumbnailNotice();
       setTimeout(() => {
         const thumbSection = document.getElementById('eisai-image-section');
         if (thumbSection) {
@@ -1406,6 +2425,73 @@ ${personThumbnailRules}
 
       sendMessageViaEnter(input);
     };
+
+    async function runPendingBlogPromptIfNeeded() {
+      if (!isBlogGemPage()) return;
+
+      const pending = loadPendingBlogPrompt();
+      if (!pending) return;
+      localStorage.removeItem(PENDING_BLOG_PROMPT_KEY);
+      if (pending.blogType) currentBlogType = pending.blogType;
+
+      step1.style.display = 'none';
+      step2.style.display = 'block';
+      resultStep.style.display = 'none';
+      formStatusDiv.textContent = '📨 ブログGemを開きました。保存していた入力内容を自動送信しています...';
+      formStatusDiv.classList.add('show');
+      copyBtn.style.display = 'none';
+      imgSection.style.display = 'none';
+      imgExecBtn.style.display = 'none';
+      lastBlogHtml = '';
+
+      const sent = await insertPromptAndSend(pending.prompt);
+      if (!sent) {
+        formStatusDiv.textContent = '❌ ブログGemの入力欄を検出できませんでした。ページの読み込み完了後、もう一度「Geminiへ送信して記事生成」を押してください。';
+        formStatusDiv.classList.add('show');
+        return;
+      }
+
+      formStatusDiv.textContent = '📨 ブログGemへ送信しました。生成が完了したら、完了画面に切り替わります。';
+      formStatusDiv.classList.add('show');
+      watchBlogResponseAndEnableCopy(formStatusDiv, copyBtn, showResultStep);
+    }
+
+    async function runPendingThumbnailPromptIfNeeded() {
+      if (!isThumbnailGemPage()) return;
+
+      const pending = loadPendingThumbnailPrompt();
+      if (!pending) return;
+      localStorage.removeItem(PENDING_THUMBNAIL_PROMPT_KEY);
+
+      step1.style.display = 'none';
+      step2.style.display = 'none';
+      resultStep.style.display = 'block';
+      imgSection.style.display = 'block';
+      updatePersonThumbnailNotice();
+      copyBtn.style.display = 'none';
+      returnResultBtn.style.display = 'none';
+      imgExecBtn.style.display = 'none';
+      statusDiv.textContent = '🎯 サムネイルGemを開きました。画像生成用プロンプト作成依頼を自動送信しています...';
+      statusDiv.classList.add('show');
+
+      isGeneratingPrompt = true;
+      lastPromptNode = null;
+
+      const sent = await insertPromptAndSend(pending.prompt);
+      if (!sent) {
+        isGeneratingPrompt = false;
+        statusDiv.textContent = '❌ サムネイルGemの入力欄を検出できませんでした。ページの読み込み完了後、もう一度「画像生成用プロンプトを作成」を押してください。';
+        statusDiv.classList.add('show');
+        return;
+      }
+
+      statusDiv.textContent = '🎯 サムネイルGemへ送信しました。画像生成用プロンプトの出力を待っています...';
+      statusDiv.classList.add('show');
+      watchThumbnailPrompt(statusDiv, imgExecBtn);
+    }
+
+    runPendingBlogPromptIfNeeded();
+    runPendingThumbnailPromptIfNeeded();
   }
 
   // =========================================================
@@ -1415,7 +2501,7 @@ ${personThumbnailRules}
     const path = location.pathname;
     // /app または /app/ のみが新規チャット画面
     // /app/xxxxxxx のようなチャット中ページは除外
-    return path === '/app' || path === '/app/';
+    return path === '/app' || path === '/app/' || isBlogGemPage() || isThumbnailGemPage();
   }
 
   function ensureButton() {
@@ -1425,6 +2511,10 @@ ${personThumbnailRules}
       return;
     }
     if (document.getElementById(BTN_ID)) return;
+
+    if ((isBlogGemPage() && loadPendingBlogPrompt() || isThumbnailGemPage() && loadPendingThumbnailPrompt()) && !document.getElementById(TOOL_ID)) {
+      buildPanel();
+    }
 
     const btn = createEl('button', {
       id: BTN_ID,
