@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.86
+// @version      0.56.87
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.86';
+  const CURRENT_VERSION = '0.56.87';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.86 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.87 起動');
 
   let lastBlogHtml = '';
 
@@ -597,6 +597,38 @@
     return value.filter(item => item && typeof item === 'object');
   }
 
+  function splitReadableParagraph(raw) {
+    const text = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (!text) return [];
+
+    const sentences = [];
+    let current = '';
+    Array.from(text).forEach(char => {
+      current += char;
+      if ('。！？'.includes(char)) {
+        const sentence = current.trim();
+        if (sentence) sentences.push(sentence);
+        current = '';
+      }
+    });
+    if (current.trim()) sentences.push(current.trim());
+    if (sentences.length <= 1) return [text];
+
+    const blocks = [];
+    let block = '';
+    sentences.forEach(sentence => {
+      const next = block ? block + sentence : sentence;
+      if (block && (next.length > 92 || /[。！？]/.test(block.slice(-1)))) {
+        blocks.push(block);
+        block = sentence;
+      } else {
+        block = next;
+      }
+    });
+    if (block) blocks.push(block);
+    return blocks;
+  }
+
   function normalizeJsonCtaData(rawCta) {
     if (!rawCta || typeof rawCta !== 'object') return null;
     const consultationPoints = normalizeTextArray(rawCta.consultationPoints || rawCta.consultation_points);
@@ -635,7 +667,9 @@
     if (!title) return '';
 
     function renderParagraph(paragraph) {
-      html.push('<p style="margin: 0 0 18px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+      splitReadableParagraph(paragraph).forEach(block => {
+        html.push('<p style="margin: 0 0 14px; font-size: 16px;">' + escapeHtml(block) + '</p>');
+      });
     }
 
     function renderHighlight(text) {
@@ -658,7 +692,9 @@
       if (!note) return;
       html.push('<div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 16px 18px; margin: 22px 0;">');
       html.push('<div style="color: #0369a1; font-weight: 800; margin: 0 0 8px;">室長より</div>');
-      html.push('<p style="margin: 0; font-size: 16px; line-height: 1.9;">' + escapeHtml(note) + '</p>');
+      splitReadableParagraph(note).forEach(block => {
+        html.push('<p style="margin: 0 0 8px; font-size: 16px; line-height: 1.9;">' + escapeHtml(block) + '</p>');
+      });
       html.push('</div>');
     }
 
@@ -683,7 +719,9 @@
     if (leadParagraphs.length) {
       html.push('<div style="background: #f8fafc; border: 1px solid #e5edf5; border-radius: 10px; padding: 18px 20px; margin: 0 0 28px;">');
       leadParagraphs.forEach(paragraph => {
-        html.push('<p style="margin: 0 0 12px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+        splitReadableParagraph(paragraph).forEach(block => {
+          html.push('<p style="margin: 0 0 12px; font-size: 16px;">' + escapeHtml(block) + '</p>');
+        });
       });
       html.push('</div>');
     }
@@ -696,7 +734,9 @@
         html.push('<div style="background: #fff7ed; border-left: 5px solid #f97316; border-radius: 0 8px 8px 0; padding: 16px 18px; margin: 0 0 28px;">');
         html.push('<div style="color: #c2410c; font-weight: 800; margin: 0 0 8px;">' + escapeHtml(label) + '</div>');
         paragraphs.forEach(paragraph => {
-          html.push('<p style="margin: 0 0 10px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+          splitReadableParagraph(paragraph).forEach(block => {
+            html.push('<p style="margin: 0 0 10px; font-size: 16px;">' + escapeHtml(block) + '</p>');
+          });
         });
         html.push('</div>');
       }
@@ -707,7 +747,14 @@
     });
 
     const sections = Array.isArray(article.sections) ? article.sections : [];
-    const photoSuggestions = normalizeObjectArray(article.photoSuggestions || article.photo_suggestions);
+    const rawPhotoSuggestions = normalizeObjectArray(article.photoSuggestions || article.photo_suggestions);
+    const photoSuggestions = rawPhotoSuggestions.length
+      ? rawPhotoSuggestions
+      : [{
+        afterSection: Math.min(2, Math.max(sections.length, 1)),
+        label: '写真挿入候補',
+        description: '教室で学習している手元、ノート、答案用紙など、記事の内容が伝わる写真をここに入れると読みやすくなります。'
+      }];
     sections.forEach((section, index) => {
       if (!section || typeof section !== 'object') return;
       const sectionIndex = index + 1;
@@ -2138,8 +2185,11 @@ ${personThumbnailRules}
 - 冒頭は、保護者の不安や悩みに寄り添うところから始めてください。いきなり成果や宣伝から入らないでください。
 - 保護者、とくにお母さんが「うちの子にも当てはまるかもしれない」「一人で抱え込まなくていいかもしれない」と感じる温度で書いてください。
 - 家で見える不安、親子でピリピリしてしまう気持ち、声かけに迷う気持ちにやさしく触れてください。ただし保護者を責めないでください。
+- 文体は敬体を基本にしつつ、少し近い距離で話しかけてください。「ですよね」「かもしれません」「まずは」「少しずつ」のような自然な言葉を使ってください。
+- 「〜いたします」「〜させていただきます」「ご確認ください」「サポートいたします」などの硬い業務文は使いすぎないでください。
 - 本文は自然な段落で書いてください。箇条書きは補助だけにし、本文の中心にしないでください。
-- 各段落は2〜4文程度にしてください。短いラベルや説明文の羅列にしないでください。
+- 各段落は1〜2文程度で短くしてください。長い説明を1段落に詰め込まないでください。
+- 読み手がスマホで読んでも疲れないように、こまめに話を区切ってください。
 - 「何をしたか」だけでなく、「生徒がどう変わったか」「教室でどんな場面があったか」を書いてください。
 - 入力された学校名、学年、教科、点数、期間、生徒の様子、先生・室長コメントを本文に反映してください。
 - 室長目線は売り込みではなく、そばで見守っていた人の言葉として自然に入れてください。「嬉しかった」「ほっとした」「印象に残った」などの感情を、過度に熱くしすぎずに入れてください。
@@ -2153,7 +2203,7 @@ ${personThumbnailRules}
 - section.highlights は、赤字・蛍光マーカーで強調したい一文です。各セクション0〜1個までにしてください。
 - section.bullets は、取り組み・変化・チェックポイントなど、リストで読む方がわかりやすい時だけ使ってください。
 - section.managerNote は、室長の思いや感情が伝わる短いコメントです。全セクションに入れる必要はありませんが、本文全体で1〜2個は入れてください。
-- article.photoSuggestions は、本文の途中に入れる写真候補です。1〜2個だけ作り、「どのセクションの後に」「どんな写真を入れるとよいか」を書いてください。
+- article.photoSuggestions は必須です。空配列は禁止です。1〜2個だけ作り、「どのセクションの後に」「どんな写真を入れるとよいか」を書いてください。
 
 【冒頭あいさつ】
 - article.greeting を必ず1段落入れてください。
@@ -2169,7 +2219,7 @@ ${personThumbnailRules}
 - 各 section.paragraphs は2段落以上。
 - section.highlights は各セクション0〜1個。
 - section.managerNote は本文全体で1〜2個。
-- article.photoSuggestions は1〜2個。
+- article.photoSuggestions は必ず1〜2個。
 - article.closing は2段落。
 - 本文全体は900〜1400字程度。
 - cta は短く簡潔に。articleより目立たせないでください。
