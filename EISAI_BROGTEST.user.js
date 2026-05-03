@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.94
+// @version      0.56.95
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.94';
+  const CURRENT_VERSION = '0.56.95';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.94 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.95 起動');
 
   let lastBlogHtml = '';
 
@@ -816,7 +816,7 @@
         }))
         .filter(suggestion => suggestion.label || suggestion.description);
       const maxSlot = Math.max(1, sectionCount + 1);
-      const targetCount = Math.min(5, Math.max(3, maxSlot));
+      const targetCount = Math.min(5, Math.max(3, suggestions.length));
       const fallback = [
         { afterSection: 1, label: 'ノートの写真', description: '途中式、解き直しリスト、単語練習など、今回の取り組みが伝わる手元写真。' },
         { afterSection: 2, label: '自習風景', description: '自習席、学校ワーク、確認テストに向かう様子など、現場の空気が伝わる写真。' },
@@ -2369,6 +2369,7 @@ ${personThumbnailRules}
 - 写真候補は文章の流れに沿って、ノート・途中式・解き直しリスト・答案・確認テスト・自習風景・教室内の教材など、実際の現場で撮れる写真を優先してください。
 - 汎用的な悩み写真、人物の頭抱え写真、フリー素材風のイメージ写真、冒頭用の雰囲気写真は作らないでください。
 - photoSuggestions.afterSection は同じ番号に集中させないでください。1つ目のセクション後に複数枚まとめるのは禁止です。本文の流れに合わせ、セクション1後、セクション2後、セクション3後、必要なら本文末尾のように分散してください。
+- ただし、すべてのセクションに写真を入れる必要はありません。写真を入れる意味が薄いセクションは飛ばし、本当に現場感が伝わる場面だけを選んでください。
 - photoSuggestions.label は「ノートの写真」「答案の写真」「自習風景」「確認テストの写真」「室長・先生の写真」のように、写真挿入（◯◯）として1行表示して意味が伝わる短い名前にしてください。
 - photoSuggestions.description は内部メモ扱いです。最終HTMLには表示しないため、説明文を読ませる前提で書かないでください。
 - 読ませたい言葉は必要な箇所だけカギカッコ「」で囲んでください。囲みすぎは禁止です。
@@ -2390,7 +2391,7 @@ ${personThumbnailRules}
 - section.highlights は記事全体で2〜4個まで。
 - section.dialogues は必要な時だけ0〜2セット。
 - section.managerNote は本文全体で1〜2個。
-- article.photoSuggestions は必ず3〜5個。本文の流れに合わせて、現場で撮れる具体的な写真を入れる位置を指定してください。先頭の導入前に入れる汎用写真は不要です。同じセクション直後に複数枚を固めず、記事全体に分散してください。
+- article.photoSuggestions は必ず3〜5個。本文の流れに合わせて、現場で撮れる具体的な写真を入れる位置を指定してください。先頭の導入前に入れる汎用写真は不要です。同じセクション直後に複数枚を固めず、記事全体に分散してください。ただし全セクションに写真を入れる必要はありません。
 - article.closing は2段落。
 - 本文全体は900〜1400字程度。
 - cta は短く簡潔に。articleより目立たせないでください。
