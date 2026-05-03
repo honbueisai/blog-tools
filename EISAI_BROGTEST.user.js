@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.89
+// @version      0.56.90
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.89';
+  const CURRENT_VERSION = '0.56.90';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.89 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.90 起動');
 
   let lastBlogHtml = '';
 
@@ -800,11 +800,13 @@
       const label = String(suggestion.label || suggestion.title || '写真挿入').trim();
       const description = String(suggestion.description || suggestion.detail || suggestion.text || '').trim();
       if (!description) return;
-      html.push('<div data-photo-placeholder="true" style="border: 2px dashed #94a3b8; background: #f8fafc; color: #334155; border-radius: 10px; padding: 18px 20px; margin: 32px 0; font-size: 15px; line-height: 1.85; text-align: center;">');
-      html.push('<div style="font-size: 15px; letter-spacing: 0; color: #0f172a; font-weight: 900; margin: 0 0 8px;">■■■■■■■■ 写真挿入 ■■■■■■■■</div>');
-      html.push('<div style="font-size: 14px; color: #475569; font-weight: 800; margin: 0 0 6px;">' + escapeHtml(label) + '</div>');
-      html.push('<div style="text-align: left;">' + escapeHtml(description) + '</div>');
-      html.push('</div>');
+      html.push(
+        '<p data-photo-placeholder="true" style="border: 2px dashed #94a3b8; background: #f8fafc; color: #334155; border-radius: 10px; padding: 18px 20px; margin: 32px 0; font-size: 15px; line-height: 1.85; text-align: center;">' +
+        '<strong style="display: block; font-size: 15px; color: #0f172a; font-weight: 900; margin: 0 0 8px;">■■■■■■■■ 写真挿入 ■■■■■■■■</strong>' +
+        '<strong style="display: block; font-size: 14px; color: #475569; font-weight: 800; margin: 0 0 6px;">' + escapeHtml(label) + '</strong>' +
+        '<span style="display: block; text-align: left;">' + escapeHtml(description) + '</span>' +
+        '</p>'
+      );
     }
 
     function buildPhotoSuggestions(rawSuggestions, sectionCount) {
@@ -933,6 +935,7 @@
 
   function buildCtaHtml(url, tel, ctaData = null) {
     const d = ctaData || defaultCtaData;
+    const closingMessage = getCtaClosingMessage(d);
     return (
       '<div data-cta-protected="true" style="background: #f8f8f8; padding: 40px 20px; margin: 40px 0;">' +
       '<div style="text-align: center; font-size: 26px; font-weight: bold; color: #333; margin: 0 0 12px 0;">まずはお気軽にご相談ください</div>' +
@@ -959,13 +962,29 @@
       '</div>' +
       '</div>' +
       '</div>' +
-      '<div style="text-align: center; color: #555; margin: 0 0 28px 0; font-size: 15px;">' + (d['締めの言葉'] || defaultCtaData['締めの言葉']) + '</div>' +
+      (closingMessage ? '<div style="text-align: center; color: #555; margin: 0 0 28px 0; font-size: 15px;">' + closingMessage + '</div>' : '') +
       '<div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">' +
       '<a href="' + url + '" style="display: inline-block; background: #e67e22; color: #fff; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">無料学習相談・体験授業に申し込む</a>' +
       '<a href="tel:' + tel.replace(/-/g, '') + '" style="display: inline-block; background: #fff; color: #e67e22; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; border: 2px solid #e67e22;">電話で直接申し込む</a>' +
       '</div>' +
       '</div>'
     );
+  }
+
+  function getCtaClosingMessage(data) {
+    const raw = String((data && data['締めの言葉']) || '').trim();
+    if (!raw) return '';
+    const genericPatterns = [
+      /誠心誠意/,
+      /全力でサポート/,
+      /サポートさせていただきます/,
+      /お待ちしております/,
+      /心を込めた最後のメッセージ/,
+      /校舎名.*室長名/,
+      /英才個別学院\s*[^、。]*校\s*室長の[^、。]*(?:が|より)/
+    ];
+    if (genericPatterns.some(pattern => pattern.test(raw)) && raw.length < 55) return '';
+    return escapeHtml(raw);
   }
 
   // =========================================================
@@ -2354,10 +2373,12 @@ ${personThumbnailRules}
 - section.highlights は記事全体で2〜4個まで。
 - section.dialogues は必要な時だけ0〜2セット。
 - section.managerNote は本文全体で1〜2個。
-- article.photoSuggestions は必ず3〜5個。
+- article.photoSuggestions は必ず3〜5個。本文の流れに合わせて、写真を入れると読みやすくなる位置を具体的に指定してください。
 - article.closing は2段落。
 - 本文全体は900〜1400字程度。
 - cta は短く簡潔に。articleより目立たせないでください。
+- cta.closingMessage は記事内容に合わせた具体的な一文にしてください。
+- 「誠心誠意サポート」「全力でサポート」「お待ちしております」のような定型句しか書けない場合、cta.closingMessage は空文字 "" にしてください。
 
 【JSON形式】
 {
@@ -2407,7 +2428,7 @@ ${personThumbnailRules}
     "description2": "教室見学や相談へのハードルを下げる優しい一言",
     "consultationPoints": ["相談内容1", "相談内容2", "相談内容3", "相談内容4"],
     "trialPoints": ["体験で得られるメリット1", "体験で得られるメリット2", "体験で得られるメリット3", "体験で得られるメリット4"],
-    "closingMessage": "校舎名と室長名を含む最後のメッセージ"
+    "closingMessage": "記事内容に合わせた具体的な一文。定型句しか書けない場合は空文字"
   }
 }
 
