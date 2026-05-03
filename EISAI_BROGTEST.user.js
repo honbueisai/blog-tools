@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.84
+// @version      0.56.85
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.84';
+  const CURRENT_VERSION = '0.56.85';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.84 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.85 起動');
 
   let lastBlogHtml = '';
 
@@ -264,11 +264,12 @@
         ...versionedData,
         name: classroomData.name || classroomData.kosha || versionedData.kosha || '',
         manager: classroomData.manager || classroomData.shichou || versionedData.shichou || '',
+        area: classroomData.area || versionedData.area || '',
         url: classroomData.url || versionedData.url || '',
         tel: classroomData.tel || versionedData.tel || ''
       };
     } catch {
-      return { name: '', manager: '', url: '', tel: '' };
+      return { name: '', manager: '', area: '', url: '', tel: '' };
     }
   }
 
@@ -278,6 +279,7 @@
       const classroomData = {
         name: info.name !== undefined ? info.name : currentPersistent.name,
         manager: info.manager !== undefined ? info.manager : currentPersistent.manager,
+        area: info.area !== undefined ? info.area : currentPersistent.area,
         url: info.url !== undefined ? info.url : currentPersistent.url,
         tel: info.tel !== undefined ? info.tel : currentPersistent.tel
       };
@@ -627,35 +629,51 @@
     const title = String(article.title || '').trim();
     if (!title) return '';
 
-    html.push('<h1>' + escapeHtml(title) + '</h1>');
+    html.push('<div data-eisai-article="true" style="font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; color: #1f2937; line-height: 1.95;">');
+    html.push('<h1 style="font-size: 28px; line-height: 1.45; margin: 0 0 24px; padding: 18px 22px; border-left: 5px solid #1d8acb; background: #eef8ff; font-weight: 800;">' + escapeHtml(title) + '</h1>');
 
-    normalizeTextArray(article.lead || article.introduction).forEach(paragraph => {
-      html.push('<p>' + escapeHtml(paragraph) + '</p>');
+    normalizeTextArray(article.greeting || article.openingGreeting).forEach(paragraph => {
+      html.push('<p style="margin: 0 0 18px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+    });
+
+    const leadParagraphs = normalizeTextArray(article.lead || article.introduction);
+    if (leadParagraphs.length) {
+      html.push('<div style="background: #f8fafc; border: 1px solid #e5edf5; border-radius: 10px; padding: 18px 20px; margin: 0 0 28px;">');
+      leadParagraphs.forEach(paragraph => {
+        html.push('<p style="margin: 0 0 12px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
+      });
+      html.push('</div>');
+    }
+
+    normalizeTextArray(article.summary || article.keyMessage).slice(0, 2).forEach(paragraph => {
+      html.push('<p style="margin: 0 0 20px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
     });
 
     const sections = Array.isArray(article.sections) ? article.sections : [];
     sections.forEach(section => {
       if (!section || typeof section !== 'object') return;
       const heading = String(section.heading || section.title || '').trim();
-      if (heading) html.push('<h2>' + escapeHtml(heading) + '</h2>');
+      if (heading) html.push('<h2 style="font-size: 21px; line-height: 1.5; margin: 36px 0 18px; padding: 16px 18px; border-left: 5px solid #1d8acb; background: #eef8ff; font-weight: 800;">' + escapeHtml(heading) + '</h2>');
 
       normalizeTextArray(section.paragraphs || section.body || section.content).forEach(paragraph => {
-        html.push('<p>' + escapeHtml(paragraph) + '</p>');
+        html.push('<p style="margin: 0 0 18px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
       });
 
       const bullets = normalizeTextArray(section.bullets || section.points);
       if (bullets.length) {
-        html.push('<ul>');
+        html.push('<ul style="margin: 0 0 22px 1.2em; padding: 0; line-height: 1.9;">');
         bullets.forEach(point => {
-          html.push('<li>' + escapeHtml(point) + '</li>');
+          html.push('<li style="margin: 0 0 6px;">' + escapeHtml(point) + '</li>');
         });
         html.push('</ul>');
       }
     });
 
     normalizeTextArray(article.closing || article.conclusion).forEach(paragraph => {
-      html.push('<p>' + escapeHtml(paragraph) + '</p>');
+      html.push('<p style="margin: 0 0 18px; font-size: 16px;">' + escapeHtml(paragraph) + '</p>');
     });
+
+    html.push('</div>');
 
     return html.join('\n').trim();
   }
@@ -1093,12 +1111,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
     const nameIn = createInput(dContent, '校舎名（記事に反映されます）', '例：◯◯校　※校まで必ずいれる', false);
     const managerIn = createInput(dContent, '室長名（本文では名前のみ使用）', '例：●●', false);
+    const areaIn = createInput(dContent, '対象エリア（冒頭あいさつ用・任意）', '例：武蔵新城・武蔵中原エリア', false);
     const urlIn = createInput(dContent, 'CTAリンク先URL（https://必須）', '例：https://eisai.org/…', false);
     const telIn = createInput(dContent, '電話番号（CTAの電話ボタン用）', '例：ハイフンなしで登録', false);
 
     const saved = getSetting();
     if (saved.name) nameIn.value = saved.name;
     if (saved.manager) managerIn.value = saved.manager;
+    if (saved.area) areaIn.value = saved.area;
     if (saved.url) urlIn.value = saved.url;
     if (saved.tel) telIn.value = saved.tel;
 
@@ -1109,7 +1129,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
     }, dContent, '教室情報を保存');
     saveBtn.onclick = () => {
-      saveSetting({ name: nameIn.value, manager: managerIn.value, url: urlIn.value, tel: telIn.value });
+      saveSetting({ name: nameIn.value, manager: managerIn.value, area: areaIn.value, url: urlIn.value, tel: telIn.value });
       alert('教室情報を保存しました');
       details.open = false;
     };
@@ -1977,6 +1997,7 @@ ${personThumbnailRules}
       const info = getSetting();
       const kosha = (info.name || '').trim();
       const shichou = (info.manager || '').trim();
+      const area = (info.area || '').trim();
       let ctaUrl = (info.url || '').trim();
       const ctaTel = (info.tel || '').trim();
 
@@ -2062,7 +2083,15 @@ ${personThumbnailRules}
 - 入力にない実績、点数、学校名、生徒発言、キャンペーンは作らないでください。
 - 大げさな広告表現、断定表現、「必ず伸びる」「絶対合格」は使わないでください。
 
+【冒頭あいさつ】
+- article.greeting を必ず1段落入れてください。
+- 対象エリアがある場合は「${area || '◯◯エリア'}の個別指導塾、英才個別学院 ${kosha} 室長の${shichou}です！」のように始めてください。
+- 対象エリアが空欄の場合は「英才個別学院 ${kosha} 室長の${shichou}です！」のように始めてください。
+- あいさつの後に、「今日は、〜についてお話しします。」という自然な導入を続けてください。
+- 毎回まったく同じ定型文にせず、記事内容に合わせて少し変化をつけてください。
+
 【文章量と構成】
+- article.greeting は1段落。
 - article.lead は2段落。
 - article.sections は3〜4個。
 - 各 section.paragraphs は2段落以上。
@@ -2074,6 +2103,7 @@ ${personThumbnailRules}
 {
   "article": {
     "title": "32文字以内のブログタイトル",
+    "greeting": ["冒頭のあいさつ段落"],
     "lead": ["保護者の不安に寄り添う導入段落", "入力内容につながる導入段落"],
     "sections": [
       {
@@ -2104,6 +2134,7 @@ ${personThumbnailRules}
 【教室情報】
 校舎名: ${kosha}
 室長名: ${shichou}
+対象エリア: ${area || '未設定'}
 
 ${typeInstruction}
 
