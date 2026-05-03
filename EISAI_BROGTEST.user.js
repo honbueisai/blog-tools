@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.90
+// @version      0.56.91
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.90';
+  const CURRENT_VERSION = '0.56.91';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.90 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.91 起動');
 
   let lastBlogHtml = '';
 
@@ -800,10 +800,10 @@
       const label = String(suggestion.label || suggestion.title || '写真挿入').trim();
       const description = String(suggestion.description || suggestion.detail || suggestion.text || '').trim();
       if (!description) return;
+      const displayLabel = label && label !== '写真挿入' ? '写真挿入（' + label + '）' : '写真挿入';
       html.push(
         '<p data-photo-placeholder="true" style="border: 2px dashed #94a3b8; background: #f8fafc; color: #334155; border-radius: 10px; padding: 18px 20px; margin: 32px 0; font-size: 15px; line-height: 1.85; text-align: center;">' +
-        '<strong style="display: block; font-size: 15px; color: #0f172a; font-weight: 900; margin: 0 0 8px;">■■■■■■■■ 写真挿入 ■■■■■■■■</strong>' +
-        '<strong style="display: block; font-size: 14px; color: #475569; font-weight: 800; margin: 0 0 6px;">' + escapeHtml(label) + '</strong>' +
+        '<strong style="display: block; font-size: 15px; color: #0f172a; font-weight: 900; margin: 0 0 8px;">■■■■■■■■ ' + escapeHtml(displayLabel) + ' ■■■■■■■■</strong>' +
         '<span style="display: block; text-align: left;">' + escapeHtml(description) + '</span>' +
         '</p>'
       );
@@ -2354,6 +2354,7 @@ ${personThumbnailRules}
 - section.managerNote は、室長の思いや感情が伝わる短いコメントです。全セクションに入れる必要はありませんが、本文全体で1〜2個は入れてください。
 - article.photoSuggestions は必須です。空配列は禁止です。最低3個、理想は5個作り、「どのセクションの後に」「どんな写真を入れるとよいか」を具体的に書いてください。
 - 写真候補は文章の流れに沿って、冒頭・取り組み・変化・成果・室長/教室の安心感が伝わる位置に分散してください。
+- photoSuggestions.label は「お悩み写真」「ノートの写真」「自習風景」「成果の写真」「室長・先生の写真」のように、写真挿入（◯◯）として1行表示して意味が伝わる短い名前にしてください。
 - 読ませたい言葉は必要な箇所だけカギカッコ「」で囲んでください。囲みすぎは禁止です。
 - 点数、期間、回数などの数字はできるだけ具体的に書いてください。BROGTEST側で赤字・大きめ文字に装飾します。
 - 装飾が多すぎると読みづらくなります。強調は1段落に1つまで、何も強調しない段落があって自然です。
@@ -2407,17 +2408,17 @@ ${personThumbnailRules}
     "photoSuggestions": [
       {
         "afterSection": 0,
-        "label": "冒頭写真",
+        "label": "お悩み写真",
         "description": "この位置に入れるとよい写真の内容"
       },
       {
         "afterSection": 1,
-        "label": "取り組み写真",
+        "label": "ノートの写真",
         "description": "この位置に入れるとよい写真の内容"
       },
       {
         "afterSection": 3,
-        "label": "成果・変化の写真",
+        "label": "成果の写真",
         "description": "この位置に入れるとよい写真の内容"
       }
     ],
