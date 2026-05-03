@@ -1,0 +1,63 @@
+@charset "utf-8";
+/* ------------------------------------------------------------ fonts */
+
+@font-face {
+        src: url("../fonts/NotoSansJP-Light.woff") format("woff");
+        font-family: "Noto-Sans-JP-Light";
+        font-style: normal;
+        font-display: swap;
+      }
+@font-face {
+        src: url("../fonts/NotoSansJP-DemiLight.woff") format("woff");
+        font-family: "Noto-Sans-JP-DemiLight";
+        font-style: normal;
+        font-display: swap;
+      }
+@font-face {
+        src: url("../fonts/NotoSansJP-Regular.woff") format("woff");
+        font-family: "Noto-Sans-JP-Regular";
+        font-style: normal;
+        font-display: swap;
+      }
+@font-face {
+        src: url("../fonts/NotoSansJP-Regular.woff") format("woff");
+        font-family: "Noto-Sans-JP-Regular";
+        font-style: normal;
+        font-display: swap;
+      }
+@font-face {
+        src: url("../fonts/NotoSansJP-Medium.woff") format("woff");
+        font-family: "Noto-Sans-JP-Medium";
+        font-style: normal;
+        font-display: swap;
+      }
+@font-face {
+        src: url("../fonts/NotoSansJP-Bold.woff") format("woff");
+        font-family: "Noto-Sans-JP-Bold";
+        font-style: normal;
+        font-display: swap;
+      }
+      
+@font-face {
+        src: url("../fonts/Prompt-Regular.woff") format("woff");
+        font-family: "Prompt";
+        font-style: normal;
+        font-display: swap;
+      }      
+      
+      
+ 
+@font-face {
+font-family:"Alte DIN 1451 Mittelschrift";
+src: url("../fonts/din1451alt.eot?") format("eot"),
+	 url("../fonts/din1451alt.woff") format("woff"),
+	 url("../fonts/din1451alt.ttf") format("truetype"),
+	 url("../fonts/din1451alt.svg#AlteDIN1451Mittelschrift") format("svg");
+}
+/* ------------------------------------------------------------ Gotham*/
+
+.prompt_r { font-family: "Prompt", sans-serif; font-weight: 400; }
+.prompt_m { font-family: "Prompt", sans-serif; font-weight: 500; }
+.prompt_b { font-family: "Prompt", sans-serif; font-weight: 700; }
+.alte1451 { font-family:"Alte DIN 1451 Mittelschrift"; font-weight:normal; font-style:normal; }
+.alteNo3 { font-family: "alternate-gothic-no-3-d", sans-serif; font-weight: 400; font-style: normal; }

@@ -1,0 +1,99 @@
+@charset "utf-8";
+
+/* ------------------------------------------------------------ main */
+#detail_fv h2 { color: #254595; }
+.contents_wrap { margin: 0 auto 130px; }
+
+.l_inner { padding: 50px 0 0; }
+main { float: left; width: 740px; }
+main .contents { padding: 0 0 90px; }
+main .contents .date_category { font-size: 14px; margin: 0 auto 20px; }
+main .contents h2 { font-size: 28px; font-family: 'Noto-Sans-JP-Medium'; margin: 0 auto 50px; line-height: 140%; }
+main .contents h3 { font-size: 24px; line-height: 35px; font-family: 'Noto-Sans-JP-Medium'; background: #f4f4f4; border-left: solid 7px #044bba; padding: 20px 30px; margin: 75px auto 50px; }
+main .contents h4 { font-size: 24px; line-height: 40px; font-family: 'Noto-Sans-JP-Bold'; margin: 0 auto 40px; }
+/*main .contents span { background: linear-gradient(transparent 70%, #fff100 0%); display: inline; } */
+main .contents .text { line-height: 32px; margin: 0 auto 40px; }
+main .contents .text a { text-decoration: underline; }
+main .contents img { margin: 0 auto 60px; max-width: 750px; }
+main .contents p { margin: 0 auto 1em; line-height: 170%; }
+main .contents div { line-height: 170%; /*min-height: 16px; */}
+main .contents div img { margin: 0 auto 20px; }
+main .contents div a { text-decoration: underline; color: #008acf; }
+main .contents .gradation_btn { text-align: center; margin: 50px auto; }
+main #recommend { margin: 0 auto 70px; }
+main #recommend h3 { font-size: 18px; line-height: 32px; font-family: 'Noto-Sans-JP-Medium'; border-bottom: solid 1px #000; padding: 0 0 5px 5px; margin: 0 auto 20px; }
+main #recommend ul li { margin: 0 auto 15px; }
+main #sns_share { background: #f5f5f5; padding: 40px 70px; }
+main #sns_share a { float: left; display: block; min-width: 192px; text-align: center; color: #fff; font-family: 'Noto-Sans-JP-Bold'; -webkit-box-sizing: border-box; -ms-box-sizing: border-box; box-sizing: border-box; margin: 0 0 0 12px; }
+main #sns_share a:nth-of-type(3n+1) { clear: both; margin: 0 auto; }
+main #sns_share .twitter { background: url(../images/common/twitter3.png) no-repeat 12px center #111; background-size: 24px; border-bottom: solid 5px #000; padding: 14px 0 14px 15px; }
+main #sns_share .facebook { background: url(../images/common/facebook.svg) no-repeat 12px center #4462b3; background-size: 12px; border-bottom: solid 5px #2d4b9a; padding: 14px 0 14px 15px; }
+main #sns_share .line { background: url(../images/common/line.svg) no-repeat 10px center #00C300; background-size: 35px; border-bottom: solid 5px #01a626; padding: 14px 0 14px 15px; }
+
+
+/*main .html_editer div { line-height: 170%; min-height: 16px; }
+main .html_editer br { display: none; }*/
+
+/* ------------------------------------------------------------ blog */
+#other { padding: 90px 0; background: #e5f0f9; }
+#other h3 { margin: 0 auto 35px; }
+#other .empty { text-align: center; }
+@media only screen and (min-width: 640px) {
+	#other .other_slider .slick-slide { width: 353px !important; }
+}
+#other .other_slider .slick-slide > div { margin: 0 15px; }
+#other .other_slider article img { width: 100%; height: auto; }
+#other .other_slider article .whitebox { background: #fff; padding: 30px; }
+#other .other_slider article .whitebox h4 { font-size: 16px; font-family: 'Noto-Sans-JP-Medium'; line-height: 28px; max-height: 56px; overflow: hidden; margin: 0 auto 20px; }
+#other .other_slider article .whitebox p { font-size: 12px; }
+#other .gradation_btn { text-align: center; margin: 85px auto 0; }
+
+
+
+/* ------------------------------------------------------------ mobile */
+@media only screen and (max-width:640px){
+/* ------------------------------------------------------------ common */
+#bread { padding: 13px 15px;  background: #f8f8f8; overflow-x: auto; white-space: nowrap;}
+
+#detail_fv h2 { color: #254595; font-size: 29px; padding: 50px 0 ; }
+.l_inner { padding: 20px; }
+
+
+/* ------------------------------------------------------------ main */
+.contents_wrap { margin: 0 auto 70px; }
+
+main { float: none; width: 100%; }
+main .contents { padding: 0 0 50px; }
+main .contents .date_category { font-size: 12px; margin: 0 auto 12px; }
+main .contents h2 { font-size: 20px; margin: 0 auto 25px; line-height: 140%; }
+main .contents h3 { font-size: 16px; line-height: 24px; padding: 12px 15px; margin: 60px auto 30px; }
+main .contents h4 { font-size: 18px; line-height: 32px; margin: 0 auto 30px; }
+/*main .contents span { background: linear-gradient(transparent 80%, #fff100 0%); } */
+main .contents .text { font-size: 14px; line-height: 27px; margin: 0 auto 20px; }
+main .contents .text a { font-size: 14px; }
+main .contents img { width: 100%; height: auto; margin: 0 auto 30px; }
+main .contents .gradation_btn { margin: 40px auto; }
+
+main .contents iframe { width: 100%; aspect-ratio: 16 / 9; height: auto;} 
+main #recommend { margin: 0 auto 40px; }
+main #recommend h3 { font-size: 16px; line-height: 27px; }
+main #recommend ul li { font-size: 13px; margin: 0 auto 15px; }
+
+main #sns_share { padding: 20px; margin: 0 auto 60px; }
+main #sns_share a { float: none; min-width: inherit; width: 250px; margin: 0 auto 10px; }
+main #sns_share a:nth-of-type(3n+1) { clear: both; margin: 0 auto 10px; }
+main #sns_share .twitter { background: url(../images/common/twitter3.png) no-repeat 35px center #111; background-size: 24px; border-bottom: solid 5px #000; padding: 14px 0 14px 15px; }
+main #sns_share .facebook { background: url(../images/common/facebook.svg) no-repeat 40px center #4462b3; background-size: 12px; border-bottom: solid 5px #2d4b9a; padding: 14px 0 14px 15px; }
+main #sns_share .line { background: url(../images/common/line.svg) no-repeat 30px center #00C300; background-size: 35px; border-bottom: solid 5px #01a626; padding: 14px 0 14px 0; }
+
+/* ------------------------------------------------------------ blog */
+#other { padding: 60px 0 70px; }
+#other h3 { font-size: 24px; margin: 0 auto 25px; }
+#other .other_slider .slick-slide { width: 80vw; }
+#other .other_slider .slick-slide > div { margin: 0 10px; }
+#other .other_slider article img { width: 100%; height: auto; }
+#other .other_slider article .whitebox { background: #fff; padding: 20px; }
+#other .other_slider article .whitebox h4 { font-size: 14px; line-height: 24px; max-height: 48px; margin: 0 auto 15px; }
+#other .other_slider article .whitebox p { font-size: 12px; }
+#other .gradation_btn { width: 90%; margin: 50px auto 0; }
+}
