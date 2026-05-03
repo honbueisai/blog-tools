@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.91
+// @version      0.56.92
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.91';
+  const CURRENT_VERSION = '0.56.92';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -37,7 +37,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.91 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.92 起動');
 
   let lastBlogHtml = '';
 
@@ -602,6 +602,12 @@
     if (!text) return [];
 
     function splitLongSentence(sentence) {
+      if (sentence.includes('、')) {
+        return sentence
+          .split(/(?<=、)/)
+          .map(part => part.trim())
+          .filter(Boolean);
+      }
       if (sentence.length <= 78) return [sentence];
       const parts = sentence.split(/(?<=、)/).map(part => part.trim()).filter(Boolean);
       if (parts.length <= 1) return [sentence];
@@ -798,13 +804,10 @@
     function renderPhotoSuggestion(suggestion) {
       if (!suggestion || typeof suggestion !== 'object') return;
       const label = String(suggestion.label || suggestion.title || '写真挿入').trim();
-      const description = String(suggestion.description || suggestion.detail || suggestion.text || '').trim();
-      if (!description) return;
       const displayLabel = label && label !== '写真挿入' ? '写真挿入（' + label + '）' : '写真挿入';
       html.push(
         '<p data-photo-placeholder="true" style="border: 2px dashed #94a3b8; background: #f8fafc; color: #334155; border-radius: 10px; padding: 18px 20px; margin: 32px 0; font-size: 15px; line-height: 1.85; text-align: center;">' +
-        '<strong style="display: block; font-size: 15px; color: #0f172a; font-weight: 900; margin: 0 0 8px;">■■■■■■■■ ' + escapeHtml(displayLabel) + ' ■■■■■■■■</strong>' +
-        '<span style="display: block; text-align: left;">' + escapeHtml(description) + '</span>' +
+        '<strong style="display: block; font-size: 15px; color: #0f172a; font-weight: 900;">■■■■■■■■ ' + escapeHtml(displayLabel) + ' ■■■■■■■■</strong>' +
         '</p>'
       );
     }
@@ -817,7 +820,7 @@
           label: String(suggestion.label || suggestion.title || '写真挿入').trim(),
           description: String(suggestion.description || suggestion.detail || suggestion.text || '').trim()
         }))
-        .filter(suggestion => suggestion.description);
+        .filter(suggestion => suggestion.label || suggestion.description);
       const targetCount = 5;
       const fallback = [
         { afterSection: 0, label: '冒頭写真', description: '校舎外観、教室入口、または明るい教室全体の写真。記事の最初に安心感を出せます。' },
@@ -2338,6 +2341,7 @@ ${personThumbnailRules}
 - 本文は自然な段落で書いてください。箇条書きは補助だけにし、本文の中心にしないでください。
 - 各段落は1〜2文程度で短くしてください。長い説明を1段落に詰め込まないでください。
 - 読み手がスマホで読んでも疲れないように、こまめに話を区切ってください。
+- 本文段落は、読点「、」で自然に改行される前提で、1文を長くしすぎないでください。リスト項目はこの限りではありません。
 - 「何をしたか」だけでなく、「生徒がどう変わったか」「教室でどんな場面があったか」を書いてください。
 - 入力された学校名、学年、教科、点数、期間、生徒の様子、先生・室長コメントを本文に反映してください。
 - 室長目線は売り込みではなく、そばで見守っていた人の言葉として自然に入れてください。「嬉しかった」「ほっとした」「印象に残った」などの感情を、過度に熱くしすぎずに入れてください。
@@ -2355,6 +2359,7 @@ ${personThumbnailRules}
 - article.photoSuggestions は必須です。空配列は禁止です。最低3個、理想は5個作り、「どのセクションの後に」「どんな写真を入れるとよいか」を具体的に書いてください。
 - 写真候補は文章の流れに沿って、冒頭・取り組み・変化・成果・室長/教室の安心感が伝わる位置に分散してください。
 - photoSuggestions.label は「お悩み写真」「ノートの写真」「自習風景」「成果の写真」「室長・先生の写真」のように、写真挿入（◯◯）として1行表示して意味が伝わる短い名前にしてください。
+- photoSuggestions.description は内部メモ扱いです。最終HTMLには表示しないため、説明文を読ませる前提で書かないでください。
 - 読ませたい言葉は必要な箇所だけカギカッコ「」で囲んでください。囲みすぎは禁止です。
 - 点数、期間、回数などの数字はできるだけ具体的に書いてください。BROGTEST側で赤字・大きめ文字に装飾します。
 - 装飾が多すぎると読みづらくなります。強調は1段落に1つまで、何も強調しない段落があって自然です。
