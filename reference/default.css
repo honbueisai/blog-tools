@@ -1,0 +1,147 @@
+@charset "utf-8";
+/* ------------------------------------------------------------ Initialization of the browser style */
+html,
+body,
+div,
+span,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote,
+pre,
+a,
+address,
+code,
+em,
+span.strong,
+img,
+q,
+dl,
+dt,
+dd,
+ol,
+ul,
+li,
+fieldset,
+form,
+label,
+legend,
+table,
+caption,
+tbody,
+tfoot,
+thead,
+tr,
+th,
+td,
+hr {
+	padding: 0;
+	margin: 0;
+	font-style: normal;
+	font-weight: normal;
+	line-height: 100%;
+	word-break: break-all; 
+}
+
+/* ------------------------------------------------------------ body reset */
+body {
+	font-size: 16px;
+	background-color: #fff;
+	/*color: #282828;*/
+	color: #000;
+}
+
+table { font-size: 100%; }
+strong { font-weight: normal; }
+/* ------------------------------------------------------------ Table Elements */
+table,
+th,
+td {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+/* ------------------------------------------------------------ Form Elements */
+input,
+select,
+textarea {
+	font-family: inherit;
+	font-size: inherit;
+	font-weight: inherit;
+}
+
+button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: 0;
+  border-radius: 0;
+}
+
+button:hover { cursor: pointer; }
+label { cursor: pointer; }
+
+::placeholder { color: #999; }
+/* ------------------------------------------------------------ etc */
+a,
+fieldset,
+img { border: 0; }
+
+ol li,
+ul li { list-style-type: none; }
+
+br.PC,
+br.SP { height: 0; line-height: 0; width: 0; }
+/* ------------------------------------------------------------ img */
+*:first-child+html img { vertical-align: bottom; }
+
+* html img { vertical-align: bottom; }
+
+img {
+	margin-bottom: 0;
+	font-size: 0;
+	line-height: 0;
+	vertical-align: middle;
+	border: none;
+}
+
+/* ------------------------------------------------------------ input */
+input { vertical-align: middle; display: inline; }
+
+*:first-child+html input { vertical-align: middle; }
+
+* html input { vertical-align: middle; }
+
+/* ------------------------------------------------------------ select */
+select { vertical-align: middle; }
+
+*:first-child+html select { vertical-align: middle; }
+
+* html select { vertical-align: middle; }
+
+/* ------------------------------------------------------------ clear Fix */
+
+.cfx:after {
+  content: "";
+  display: block;
+  clear: both;
+  height: 0;
+  visibility: hidden;
+}
+
+.cfx { min-height: 0px; }
+
+* html .cfx {
+  height: 0px;
+}
+
+/* ------------------------------------------------------------ iphone */
+@media screen and (max-device-width: 480px) {
+body {
+-webkit-text-size-adjust: none; /* iPhone */
+}
+}
