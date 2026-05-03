@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         EISAI_BROGTEST
 // @namespace    https://github.com/honbueisai/blog-tools/test
-// @version      0.56.96
+// @version      0.56.97
 // @description  英才ブログ生成ツール テスト版（現場リアリティ入力検証）
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -18,7 +18,7 @@
   const BTN_ID = 'eisai-brogtest-btn-v0-56-70';
   const STORAGE_KEY = 'eisai_brogtest_info_v05670';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.56.96';
+  const CURRENT_VERSION = '0.56.97';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/eisai-blogtest-reality-form/EISAI_BROGTEST.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -26,6 +26,7 @@
   const THUMBNAIL_GEM_ID = '1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ';
   const PENDING_BLOG_PROMPT_KEY = 'eisai_brogtest_pending_blog_prompt';
   const PENDING_THUMBNAIL_PROMPT_KEY = 'eisai_brogtest_pending_thumbnail_prompt';
+  const THUMBNAIL_SOURCE_KEY = 'eisai_brogtest_thumbnail_source_html';
 
   const BLOG_TYPES = {
     GROWTH: 'growth_story',
@@ -38,7 +39,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 EISAI_BROGTEST v0.56.96 起動');
+  console.log('🚀 EISAI_BROGTEST v0.56.97 起動');
 
   let lastBlogHtml = '';
 
@@ -366,6 +367,30 @@
 
   function loadPendingThumbnailPrompt() {
     return loadPendingPrompt(PENDING_THUMBNAIL_PROMPT_KEY);
+  }
+
+  function saveThumbnailSource(html) {
+    const normalized = String(html || '').trim();
+    if (!normalized) return;
+    localStorage.setItem(THUMBNAIL_SOURCE_KEY, JSON.stringify({
+      html: normalized,
+      createdAt: Date.now()
+    }));
+  }
+
+  function loadThumbnailSource() {
+    try {
+      const source = JSON.parse(localStorage.getItem(THUMBNAIL_SOURCE_KEY) || 'null');
+      if (!source || !source.html) return '';
+      if (Date.now() - source.createdAt > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(THUMBNAIL_SOURCE_KEY);
+        return '';
+      }
+      return String(source.html || '').trim();
+    } catch (e) {
+      localStorage.removeItem(THUMBNAIL_SOURCE_KEY);
+      return '';
+    }
   }
 
   async function insertPromptAndSend(prompt) {
@@ -1243,6 +1268,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           if (!ctaUrl) {
             console.warn('[Eisai] CTA URLが未設定のため、CTAなしでコピー可能にします');
             lastBlogHtml = decoded;
+            saveThumbnailSource(lastBlogHtml);
             showReady('⚠️ CTA URLが未設定のため、CTAなしのHTMLをコピーできます。次回は教室情報設定からCTAリンク先URLを保存してください。');
             return;
           }
@@ -1250,11 +1276,13 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
           const ctaHtml = buildCtaHtml(ctaUrl, ctaTel, ctaData);
           lastBlogHtml = decoded + '\n\n' + ctaHtml;
+          saveThumbnailSource(lastBlogHtml);
 
         } catch (e) {
           console.error('ブログHTML処理エラー:', e);
           lastBlogHtml = ensureHtmlContent(decodeHtmlText(raw || text).trim());
           if (lastBlogHtml) {
+            saveThumbnailSource(lastBlogHtml);
             showReady('⚠️ HTML加工中にエラーが発生しましたが、Gemini応答本文をHTML化してコピーできます。内容を確認してから貼り付けてください。');
           } else {
             statusDiv.textContent = '❌ HTML加工中にエラーが発生し、コピー用本文も取得できませんでした。Gemini本文を手動コピーしてください。';
@@ -2168,6 +2196,12 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const mainCatch = isOmakase ? 'おまかせ' : (mainCatchInput.value.trim() || 'おまかせ');
       const subCatch = isOmakase ? 'おまかせ' : (subCatchInput.value.trim() || 'おまかせ');
       const points = isOmakase ? 'おまかせ' : (pointsInput.value.trim() || 'おまかせ');
+      const sourceBlogHtml = lastBlogHtml || loadThumbnailSource();
+
+      if (!sourceBlogHtml) {
+        alert('サムネイル作成に使うブログ本文が見つかりませんでした。\n先にブログ生成を完了してから、もう一度お試しください。');
+        return;
+      }
 
       const isPersonType = currentBlogType === BLOG_TYPES.PERSON;
       const personThumbnailRules = isPersonType ? `
@@ -2188,7 +2222,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 以下のブログ記事の内容に基づき、定義されたスタイルで最高品質のサムネイル画像を生成するためのプロンプトを作成してください。
 
 ■ ブログ記事内容
-${lastBlogHtml || 'ブログ記事が生成されていません。先にブログを生成してください。'}
+${sourceBlogHtml}
 
 ■ 適用するスタイルパラメータ（英語）
 1. Visual Style: ${VISUAL_STYLES[style] || style}
@@ -2528,6 +2562,7 @@ ${formContent}`;
 
       try {
         await navigator.clipboard.writeText(lastBlogHtml);
+        saveThumbnailSource(lastBlogHtml);
       } catch (e) {
         console.error('Clipboard write failed:', e);
         alert('クリップボードへのコピーに失敗しました。\n(ブラウザの権限設定を確認してください)');
