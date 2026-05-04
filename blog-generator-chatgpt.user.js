@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.8
+// @version      0.1.9
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-8';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-8';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v018';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-9';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-9';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v019';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.8';
+  const CURRENT_VERSION = '0.1.9';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -27,6 +27,7 @@
   const TEST_CLASSROOM = {
     name: '英才テスト校',
     manager: '山田',
+    area: '架空エリア',
     url: 'https://example.com/eisai-test-form',
     tel: '0000000000'
   };
@@ -228,11 +229,12 @@
         ...versionedData,
         name: classroomData.name || classroomData.kosha || versionedData.kosha || '',
         manager: classroomData.manager || classroomData.shichou || versionedData.shichou || '',
+        area: classroomData.area || versionedData.area || '',
         url: classroomData.url || versionedData.url || '',
         tel: classroomData.tel || versionedData.tel || ''
       };
     } catch {
-      return { name: '', manager: '', url: '', tel: '' };
+      return { name: '', manager: '', area: '', url: '', tel: '' };
     }
   }
 
@@ -242,6 +244,7 @@
       const classroomData = {
         name: info.name !== undefined ? info.name : currentPersistent.name,
         manager: info.manager !== undefined ? info.manager : currentPersistent.manager,
+        area: info.area !== undefined ? info.area : currentPersistent.area,
         url: info.url !== undefined ? info.url : currentPersistent.url,
         tel: info.tel !== undefined ? info.tel : currentPersistent.tel
       };
@@ -370,6 +373,307 @@
 
   async function sendMessage(input) {
     await CHATGPT_ADAPTER.send(input);
+  }
+
+  function decodeHtmlText(raw) {
+    return String(raw || '')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+  }
+
+  function escapeHtml(raw) {
+    return String(raw || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function stripJsonCodeFence(raw) {
+    return String(raw || '')
+      .trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+  }
+
+  function extractJsonObjectText(raw) {
+    const cleaned = stripJsonCodeFence(raw);
+    if (!cleaned) return '';
+    if (cleaned[0] === '{' && cleaned[cleaned.length - 1] === '}') return cleaned;
+    const first = cleaned.indexOf('{');
+    const last = cleaned.lastIndexOf('}');
+    if (first >= 0 && last > first) return cleaned.slice(first, last + 1);
+    return '';
+  }
+
+  function parseBlogJsonResponse(raw) {
+    const jsonText = extractJsonObjectText(decodeHtmlText(raw || ''));
+    if (!jsonText) return null;
+    try {
+      const parsed = JSON.parse(jsonText);
+      if (!parsed || typeof parsed !== 'object') return null;
+      const article = parsed.article && typeof parsed.article === 'object' ? parsed.article : parsed;
+      const title = String(article.title || '').trim();
+      const sections = Array.isArray(article.sections) ? article.sections : [];
+      if (!title || sections.length < 2) return null;
+      return parsed;
+    } catch (e) {
+      console.warn('[Eisai] JSON応答の解析に失敗しました:', e);
+      return null;
+    }
+  }
+
+  function normalizeTextArray(value) {
+    if (Array.isArray(value)) {
+      return value.map(item => String(item || '').trim()).filter(Boolean);
+    }
+    if (typeof value === 'string' && value.trim()) return [value.trim()];
+    return [];
+  }
+
+  function normalizeObjectArray(value) {
+    if (!Array.isArray(value)) return [];
+    return value.filter(item => item && typeof item === 'object');
+  }
+
+  function splitReadableParagraph(raw) {
+    const text = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (!text) return [];
+    const sentences = [];
+    let current = '';
+    Array.from(text).forEach(char => {
+      current += char;
+      if ('。！？'.indexOf(char) >= 0) {
+        const sentence = current.trim();
+        if (sentence) sentences.push(sentence);
+        current = '';
+      }
+    });
+    if (current.trim()) sentences.push(current.trim());
+    if (sentences.length <= 1) return [text];
+
+    const blocks = [];
+    let block = '';
+    sentences.forEach(sentence => {
+      const next = block ? block + sentence : sentence;
+      if (block && next.length > 84) {
+        blocks.push(block);
+        block = sentence;
+      } else {
+        block = next;
+      }
+    });
+    if (block) blocks.push(block);
+    return blocks;
+  }
+
+  function decorateInlineText(raw, options = {}) {
+    let safe = escapeHtml(raw);
+    const state = options.state || { number: 0, quote: 0, keyword: 0 };
+    const limits = {
+      number: options.numberLimit !== undefined ? options.numberLimit : 4,
+      quote: options.quoteLimit !== undefined ? options.quoteLimit : 4,
+      keyword: options.keywordLimit !== undefined ? options.keywordLimit : 2
+    };
+
+    function replaceFirst(regex, key, renderer) {
+      let used = false;
+      safe = safe.replace(regex, function (match, captured) {
+        if (used || state[key] >= limits[key]) return match;
+        used = true;
+        state[key]++;
+        return renderer(match, captured);
+      });
+      return used;
+    }
+
+    if (options.allowNumbers !== false && replaceFirst(
+      /([0-9０-９]+(?:\.[0-9]+)?(?:点アップ|点|分|週間|週|日|周|回|名|人))/,
+      'number',
+      match => '<strong style="color: #dc2626; font-size: 108%; font-weight: 900;">' + match + '</strong>'
+    )) return safe;
+
+    if (options.allowQuotes !== false && replaceFirst(
+      /「([^」]{2,34})」/,
+      'quote',
+      (_match, captured) => '<strong style="background: linear-gradient(transparent 64%, #bfdbfe 64%); color: #1e3a8a; font-weight: 800; padding: 0 2px;">「' + captured + '」</strong>'
+    )) return safe;
+
+    if (options.allowKeywords && replaceFirst(
+      /(苦手|不安|自信|成長|変化|できた|わかった|習慣|笑顔|つまずき|ミス)/,
+      'keyword',
+      match => '<strong style="background: linear-gradient(transparent 66%, #fef08a 66%); font-weight: 800;">' + match + '</strong>'
+    )) return safe;
+
+    return safe;
+  }
+
+  function normalizeJsonCtaData(rawCta) {
+    if (!rawCta || typeof rawCta !== 'object') return null;
+    const consultationPoints = normalizeTextArray(rawCta.consultationPoints || rawCta.consultation_points);
+    const trialPoints = normalizeTextArray(rawCta.trialPoints || rawCta.trial_points);
+    const aliases = {
+      '説明文1': ['説明文1', 'description1', 'description_1'],
+      '説明文2': ['説明文2', 'description2', 'description_2'],
+      '相談ポイント1': ['相談ポイント1', 'consultationPoint1', 'consultation_point_1'],
+      '相談ポイント2': ['相談ポイント2', 'consultationPoint2', 'consultation_point_2'],
+      '相談ポイント3': ['相談ポイント3', 'consultationPoint3', 'consultation_point_3'],
+      '相談ポイント4': ['相談ポイント4', 'consultationPoint4', 'consultation_point_4'],
+      '体験ポイント1': ['体験ポイント1', 'trialPoint1', 'trial_point_1'],
+      '体験ポイント2': ['体験ポイント2', 'trialPoint2', 'trial_point_2'],
+      '体験ポイント3': ['体験ポイント3', 'trialPoint3', 'trial_point_3'],
+      '体験ポイント4': ['体験ポイント4', 'trialPoint4', 'trial_point_4'],
+      '締めの言葉': ['締めの言葉', 'closingMessage', 'closing_message']
+    };
+    const data = {};
+    Object.keys(aliases).forEach(key => {
+      const found = aliases[key].find(alias => rawCta[alias] !== undefined && String(rawCta[alias]).trim());
+      if (found) data[key] = String(rawCta[found]).trim();
+    });
+    consultationPoints.slice(0, 4).forEach((point, index) => {
+      data['相談ポイント' + (index + 1)] = point;
+    });
+    trialPoints.slice(0, 4).forEach((point, index) => {
+      data['体験ポイント' + (index + 1)] = point;
+    });
+    return Object.keys(data).length >= 3 ? data : null;
+  }
+
+  function renderBlogJsonHtml(data) {
+    const article = data && data.article && typeof data.article === 'object' ? data.article : data;
+    const html = [];
+    const title = String(article.title || '').trim();
+    if (!title) return '';
+    const decorationState = { number: 0, quote: 0, keyword: 0 };
+
+    function renderParagraph(paragraph) {
+      splitReadableParagraph(paragraph).forEach(block => {
+        html.push('<p style="margin: 0 0 18px; font-size: 16px; letter-spacing: 0; line-height: 2.12;">' + decorateInlineText(block, { state: decorationState }) + '</p>');
+      });
+    }
+
+    function renderHighlight(text, index = 0) {
+      const styles = [
+        'color: #b91c1c; background: #fff7ed; border-left: 4px solid #f97316;',
+        'color: #1e3a8a; background: #eff6ff; border-left: 4px solid #1d8acb;',
+        'color: #166534; background: #f0fdf4; border-left: 4px solid #22c55e;'
+      ];
+      html.push('<p style="margin: 20px 0 24px; padding: 12px 14px; border-radius: 8px; font-size: 16px; line-height: 1.95; ' + styles[index % styles.length] + '"><strong style="font-weight: 900;">' + escapeHtml(text) + '</strong></p>');
+    }
+
+    function renderCheckList(titleText, items) {
+      if (items.length < 3) return;
+      html.push('<div style="border: 2px solid #1d8acb; border-radius: 10px; margin: 26px 0; overflow: hidden; background: #ffffff; box-shadow: 0 4px 14px rgba(29, 138, 203, 0.10);">');
+      html.push('<div style="background: #1d8acb; color: #ffffff; padding: 10px 16px; font-size: 16px; font-weight: 900;">' + escapeHtml(titleText) + '</div>');
+      html.push('<ul style="list-style: none; margin: 0; padding: 16px 22px; line-height: 2.0;">');
+      items.forEach(item => {
+        html.push('<li style="margin: 0 0 9px; padding-left: 1.5em; text-indent: -1.5em; font-size: 15.5px;">✓ ' + decorateInlineText(item, { state: decorationState, allowKeywords: false }) + '</li>');
+      });
+      html.push('</ul></div>');
+    }
+
+    function renderManagerNote(note) {
+      if (!note) return;
+      html.push('<div style="background: #f0f9ff; border: 1px solid #bae6fd; border-left: 5px solid #0ea5e9; border-radius: 12px; padding: 17px 20px; margin: 24px 0; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.10);">');
+      html.push('<div style="color: #0369a1; font-weight: 900; margin: 0 0 8px; font-size: 16px;">室長より</div>');
+      splitReadableParagraph(note).forEach(block => {
+        html.push('<p style="margin: 0 0 10px; font-size: 16.5px; line-height: 2.05;">' + decorateInlineText(block, { state: decorationState }) + '</p>');
+      });
+      html.push('</div>');
+    }
+
+    function renderPhotoSuggestion(suggestion) {
+      if (!suggestion || typeof suggestion !== 'object') return;
+      const label = String(suggestion.label || suggestion.title || '写真挿入').trim();
+      const displayLabel = label && label !== '写真挿入' ? '写真挿入（' + label + '）' : '写真挿入';
+      html.push(
+        '<p data-photo-placeholder="true" style="border: 2px dashed #94a3b8; background: #f8fafc; color: #334155; border-radius: 10px; padding: 18px 20px; margin: 32px 0; font-size: 15px; line-height: 1.85; text-align: center;">' +
+        '<strong style="display: block; font-size: 15px; color: #0f172a; font-weight: 900;">■■■■■■■■ ' + escapeHtml(displayLabel) + ' ■■■■■■■■</strong>' +
+        '</p>'
+      );
+    }
+
+    function buildPhotoSuggestions(rawSuggestions, sectionCount) {
+      const suggestions = rawSuggestions
+        .slice(0, 5)
+        .map(suggestion => ({
+          afterSection: Math.max(1, Number(suggestion.afterSection || suggestion.after_section || 1)),
+          label: String(suggestion.label || suggestion.title || '写真挿入').trim(),
+          description: String(suggestion.description || suggestion.detail || suggestion.text || '').trim()
+        }))
+        .filter(suggestion => suggestion.label || suggestion.description);
+      const fallback = [
+        { afterSection: 1, label: 'ノートの写真' },
+        { afterSection: 2, label: '自習風景' },
+        { afterSection: 3, label: '答案の写真' },
+        { afterSection: Math.max(1, sectionCount), label: '教室の写真' }
+      ];
+      fallback.forEach(item => {
+        if (suggestions.length >= 3) return;
+        if (!suggestions.some(suggestion => suggestion.afterSection === item.afterSection)) suggestions.push(item);
+      });
+      return suggestions.slice(0, 5).sort((a, b) => a.afterSection - b.afterSection);
+    }
+
+    html.push('<div data-eisai-article="true" style="font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; color: #1f2937; line-height: 1.95;">');
+    html.push('<h1 style="font-size: 30px; line-height: 1.45; margin: 0 0 28px; padding: 20px 24px; border-left: 6px solid #1d8acb; background: #eef8ff; color: #0f172a; font-weight: 900;">' + escapeHtml(title) + '</h1>');
+
+    normalizeTextArray(article.greeting || article.openingGreeting).forEach(renderParagraph);
+
+    const leadParagraphs = normalizeTextArray(article.lead || article.introduction);
+    if (leadParagraphs.length) {
+      html.push('<div style="background: #f8fafc; border: 1px solid #e5edf5; border-radius: 12px; padding: 20px 22px; margin: 0 0 30px;">');
+      leadParagraphs.forEach(paragraph => {
+        splitReadableParagraph(paragraph).forEach(block => {
+          html.push('<p style="margin: 0 0 16px; line-height: 2.12; font-size: 16px; color: #334155;">' + decorateInlineText(block, { state: decorationState }) + '</p>');
+        });
+      });
+      html.push('</div>');
+    }
+
+    const empathyBox = article.empathyBox || article.empathy_box;
+    if (empathyBox && typeof empathyBox === 'object') {
+      const label = String(empathyBox.label || empathyBox.title || '保護者の方へ').trim();
+      const paragraphs = normalizeTextArray(empathyBox.paragraphs || empathyBox.body || empathyBox.content);
+      if (paragraphs.length) {
+        html.push('<div style="background: #fff7ed; border-left: 6px solid #f97316; border-radius: 0 10px 10px 0; padding: 18px 20px; margin: 0 0 30px;">');
+        html.push('<div style="color: #c2410c; font-weight: 900; margin: 0 0 9px; font-size: 17px;">' + escapeHtml(label) + '</div>');
+        paragraphs.forEach(paragraph => {
+          splitReadableParagraph(paragraph).forEach(block => {
+            html.push('<p style="margin: 0 0 12px; font-size: 16.5px; line-height: 2.1;">' + decorateInlineText(block, { state: decorationState }) + '</p>');
+          });
+        });
+        html.push('</div>');
+      }
+    }
+
+    const sections = Array.isArray(article.sections) ? article.sections : [];
+    const photoSuggestions = buildPhotoSuggestions(normalizeObjectArray(article.photoSuggestions || article.photo_suggestions), sections.length);
+    sections.forEach((section, index) => {
+      if (!section || typeof section !== 'object') return;
+      const sectionIndex = index + 1;
+      const heading = String(section.heading || section.title || '').trim();
+      if (heading) html.push('<h2 style="font-size: 23px; line-height: 1.5; margin: 40px 0 20px; padding: 17px 20px; border-left: 6px solid #1d8acb; background: #eef8ff; color: #0f172a; font-weight: 900;">' + escapeHtml(heading) + '</h2>');
+      normalizeTextArray(section.paragraphs || section.body || section.content).forEach(renderParagraph);
+      normalizeTextArray(section.highlights || section.highlight || section.emphasis).slice(0, 1).forEach((text, highlightIndex) => renderHighlight(text, highlightIndex));
+      renderCheckList(String(section.bulletTitle || section.bullet_title || 'ここがポイント').trim(), normalizeTextArray(section.bullets || section.points));
+      renderManagerNote(String(section.managerNote || section.manager_note || '').trim());
+      photoSuggestions
+        .filter(suggestion => Number(suggestion.afterSection || suggestion.after_section || 0) === sectionIndex)
+        .forEach(renderPhotoSuggestion);
+    });
+
+    normalizeTextArray(article.closing || article.conclusion).forEach(renderParagraph);
+    photoSuggestions
+      .filter(suggestion => Number(suggestion.afterSection || suggestion.after_section || 0) > sections.length)
+      .forEach(renderPhotoSuggestion);
+    html.push('</div>');
+    return html.join('\n').trim();
   }
 
   function parseCtaData(text) {
@@ -604,13 +908,18 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           let raw = '';
           raw = CHATGPT_ADAPTER.getResponseText(latest);
 
-          let decoded = raw;
-          decoded = decoded.replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&')
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'");
-          decoded = decoded.replace(/```(?:html)?\s*/gi, '').replace(/```/g, '');
+          let decoded = '';
+          let ctaData = null;
+          const blogJson = parseBlogJsonResponse(raw);
+          if (blogJson) {
+            decoded = renderBlogJsonHtml(blogJson);
+            const articleJson = blogJson.article && typeof blogJson.article === 'object' ? blogJson.article : blogJson;
+            ctaData = normalizeJsonCtaData(blogJson.cta || blogJson.ctaData || blogJson.cta_data || articleJson.cta);
+          } else {
+            decoded = decodeHtmlText(raw);
+            decoded = decoded.replace(/```(?:html)?\s*/gi, '').replace(/```/g, '');
+            ctaData = parseCtaData(raw);
+          }
 
           if (!/<h1[\s>]/i.test(decoded)) {
             statusDiv.textContent = '⚠️ ChatGPTの出力からブログHTMLを検出できませんでした。もう一度生成してください。';
@@ -618,7 +927,6 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
             return;
           }
 
-          const ctaData = parseCtaData(raw);
           decoded = decoded.replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '');
           decoded = decoded.replace(/説明文1[:：].+[\s\S]*?締めの言葉[:：].+/gi, '');
           decoded = decoded.replace(/<p[^>]*style=['"][^'"]*color:\s*red[^'"]*['"][^>]*>\s*■+CTAセクション■+\s*<\/p>/gi, '');
@@ -819,12 +1127,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
     const nameIn = createInput(dContent, '校舎名（記事に反映されます）', '例：◯◯校　※校まで必ずいれる', false);
     const managerIn = createInput(dContent, '室長名（本文では名前のみ使用）', '例：●●', false);
+    const areaIn = createInput(dContent, '対象エリア（冒頭あいさつ用・任意）', '例：武蔵新城・武蔵中原エリア', false);
     const urlIn = createInput(dContent, 'CTAリンク先URL（https://必須）', '例：https://eisai.org/…', false);
     const telIn = createInput(dContent, '電話番号（CTAの電話ボタン用）', '例：ハイフンなしで登録', false);
 
     const saved = getSetting();
     if (saved.name) nameIn.value = saved.name;
     if (saved.manager) managerIn.value = saved.manager;
+    if (saved.area) areaIn.value = saved.area;
     if (saved.url) urlIn.value = saved.url;
     if (saved.tel) telIn.value = saved.tel;
 
@@ -839,7 +1149,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         alert('テストモード中は架空の教室情報を自動使用します。\n通常の教室情報は上書きしません。');
         return;
       }
-      saveSetting({ name: nameIn.value, manager: managerIn.value, url: urlIn.value, tel: telIn.value });
+      saveSetting({ name: nameIn.value, manager: managerIn.value, area: areaIn.value, url: urlIn.value, tel: telIn.value });
       alert('教室情報を保存しました');
       details.open = false;
     };
@@ -909,57 +1219,67 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     const TYPE_FORMS = {
       [BLOG_TYPES.GROWTH]: {
         label: '📝 結果アップ・成長ストーリー',
+        hint: '短くてもOKです。実際に見た場面、生徒の変化、先生の一言が入ると記事が現場っぽくなります。',
         fields: [
-          { key: 'student', label: '主役の生徒情報', placeholder: '例：中2・西中原中・Aさん・数学', isArea: false },
-          { key: 'before', label: 'ビフォー（課題・前回の状況）', placeholder: '例：前回テスト45点、計算ミスが多かった', isArea: false },
-          { key: 'after', label: 'アフター（成果・今回の結果）', placeholder: '例：今回78点、33点アップ！', isArea: false },
-          { key: 'actions', label: '教室で行ったこと（3つ以上）', placeholder: '例：\n・計算練習を毎回10分\n・途中式を書く習慣づけ\n・テスト前に類題演習', isArea: true },
-          { key: 'episode', label: '印象に残ったエピソード・室長コメント', placeholder: '例：最初は自信なさそうだったけど、点数を見た時の笑顔が忘れられません', isArea: true }
+          { key: 'student', label: '主役の生徒情報', placeholder: '例：中2・篠崎第二中・Aさん・数学', isArea: false },
+          { key: 'before', label: 'ビフォー（課題・前回の状況）', placeholder: '例：前回45点。計算ミスが多く、途中式を書かないことが多かった', isArea: false },
+          { key: 'after', label: 'アフター（成果・今回の結果）', placeholder: '例：今回84点。39点アップ。本人も「初めて数学が楽しい」と話していた', isArea: false },
+          { key: 'actions', label: '教室で行った具体的なこと（3つ以上）', placeholder: '例：\n・毎回の授業冒頭で計算練習を10分\n・途中式をノートに残すルールを作った\n・テスト2週間前から学校ワークを2周\n・間違えた問題だけを解き直しリスト化', isArea: true },
+          { key: 'reality', label: '現場で見えた変化・リアルな場面', placeholder: '例：最初は「どうせ無理」と言っていたが、2週間ほどで自習に来る回数が増えた。点数を見た時に少し照れながら笑っていた', isArea: true },
+          { key: 'episode', label: '印象に残ったエピソード・室長コメント', placeholder: '例：結果だけでなく、途中式を書く習慣がついたことが一番大きな成長だと感じています', isArea: true }
         ]
       },
       [BLOG_TYPES.EVENT]: {
         label: '📅 対策・イベント紹介',
+        hint: '日程や内容だけでなく、当日の雰囲気・参加した生徒の様子・現場で感じた課題を書いてください。',
         fields: [
           { key: 'eventName', label: 'イベント名・対象', placeholder: '例：冬期講習・中1〜中3対象', isArea: false },
-          { key: 'flow', label: 'イベントの流れ・内容', placeholder: '例：\n・12/25〜1/7の14日間\n・1日2コマ×週3回\n・苦手単元を集中特訓', isArea: true },
-          { key: 'benefit', label: '生徒が得られるもの', placeholder: '例：\n・冬休み明けテストで自己ベスト更新\n・苦手克服で自信がつく', isArea: true },
-          { key: 'example', label: '過去の実例・雰囲気メモ（任意）', placeholder: '例：去年参加した生徒は平均20点アップ', isArea: true }
+          { key: 'flow', label: 'イベントの流れ・内容', placeholder: '例：\n・12/25〜1/7の14日間\n・1日2コマ×週3回\n・学校ワーク確認→苦手単元演習→確認テスト', isArea: true },
+          { key: 'scene', label: '当日の雰囲気・生徒の様子', placeholder: '例：最初は眠そうな生徒もいたが、確認テストで点が取れると表情が明るくなった', isArea: true },
+          { key: 'benefit', label: '生徒・保護者にとってのメリット', placeholder: '例：\n・冬休み明けテストに向けて苦手を整理できる\n・家では進みにくい学校ワークを教室で進められる', isArea: true },
+          { key: 'example', label: '過去の実例・室長コメント（任意）', placeholder: '例：去年は講習後に英語が20点以上伸びた生徒もいました。早めに苦手を見つけることが大切です', isArea: true }
         ]
       },
       [BLOG_TYPES.PERSON]: {
         label: '👤 講師・室長・生徒紹介',
-        note: '⚠️ サムネイル作成のため、紹介する人物の写真をチャットにアップロードしてください',
+        hint: '経歴よりも「どんな声かけをする人か」「生徒とどう関わるか」を入れると温度感が出ます。',
         fields: [
           { key: 'personInfo', label: '紹介する人の基本情報', placeholder: '例：講師・田中先生・理系科目担当・3年目', isArea: false },
-          { key: 'points', label: 'その人の「らしさ」ポイント（3つ以上）', placeholder: '例：\n・説明がわかりやすい\n・生徒の話をよく聞く\n・テスト前は自習にも付き合う', isArea: true },
-          { key: 'episode', label: '印象的なエピソード', placeholder: '例：苦手だった生徒が「先生の授業だけは楽しい」と言ってくれた', isArea: true },
-          { key: 'message', label: '室長として伝えたい一言', placeholder: '例：生徒思いの先生です。安心してお任せください', isArea: false }
+          { key: 'points', label: 'その人の「らしさ」ポイント（3つ以上）', placeholder: '例：\n・説明前に必ず生徒の考えを聞く\n・できたところを具体的にほめる\n・テスト前は自習にも声をかける', isArea: true },
+          { key: 'episode', label: '印象的なエピソード', placeholder: '例：苦手だった生徒が「先生の授業だけは質問しやすい」と言ってくれた', isArea: true },
+          { key: 'message', label: '室長として伝えたい一言', placeholder: '例：ただ教えるだけでなく、生徒が前向きになれる関わり方をしてくれる先生です', isArea: true }
         ]
       },
       [BLOG_TYPES.SERVICE]: {
         label: '💼 サービス・相談メニュー紹介',
+        hint: 'サービス説明だけでなく、実際によくある相談内容や、面談で保護者が安心する場面を書いてください。',
         fields: [
           { key: 'serviceName', label: 'サービス名', placeholder: '例：無料学習相談会・無料体験授業', isArea: false },
-          { key: 'target', label: 'どんな悩みを持つ人向け？（3つ以上）', placeholder: '例：\n・勉強のやり方がわからない\n・塾選びに迷っている\n・成績が伸び悩んでいる', isArea: true },
+          { key: 'target', label: 'よくある相談・悩み（3つ以上）', placeholder: '例：\n・家で勉強しているのに点数が上がらない\n・学校ワークの進め方がわからない\n・塾選びに迷っている', isArea: true },
           { key: 'flow', label: '相談・体験の流れ', placeholder: '例：\n・①お電話で予約\n・②ヒアリング30分\n・③体験授業\n・④ご報告', isArea: true },
-          { key: 'goal', label: '利用後にどうなってほしいか', placeholder: '例：お子さまに合った勉強法が見つかり、前向きに取り組めるように', isArea: true }
+          { key: 'scene', label: '実際の面談・体験でよくある場面', placeholder: '例：保護者の方が「何から始めればいいかわからなくて」と話され、学習状況を整理すると少し安心された様子だった', isArea: true },
+          { key: 'goal', label: '利用後にどうなってほしいか', placeholder: '例：お子さまに合った勉強法が見つかり、親子で次の一歩を話しやすくなる状態', isArea: true }
         ]
       },
       [BLOG_TYPES.SCORE]: {
         label: '🎯 点数アップ速報',
+        hint: '点数一覧だけでなく、代表ケースの「何を変えたか」を入れると説得力が出ます。',
         fields: [
           { key: 'testName', label: '対象テスト', placeholder: '例：2学期期末テスト・中1〜中3', isArea: false },
           { key: 'scoreList', label: '高得点・点数アップ一覧（1行1件）', placeholder: '例：中2 Aさん 数学 45→78点（+33点）\n中1 Bくん 英語 52→71点（+19点）\n中3 Cさん 理科 88点', isArea: true },
-          { key: 'comment', label: '速報から伝えたいこと', placeholder: '例：みんな本当によく頑張りました！次も一緒に頑張ろう', isArea: true },
-          { key: 'pickup', label: '代表ケース深掘りメモ（任意）', placeholder: '例：Aさんは毎日自習に来て、計算練習を続けた結果です', isArea: true }
+          { key: 'reason', label: '点数アップにつながった取り組み', placeholder: '例：\n・学校ワークを早めに終わらせた\n・間違えた問題を授業で解き直した\n・テスト前は自習に週3回来た', isArea: true },
+          { key: 'comment', label: '速報から伝えたいこと', placeholder: '例：点数だけでなく、準備の仕方が変わってきたことが大きな成長です', isArea: true },
+          { key: 'pickup', label: '代表ケース深掘りメモ（任意）', placeholder: '例：Aさんは毎回の小テストで間違えた単元を残し、テスト前にそこだけを重点的に復習した結果です', isArea: true }
         ]
       },
       [BLOG_TYPES.OTHER]: {
         label: '📄 その他',
+        hint: '自由テーマでも、誰に・何を・なぜ伝えたいのかと、教室で実際に見えた場面を入れてください。',
         fields: [
           { key: 'theme', label: '今回のブログで伝えたいテーマ・主役', placeholder: '例：西中原中の定期テストで結果を出すには？', isArea: false },
+          { key: 'target', label: '誰に向けて書きたいか', placeholder: '例：定期テスト前に何をすればいいか迷っている中学生の保護者', isArea: false },
           { key: 'actions', label: '教室や先生が行ったこと（箇条書き）', placeholder: '例：\n・テスト範囲の確認\n・苦手単元の洗い出し\n・類題演習', isArea: true },
-          { key: 'episode', label: 'エピソード・メッセージ', placeholder: '例：生徒たちの頑張りを見て、私も元気をもらいました', isArea: true }
+          { key: 'episode', label: '現場エピソード・メッセージ', placeholder: '例：生徒たちが自習に来る回数が増え、質問の内容も具体的になってきました', isArea: true }
         ]
       }
     };
@@ -973,6 +1293,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
             before: '前回テスト48点。計算ミスが多く、文章題になると手が止まりやすい状態でした。',
             after: '今回テスト76点。28点アップし、本人も「途中式を書く意味がわかった」と話していました。',
             actions: '・毎回の授業冒頭で計算小テストを実施\n・途中式を省略しないノートづくりを練習\n・テスト2週間前から学校ワークの解き直しを管理\n・間違えた問題だけを集めた復習プリントを作成',
+            reality: '最初は「数学は無理」と言っていましたが、2週間ほどで自習に来る回数が増えました。',
             episode: '最初は「数学は無理」と言っていましたが、テスト後に自分から答案を見せてくれたのが印象的でした。'
           }
         },
@@ -983,6 +1304,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
             before: '英単語を覚えることに苦手意識があり、宿題も後回しになりがちでした。',
             after: '単語テストで満点が増え、中学準備講座でも積極的に発音できるようになりました。',
             actions: '・1日5単語に絞った暗記計画を作成\n・発音しながら書く練習に変更\n・授業ごとに小さな成功を確認\n・保護者へ家庭での声かけポイントを共有',
+            reality: '最初は声が小さかったのですが、満点が続いてからは自分から発音練習に取り組むようになりました。',
             episode: '「英語ってちょっと楽しいかも」と本人が言ってくれたことで、ご家庭でも前向きな会話が増えました。'
           }
         }
@@ -993,6 +1315,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           values: {
             eventName: '架空中学校 定期テスト対策会・中1〜中3対象',
             flow: '・テスト範囲表をもとに学習計画を作成\n・学校ワークの進み具合を確認\n・英数の苦手単元を個別に演習\n・最後に確認テストで定着度をチェック',
+            scene: '最初は何から始めるか迷っていた生徒も、確認テストで正解が増えると表情が明るくなりました。',
             benefit: '・何から始めればよいかが明確になる\n・提出物と点数対策を同時に進められる\n・苦手単元をテスト前に発見できる',
             example: '前回は「ワークを終わらせるだけ」で止まっていた生徒が、解き直しまで進められるようになりました。'
           }
@@ -1002,6 +1325,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           values: {
             eventName: '春期講習・新学年準備コース',
             flow: '・現学年の苦手単元を診断\n・新学年でつまずきやすい単元を先取り\n・1人ひとりに合わせた授業回数を提案\n・最終日に学習状況を保護者へ報告',
+            scene: '新学年への不安を口にしていた生徒が、先取り内容を一つ解けたことで少し安心した様子でした。',
             benefit: '・新学年のスタートで不安を減らせる\n・前学年の苦手を持ち越しにくくなる\n・春休みの学習リズムを作れる',
             example: '短い春休みでも、やる内容を絞ることで「新学期が少し安心」と話す生徒が増えました。'
           }
@@ -1034,6 +1358,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
             serviceName: '無料学習相談',
             target: '・何から勉強すればよいかわからない\n・テスト前だけ頑張っても点数が伸びない\n・家庭学習の習慣がつかない',
             flow: '・現在の成績や学習状況をヒアリング\n・学校ワークや答案を確認\n・つまずきの原因を整理\n・必要な学習方法を提案',
+            scene: '保護者の方が「何から始めればいいかわからなくて」と話され、学習状況を整理すると少し安心された様子でした。',
             goal: '保護者と生徒が「まず何をするか」を具体的に持ち帰れる状態を目指します。'
           }
         },
@@ -1043,6 +1368,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
             serviceName: '無料体験授業',
             target: '・塾の雰囲気を見てから決めたい\n・先生との相性を確認したい\n・個別指導が合うか試したい',
             flow: '・事前に苦手単元を確認\n・実際の個別授業を体験\n・授業後に理解度をフィードバック\n・必要に応じて今後の学習プランを提案',
+            scene: '最初は緊張していた生徒も、先生と一緒に問題を解くうちに質問できるようになりました。',
             goal: 'お子さまが安心して通えるかを、授業を通して確認していただくことを大切にしています。'
           }
         }
@@ -1053,6 +1379,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           values: {
             testName: '架空中学校 2学期期末テスト',
             scoreList: '中2 Aさん 数学 48点→76点（+28点）\n中1 Bさん 英語 61点→82点（+21点）\n中3 Cさん 理科 88点',
+            reason: '・学校ワークを早めに終わらせた\n・間違えた問題を授業で解き直した\n・テスト前は自習に週3回来た',
             comment: '今回も一人ひとりが自分の課題に向き合い、最後までよく頑張りました。',
             pickup: 'Aさんは途中式を書く習慣を徹底したことで、計算ミスが大きく減りました。'
           }
@@ -1062,6 +1389,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           values: {
             testName: '架空中学校 英語単元テスト',
             scoreList: '中1 Dさん 英語 54点→79点（+25点）\n中2 Eさん 英語 70点→86点（+16点）\n中3 Fさん 英語 92点',
+            reason: '・本文音読を毎日続けた\n・単語テストを授業ごとに実施した\n・間違えた英文を声に出して確認した',
             comment: '単語暗記と本文音読を続けた成果が、点数にも表れました。',
             pickup: 'Dさんは毎日5分の音読を続け、長文への抵抗感が少しずつ減っていきました。'
           }
@@ -1072,6 +1400,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           label: '勉強習慣',
           values: {
             theme: '勉強習慣を作るために最初に見直したいこと',
+            target: '家で勉強を始めるまでに時間がかかる中学生の保護者',
             actions: '・勉強する時間を固定する\n・最初の5分だけ取りかかるルールを作る\n・学校ワークを小さく区切る\n・できたことを毎回確認する',
             episode: '最初から長時間頑張るのではなく、短い時間でも続けることで自信がついた生徒がいました。'
           }
@@ -1080,6 +1409,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           label: 'テスト後の見直し',
           values: {
             theme: 'テスト後の見直しで次の点数につなげる方法',
+            target: 'テストが返ってきた後に何をすればいいか迷う中学生の保護者',
             actions: '・答案を科目ごとに確認\n・ミスを「知識不足」「計算ミス」「時間不足」に分ける\n・次回までに直す単元を3つに絞る\n・解き直し日を決める',
             episode: '点数だけを見るのではなく、ミスの種類を分けたことで次にやることがはっきりしました。'
           }
@@ -1110,6 +1440,21 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
             fontWeight: 'bold'
           }
         }, formContainer, config.note);
+      }
+
+      if (config.hint) {
+        createEl('div', {
+          style: {
+            fontSize: '12px',
+            color: '#374151',
+            backgroundColor: '#f8fafc',
+            padding: '8px',
+            borderRadius: '6px',
+            marginBottom: '10px',
+            border: '1px solid #e5e7eb',
+            lineHeight: '1.6'
+          }
+        }, formContainer, config.hint);
       }
 
       config.fields.forEach(field => {
@@ -1524,6 +1869,7 @@ ${personThumbnailRules}
       const info = getSetting();
       const kosha = (info.name || '').trim();
       const shichou = (info.manager || '').trim();
+      const area = (info.area || '').trim();
       let ctaUrl = (info.url || '').trim();
       const ctaTel = (info.tel || '').trim();
 
@@ -1537,7 +1883,7 @@ ${personThumbnailRules}
       config.fields.forEach(field => {
         const val = typeData[field.key] || '';
         if (val.trim()) {
-          formContent += `${field.label}: ${val} \n`;
+          formContent += `${field.label}: ${val}\n\n`;
         }
       });
 
@@ -1546,24 +1892,28 @@ ${personThumbnailRules}
 【構成指示】
 - 導入：生徒の課題や悩みに共感する書き出し
 - 本文：ビフォー→取り組み→アフターの流れで構成
+- 現場で見えた変化・教室での具体的な取り組みを必ず入れる
 - 見出し例：「〇〇さんの挑戦」「教室で取り組んだこと」「結果と変化」
 - 締め：同じ悩みを持つ保護者への励ましメッセージ`,
         [BLOG_TYPES.EVENT]: `【記事タイプ】イベント紹介型
 【構成指示】
 - 導入：イベントの目的や対象者への呼びかけ
 - 本文：内容・流れ・得られるものを具体的に紹介
+- 当日の雰囲気・参加した生徒の様子・室長目線を入れる
 - 見出し例：「〇〇講習の特徴」「参加するとどうなる？」
 - 締め：参加を検討している保護者への後押しメッセージ`,
         [BLOG_TYPES.PERSON]: `【記事タイプ】人物紹介型
 【構成指示】
 - 導入：紹介する人との出会いや印象
 - 本文：その人の特徴・エピソードを具体的に紹介
+- 経歴だけでなく、生徒への声かけや関わり方が伝わる場面を入れる
 - 見出し例：「〇〇先生ってこんな人」「印象に残ったエピソード」
 - 締め：保護者への安心感を与えるメッセージ`,
         [BLOG_TYPES.SERVICE]: `【記事タイプ】サービス紹介型
 【構成指示】
 - 導入：対象となる悩みへの共感
 - 本文：サービス内容・流れ・利用後のイメージを紹介
+- 実際によくある相談内容や、面談・体験で安心につながる場面を入れる
 - 見出し例：「こんなお悩みありませんか？」「相談の流れ」「利用された方の声」
 - 締め：気軽に相談できることを伝えるメッセージ`,
         [BLOG_TYPES.SCORE]: `【記事タイプ】点数アップ速報型
@@ -1571,31 +1921,122 @@ ${personThumbnailRules}
 - 導入：テスト結果への喜びと生徒への称賛
 - 本文：点数アップ一覧を見やすく紹介し、代表ケースを深掘り
 - 【重要】入力された「高得点・点数アップ一覧」は、省略せずに全てリスト形式で記載すること
+- 点数だけでなく、点数アップにつながった行動・授業での取り組みを入れる
 - 見出し例：「今回のテスト結果速報！」「特に頑張った生徒たち」
 - 締め：次のテストに向けた意気込みと保護者へのメッセージ`,
         [BLOG_TYPES.OTHER]: `【記事タイプ】自由テーマ型
 【構成指示】
 - 導入：テーマに合わせた書き出し
 - 本文：伝えたい内容を自然な流れで構成
+- 入力された現場エピソードや教室で実際に見えた場面を中心に書く
 - 締め：保護者への前向きなメッセージ`
       };
 
       const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
-      const inputBlock = [
-        `記事タイプ: ${config.label.replace(/^[^\s]+\s/, '')}`,
-        '',
-        typeInstruction,
-        '',
-        formContent.trim()
-      ].join('\n');
+      const prompt = `あなたは英才個別学院の教室ブログ専門ライターです。
+以下の入力情報をもとに、保護者向けブログ記事の本文素材をJSONで作成してください。
+最終的なHTML化とCTA装飾はブログツール側で行います。あなたはJSONだけを返してください。
 
-      let yaml = MASTER_YAML;
-      yaml = yaml.replace('__INPUT_BLOCK__', inputBlock);
-      yaml = yaml.replace(/__KOSHA__/g, kosha);
-      yaml = yaml.replace(/__SHICHOU__/g, shichou);
-      yaml = yaml.replace(/__CTA_URL__/g, ctaUrl);
-      yaml = yaml.replace(/__CTA_TEL__/g, ctaTel);
+【今回の最重要方針】
+- 主役は article です。cta は最後に添える補助データです。
+- まず article の本文を十分に書いてください。cta だけ、相談ポイントだけ、要約だけの出力は禁止です。
+- JSONオブジェクト1つだけを出力してください。Markdown、コードブロック、前置き、解説、HTMLタグは出力しないでください。
+
+【本文の書き方ルール】
+- 冒頭は、保護者の不安や悩みに寄り添うところから始めてください。いきなり成果や宣伝から入らないでください。
+- 保護者、とくにお母さんが「うちの子にも当てはまるかもしれない」「一人で抱え込まなくていいかもしれない」と感じる温度で書いてください。
+- 家で見える不安、親子でピリピリしてしまう気持ち、声かけに迷う気持ちにやさしく触れてください。ただし保護者を責めないでください。
+- 文体は敬体を基本にしつつ、少し近い距離で話しかけてください。「ですよね」「かもしれません」「まずは」「少しずつ」のような自然な言葉を使ってください。
+- 本文は自然な段落で書いてください。箇条書きは補助だけにし、本文の中心にしないでください。
+- 各段落は1〜2文程度で短くしてください。スマホで読んでも疲れないよう、こまめに話を区切ってください。
+- 「何をしたか」だけでなく、「生徒がどう変わったか」「教室でどんな場面があったか」を書いてください。
+- 入力された学校名、学年、教科、点数、期間、生徒の様子、先生・室長コメントを本文に反映してください。
+- 室長目線は売り込みではなく、そばで見守っていた人の言葉として自然に入れてください。
+- 一般論だけの記事にしないでください。必ず入力情報に基づいた具体的な場面を書いてください。
+- 入力にない実績、点数、学校名、生徒発言、キャンペーンは作らないでください。
+- 大げさな広告表現、断定表現、「必ず伸びる」「絶対合格」は使わないでください。
+
+【装飾用データの作り方】
+- article.empathyBox は、保護者の気持ちに寄り添う短い共感ボックスです。1つだけ作ってください。
+- section.highlights は、本当に読ませたい一文だけにしてください。記事全体で2〜4個までが目安です。
+- section.bullets は、手順・取り組み・チェックポイントなど、3項目以上で整理した方が読みやすい時だけ使ってください。
+- section.managerNote は、室長の思いや感情が伝わる短いコメントです。本文全体で1〜2個は入れてください。
+- article.photoSuggestions は必須です。空配列は禁止です。最低3個、理想は5個作ってください。
+- 写真候補は文章の流れに沿って、ノート・途中式・解き直しリスト・答案・確認テスト・自習風景・教室内の教材など、実際の現場で撮れる写真を優先してください。
+- 汎用的な悩み写真、人物の頭抱え写真、フリー素材風のイメージ写真、冒頭用の雰囲気写真は作らないでください。
+- photoSuggestions.afterSection は同じ番号に集中させず、本文の流れに合わせて分散してください。
+
+【冒頭あいさつ】
+- article.greeting を必ず1段落入れてください。
+- 対象エリアがある場合は「${area || '◯◯エリア'}の個別指導塾、英才個別学院 ${kosha} 室長の${shichou}です！」のように始めてください。
+- 対象エリアが空欄の場合は「英才個別学院 ${kosha} 室長の${shichou}です！」のように始めてください。
+- あいさつの後に、「今日は、〜についてお話しします。」という自然な導入を続けてください。
+- 毎回まったく同じ定型文にせず、記事内容に合わせて少し変化をつけてください。
+
+【文章量と構成】
+- article.greeting は1段落。
+- article.lead は2段落。
+- article.sections は3〜4個。
+- 各 section.paragraphs は2段落以上。
+- article.photoSuggestions は必ず3〜5個。
+- article.closing は2段落。
+- 本文全体は900〜1400字程度。
+- cta は短く簡潔に。articleより目立たせないでください。
+- cta.closingMessage は記事内容に合わせた具体的な一文にしてください。定型句しか書けない場合は空文字 "" にしてください。
+
+【JSON形式】
+{
+  "article": {
+    "title": "32文字以内のブログタイトル",
+    "greeting": ["冒頭のあいさつ段落"],
+    "lead": ["保護者の不安に寄り添う導入段落", "入力内容につながる導入段落"],
+    "empathyBox": {
+      "label": "お母さんへ",
+      "paragraphs": ["読み手の不安に寄り添う短い共感文"]
+    },
+    "sections": [
+      {
+        "heading": "見出し",
+        "paragraphs": ["自然な本文段落", "現場感のある本文段落"],
+        "highlights": ["本当に読ませたい一文"],
+        "bulletTitle": "取り組みポイント",
+        "bullets": ["リスト化した方が読みやすい具体項目"],
+        "managerNote": "室長の思いや感情が伝わる短いコメント"
+      }
+    ],
+    "photoSuggestions": [
+      { "afterSection": 1, "label": "ノートの写真", "description": "この位置に入れるとよい写真の内容" },
+      { "afterSection": 2, "label": "自習風景", "description": "この位置に入れるとよい写真の内容" },
+      { "afterSection": 3, "label": "答案の写真", "description": "この位置に入れるとよい写真の内容" }
+    ],
+    "closing": ["保護者への前向きな結び", "相談へ自然につなげる結び"]
+  },
+  "cta": {
+    "description1": "記事内容に合わせた、不安を解消する一言",
+    "description2": "教室見学や相談へのハードルを下げる優しい一言",
+    "consultationPoints": ["相談内容1", "相談内容2", "相談内容3", "相談内容4"],
+    "trialPoints": ["体験で得られるメリット1", "体験で得られるメリット2", "体験で得られるメリット3", "体験で得られるメリット4"],
+    "closingMessage": "記事内容に合わせた具体的な一文。定型句しか書けない場合は空文字"
+  }
+}
+
+【禁止】
+- articleなしの出力は禁止です。
+- ctaだけの出力は禁止です。
+- HTMLタグを出力しないでください。
+- CTA_DATA_START / CTA_DATA_END を出力しないでください。
+- JSON以外の文章を出力しないでください。
+
+【教室情報】
+校舎名: ${kosha}
+室長名: ${shichou}
+対象エリア: ${area || '未設定'}
+
+${typeInstruction}
+
+【入力情報】
+${formContent}`;
 
       const input = getChatInput();
       if (!input) {
@@ -1611,7 +2052,7 @@ ${personThumbnailRules}
       lastBlogHtml = '';
 
       const responseBaseline = CHATGPT_ADAPTER.getResponseNodes().length;
-      CHATGPT_ADAPTER.setComposerText(input, yaml);
+      CHATGPT_ADAPTER.setComposerText(input, prompt);
 
       await sleep(500);
       await sendMessage(input);

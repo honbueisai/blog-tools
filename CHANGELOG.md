@@ -1,5 +1,15 @@
 # 変更履歴 (CHANGELOG)
 
+## [Userscript ChatGPT 0.1.9] - 2026-05-04
+
+### 変更
+- ChatGPT版の教室情報に `対象エリア` を追加し、Gemini版 v0.60.00 と同じ冒頭あいさつ用設定に対応
+- ChatGPT版の記事タイプ別フォームをGemini版 v0.60.00 の項目・ヒントに合わせて更新
+- ChatGPT版のブログ生成をHTML直接出力方式からJSON素材出力方式へ変更し、ツール側で装飾HTML化するGemini版と同じ流れへ調整
+- ChatGPT版の生成HTMLに、共感ボックス・強調装飾・室長コメント・写真挿入候補枠を反映
+
+---
+
 ## [Userscript ChatGPT 0.1.8] - 2026-05-04
 
 ### 修正
