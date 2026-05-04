@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.12
+// @version      0.1.13
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-12';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-12';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0112';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-13';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-13';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0113';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.12';
+  const CURRENT_VERSION = '0.1.13';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -587,6 +587,31 @@
       html.push('</div>');
     }
 
+    function normalizeDialogueArray(value) {
+      if (!Array.isArray(value)) return [];
+      return value
+        .map(item => {
+          if (!item || typeof item !== 'object') return null;
+          const speaker = String(item.speaker || item.role || '').trim();
+          const text = String(item.text || item.message || item.body || '').trim();
+          if (!speaker || !text) return null;
+          return { speaker, text };
+        })
+        .filter(Boolean)
+        .slice(0, 4);
+    }
+
+    function renderDialogues(dialogues) {
+      if (dialogues.length < 2) return;
+      dialogues.forEach(dialogue => {
+        const isParent = /保護者|お母|母|親/.test(dialogue.speaker);
+        const className = isParent ? 'bubble-right' : 'bubble-left';
+        const label = escapeHtml(dialogue.speaker);
+        const body = escapeHtml(dialogue.text).replace(/\n/g, '<br>');
+        html.push('<div class="' + className + '"><strong>' + label + '：</strong>' + body + '</div>');
+      });
+    }
+
     function renderPhotoSuggestion(suggestion) {
       if (!suggestion || typeof suggestion !== 'object') return;
       const label = String(suggestion.label || suggestion.title || '写真挿入').trim();
@@ -661,6 +686,7 @@
       if (heading) html.push('<h2 style="font-size: 23px; line-height: 1.5; margin: 40px 0 20px; padding: 17px 20px; border-left: 6px solid #1d8acb; background: #eef8ff; color: #0f172a; font-weight: 900;">' + escapeHtml(heading) + '</h2>');
       normalizeTextArray(section.paragraphs || section.body || section.content).forEach(renderParagraph);
       normalizeTextArray(section.highlights || section.highlight || section.emphasis).slice(0, 1).forEach((text, highlightIndex) => renderHighlight(text, highlightIndex));
+      renderDialogues(normalizeDialogueArray(section.dialogues || section.dialogue || section.conversation));
       renderCheckList(String(section.bulletTitle || section.bullet_title || 'ここがポイント').trim(), normalizeTextArray(section.bullets || section.points));
       renderManagerNote(String(section.managerNote || section.manager_note || '').trim());
       photoSuggestions
@@ -1991,6 +2017,8 @@ ${personThumbnailRules}
 - 読者が読み終えた時に、少なくとも1つの場面を頭に思い浮かべられる文章にしてください。
 - 「小さな成功体験」「前向き」「苦手意識」「安心感」「一歩」などの抽象語を使う場合は、必ず近くに具体的な行動・表情・会話・ノート・答案・授業風景を添えてください。
 - 似た意味の共感文を繰り返さないでください。保護者への共感は深く、短く、重複なく書いてください。
+- 同じ言葉や同じ意味の文を繰り返さないでください。特に「手が止まる」「無理」「変化」「できた」は必要な箇所だけに絞ってください。
+- 強調文は本文の言い換えにしないでください。本文と同じ内容なら section.highlights は空配列にしてください。
 - 見出しはテンプレート臭を避け、記事内容が少し伝わる具体的な言葉にしてください。
 - 本文は「誰でも言えること」よりも「この入力があるから書けること」を優先してください。
 
@@ -2013,12 +2041,18 @@ ${personThumbnailRules}
 【装飾用データの作り方】
 - article.empathyBox は、保護者の気持ちに寄り添う短い共感ボックスです。1つだけ作ってください。
 - article.empathyBox は article.lead と同じ内容を繰り返さず、読者の気持ちを一段深く受け止める短い文章にしてください。
-- section.highlights は、本当に読ませたい一文だけにしてください。記事全体で2〜4個までが目安です。
-- section.bullets は、手順・取り組み・チェックポイントなど、3項目以上で整理した方が読みやすい時だけ使ってください。
+- section.highlights は、本当に読ませたい一文だけにしてください。記事全体で0〜2個までです。各セクションに必ず入れる必要はありません。
+- section.highlights は、本文段落の繰り返し・要約・言い換えは禁止です。入れるなら本文より一段深い気づきや転機の一文にしてください。
+- section.bullets は、手順・取り組み・チェックポイントなど、3項目以上で整理した方が読みやすい時だけ使ってください。文章で読ませた方が自然なら空配列にしてください。
+- section.bullets は、全セクションに入れないでください。記事全体で0〜2ブロックまでにしてください。
+- section.dialogues は、保護者と室長・先生の短いやりとりがあると読みやすい場面だけ使ってください。不要なら空配列にしてください。
+- section.dialogues を使う場合は2発話または4発話にし、保護者側は speaker を「保護者」、教室側は「室長」または「先生」にしてください。
+- section.dialogues は、相談・面談・声かけ・生徒の変化が伝わる場面にだけ使ってください。会話を作りすぎないでください。
 - section.managerNote は、室長の思いや感情が伝わる短いコメントです。本文全体で1〜2個は入れてください。
 - article.photoSuggestions は必須です。空配列は禁止です。2〜3個だけ作ってください。多すぎる写真挿入は本文の流れを止めるため禁止です。
 - 写真候補は文章の流れに沿って、ノート・途中式・解き直しリスト・答案・確認テスト・自習風景・教室内の教材など、実際の現場で撮れる写真を優先してください。
 - 汎用的な悩み写真、人物の頭抱え写真、フリー素材風のイメージ写真、冒頭用の雰囲気写真は作らないでください。
+- 写真候補の label は互いに似すぎないようにしてください。「ノートの写真」と「ノートの変化」のような近い候補を並べないでください。
 - photoSuggestions.afterSection は同じ番号に集中させず、本文の流れに合わせて分散してください。
 
 【冒頭あいさつ】
@@ -2033,6 +2067,9 @@ ${personThumbnailRules}
 - article.lead は1〜2段落。共感を重ねすぎず、早めに本文の主題へ入ってください。
 - article.sections は3〜4個。
 - 各 section.paragraphs は2段落以上。
+- section.highlights は記事全体で0〜2個。
+- section.bullets は記事全体で0〜2ブロック。不要なら使わない。
+- section.dialogues は記事全体で0〜2セット。不要なら使わない。
 - article.photoSuggestions は必ず2〜3個。
 - article.closing は2段落。
 - 本文全体は1000〜1600字程度。
@@ -2056,6 +2093,10 @@ ${personThumbnailRules}
         "highlights": ["本当に読ませたい一文"],
         "bulletTitle": "取り組みポイント",
         "bullets": ["リスト化した方が読みやすい具体項目"],
+        "dialogues": [
+          { "speaker": "保護者", "text": "自然な短い相談の言葉" },
+          { "speaker": "室長", "text": "それに対する短い返答" }
+        ],
         "managerNote": "室長の思いや感情が伝わる短いコメント"
       }
     ],
