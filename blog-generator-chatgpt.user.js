@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.9
+// @version      0.1.10
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
-// @updateURL    https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js
-// @downloadURL  https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js
+// @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js
+// @downloadURL  https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
@@ -15,12 +15,12 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-9';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-9';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v019';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-10';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-10';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0110';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.9';
-  const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
+  const CURRENT_VERSION = '0.1.10';
+  const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
   const PANEL_OPEN_LAYOUT_CLASS = 'eisai-chatgpt-panel-open';
@@ -1102,7 +1102,8 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     updateBtn.onclick = () => {
       const ok = confirm(`現在のバージョン: v${CURRENT_VERSION} \n\n最新版を確認・インストールしますか？\n（Tampermonkeyのインストール画面が開きます）`);
       if (ok) {
-        window.open(UPDATE_URL, '_blank');
+        const cacheBustedUrl = UPDATE_URL + '?v=' + encodeURIComponent(CURRENT_VERSION) + '&t=' + Date.now();
+        window.open(cacheBustedUrl, '_blank');
       }
     };
 

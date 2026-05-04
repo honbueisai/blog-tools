@@ -1,5 +1,13 @@
 # 変更履歴 (CHANGELOG)
 
+## [Userscript ChatGPT 0.1.10] - 2026-05-04
+
+### 修正
+- ChatGPT版の更新ボタンがGitHub rawのキャッシュを掴み、古いバージョンの再インストール画面を開く問題を修正
+- 更新URLを `raw.githubusercontent.com` に変更し、更新ボタンから開くURLにキャッシュ回避パラメータを付与
+
+---
+
 ## [Userscript ChatGPT 0.1.9] - 2026-05-04
 
 ### 変更

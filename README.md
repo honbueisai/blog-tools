@@ -58,7 +58,7 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 
 1. 利用したい版のリンクをクリック  
    👉 <a href="https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js" target="_blank">Gemini版 ブログ生成ツールをインストール</a>  
-   👉 <a href="https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js" target="_blank">ChatGPT版 ブログ生成ツールをインストール</a>
+   👉 <a href="https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js" target="_blank">ChatGPT版 ブログ生成ツールをインストール</a>
 
 2. 新しいタブが開き、**Tampermonkey のインストール画面** が表示されます
 
