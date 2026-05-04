@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.6
+// @version      0.1.7
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-6';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-6';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v016';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-7';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-7';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v017';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.6';
+  const CURRENT_VERSION = '0.1.7';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const TEST_CLASSROOM = {
@@ -175,6 +175,14 @@
 
   function isTestModeEnabled() {
     return localStorage.getItem(TEST_MODE_STORAGE_KEY) === 'true';
+  }
+
+  function setTestModeEnabled(enabled) {
+    if (enabled) {
+      localStorage.setItem(TEST_MODE_STORAGE_KEY, 'true');
+    } else {
+      localStorage.removeItem(TEST_MODE_STORAGE_KEY);
+    }
   }
 
   function getSetting() {
@@ -682,6 +690,31 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     }
 
     const headerRight = createEl('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } }, header);
+
+    const testModeBtn = createEl('button', {
+      style: {
+        fontSize: '10px',
+        padding: '3px 6px',
+        borderRadius: '4px',
+        border: isTestModeEnabled() ? '1px solid #f59e0b' : '1px solid #d1d5db',
+        background: isTestModeEnabled() ? '#fef3c7' : '#f9fafb',
+        color: isTestModeEnabled() ? '#92400e' : '#6b7280',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        fontWeight: '700'
+      }
+    }, headerRight, isTestModeEnabled() ? 'TEST OFF' : 'TEST ON');
+    testModeBtn.title = 'テストモードを切り替えます';
+    testModeBtn.onclick = () => {
+      const nextEnabled = !isTestModeEnabled();
+      setTestModeEnabled(nextEnabled);
+      alert(nextEnabled
+        ? 'テストモードをONにしました。\n架空教室情報とサンプル入力ボタンが使えます。'
+        : 'テストモードをOFFにしました。');
+      panel.remove();
+      toggleBtn.remove();
+      buildPanel();
+    };
 
     const updateBtn = createEl('button', {
       style: {

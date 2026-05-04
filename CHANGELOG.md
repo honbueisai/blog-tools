@@ -1,5 +1,13 @@
 # 変更履歴 (CHANGELOG)
 
+## [Userscript ChatGPT 0.1.7] - 2026-05-04
+
+### 追加
+- ChatGPT版ヘッダーに `TEST ON/OFF` ボタンを追加
+- URLパラメータに頼らず、パネル上からテストモードを切り替えられるよう改善
+
+---
+
 ## [Userscript ChatGPT 0.1.6] - 2026-05-04
 
 ### 修正
