@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.7
+// @version      0.1.8
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,13 +15,15 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-7';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-7';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v017';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-8';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-8';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v018';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.7';
+  const CURRENT_VERSION = '0.1.8';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
+  const PANEL_WIDTH = 420;
+  const PANEL_OPEN_LAYOUT_CLASS = 'eisai-chatgpt-panel-open';
   const TEST_CLASSROOM = {
     name: '英才テスト校',
     manager: '山田',
@@ -183,6 +185,31 @@
     } else {
       localStorage.removeItem(TEST_MODE_STORAGE_KEY);
     }
+  }
+
+  function setChatAvoidance(enabled) {
+    const shouldApply = enabled && window.innerWidth > 900;
+    document.documentElement.classList.toggle(PANEL_OPEN_LAYOUT_CLASS, shouldApply);
+    if (document.body) {
+      document.body.classList.toggle(PANEL_OPEN_LAYOUT_CLASS, shouldApply);
+    }
+  }
+
+  function syncChatAvoidance(panel) {
+    const isOpen = Boolean(
+      panel &&
+      panel.style.display !== 'none' &&
+      !panel.classList.contains('collapsed')
+    );
+    setChatAvoidance(isOpen);
+  }
+
+  function bindChatAvoidanceResize() {
+    if (window.__eisaiChatgptAvoidanceResizeBound) return;
+    window.__eisaiChatgptAvoidanceResizeBound = true;
+    window.addEventListener('resize', () => {
+      syncChatAvoidance(document.getElementById(TOOL_ID));
+    });
   }
 
   function getSetting() {
@@ -454,8 +481,19 @@
 #${TOOL_ID} * {
   pointer-events: auto;
 }
+html.${PANEL_OPEN_LAYOUT_CLASS} main,
+html.${PANEL_OPEN_LAYOUT_CLASS} [role="main"] {
+  margin-right: ${PANEL_WIDTH}px !important;
+  max-width: calc(100vw - ${PANEL_WIDTH}px) !important;
+  transition: margin-right 0.3s ease, max-width 0.3s ease;
+}
+html.${PANEL_OPEN_LAYOUT_CLASS} #thread-bottom-container {
+  right: ${PANEL_WIDTH}px !important;
+  width: auto !important;
+  transition: right 0.3s ease;
+}
 #eisai-toggle-btn {
-  position: fixed; top: 50%; right: 420px; transform: translateY(-50%);
+  position: fixed; top: 50%; right: ${PANEL_WIDTH}px; transform: translateY(-50%);
   z-index: 2147483646; background: #1d4ed8; color: #fff;
   border: none; border-radius: 8px 0 0 8px; padding: 12px 8px;
   cursor: pointer; font-size: 14px; writing-mode: vertical-rl;
@@ -467,6 +505,15 @@
 }
 #eisai-toggle-btn:hover {
   background: #1e40af;
+}
+@media (max-width: 900px) {
+  html.${PANEL_OPEN_LAYOUT_CLASS} main,
+  html.${PANEL_OPEN_LAYOUT_CLASS} [role="main"],
+  html.${PANEL_OPEN_LAYOUT_CLASS} #thread-bottom-container {
+    margin-right: 0 !important;
+    max-width: 100vw !important;
+    right: 0 !important;
+  }
 }
 .eisai-header {
   background: #f9fafb; padding: 10px 14px; display: flex;
@@ -650,11 +697,16 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
   // 9. パネルUI本体
   // =========================================================
   function buildPanel() {
-    if (document.getElementById(TOOL_ID)) return;
+    const existingPanel = document.getElementById(TOOL_ID);
+    if (existingPanel) {
+      syncChatAvoidance(existingPanel);
+      return;
+    }
 
     const styleTag = document.createElement('style');
     styleTag.textContent = CSS;
     document.head.appendChild(styleTag);
+    bindChatAvoidanceResize();
 
     const isCollapsed = localStorage.getItem('eisai_collapsed') === 'true';
 
@@ -669,6 +721,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const collapsed = panel.classList.toggle('collapsed');
       toggleBtn.classList.toggle('collapsed');
       localStorage.setItem('eisai_collapsed', collapsed);
+      syncChatAvoidance(panel);
     };
 
     const header = createEl('div', { className: 'eisai-header' }, panel);
@@ -711,6 +764,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       alert(nextEnabled
         ? 'テストモードをONにしました。\n架空教室情報とサンプル入力ボタンが使えます。'
         : 'テストモードをOFFにしました。');
+      setChatAvoidance(false);
       panel.remove();
       toggleBtn.remove();
       buildPanel();
@@ -734,6 +788,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       panel.classList.add('collapsed');
       toggleBtn.classList.add('collapsed');
       localStorage.setItem('eisai_collapsed', 'true');
+      syncChatAvoidance(panel);
     };
 
     updateBtn.onclick = () => {
@@ -742,6 +797,8 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         window.open(UPDATE_URL, '_blank');
       }
     };
+
+    syncChatAvoidance(panel);
 
     const content = createEl('div', { style: { padding: '14px', overflow: 'auto', flex: 1 } }, panel);
 
@@ -1708,9 +1765,14 @@ ${personThumbnailRules}
 
     btn.onclick = () => {
       const panel = document.getElementById(TOOL_ID);
-      if (!panel) buildPanel();
-      else panel.style.display =
-        (panel.style.display === 'none' || panel.style.display === '') ? 'flex' : 'none';
+      if (!panel) {
+        buildPanel();
+        return;
+      }
+
+      const willShow = panel.style.display === 'none';
+      panel.style.display = willShow ? 'flex' : 'none';
+      syncChatAvoidance(panel);
     };
   }
 
