@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.17
+// @version      0.1.18
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-17';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-17';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0117';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-18';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-18';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0118';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.17';
+  const CURRENT_VERSION = '0.1.18';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -52,7 +52,7 @@
   let lastBlogHtml = '';
 
   // =========================================================
-  // 1. 訴求スタイル / 画像スタイル定義
+  // 1. サムネイルスタイル / 画像スタイル定義
   // =========================================================
   const VISUAL_STYLES = {
     '実写スタイル': 'Photorealistic style, shot on DSLR, authentic Japanese cram school atmosphere',
@@ -61,15 +61,6 @@
     '漫画スタイル': 'Japanese manga style, black and white with screentones, comic book art, dramatic lines, ink drawing, speech bubbles',
     'YOUTUBEスタイル': 'YouTube thumbnail style, photorealistic, hyper-saturated colors, bold outlines, clear contrast, catchy visuals, close-up, professional photography',
     'インパクトスタイル': 'Dynamic angle, fish-eye lens, high contrast, intense lighting, dramatic shadows, movie poster quality, explosion of colors'
-  };
-
-  const APPEAL_STYLES = {
-    '共感': 'Relatable expression, gentle nod, soft warm lighting, sentimental atmosphere, slice of life',
-    '驚き': 'Shocked expression, wide eyes, mouth open, dynamic speed lines background, sudden realization',
-    '笑顔': 'Big bright smile, showing teeth, thumbs up, happy emotion, sparkling eyes, warm sunlight',
-    '不安煽る': 'Worried face, sweating, dark gloomy background, holding head in hands, stressed, cool colors',
-    'ポジティブ': 'Confident pose, fist pump, looking up at the sky, energetic, bright sunlight, lens flare',
-    '最高': 'Triumphant pose, glowing aura, golden lighting, confetti, crown, champion vibe, masterpiece'
   };
 
   const CLASSROOM_DESCRIPTION = 'A bright, clean, modern Japanese cram school classroom filled with soft natural light. Large windows with sheer white curtains diffuse daylight evenly across the room, creating a gentle, calm atmosphere. The interior is minimalist and white-based: smooth white walls, white ceilings, and uncluttered decor. White rectangular desks with simple, modern legs are arranged in rows, providing wide workspace for two people to sit side-by-side. On the desks are neatly arranged study materials such as notebooks, pens, and open textbooks, without clutter. Chairs are lightweight, white plastic with small perforations on the backrest, matching the clean and modern design of the room. The overall space feels open, bright, and warm, with a soft photographic depth of field and natural diffusion that highlights a quiet, studious environment.';
@@ -101,6 +92,31 @@
     'large number badge plus supporting subtitle',
     'speech-bubble headline with realistic scene'
   ];
+
+  const THUMBNAIL_TYPE_OPTIONS = {
+    'おまかせ': 'Auto-select the strongest thumbnail objective from the article. Choose based on the main visual hook, not on a fixed template.',
+    '点数アップ強調': 'Score/result focused thumbnail. Make the score, point increase, or visible result the strongest visual and text element.',
+    'ノート・答案主役': 'Evidence-object thumbnail. Use notebook, answer sheet, red pen marks, worksheet, or study materials as the hero visual.',
+    'Before / After': 'Before-after thumbnail. Clearly contrast the previous struggle and the later improvement in a split or paired composition.',
+    '保護者の悩み共感': 'Parent pain-point thumbnail. Lead with the parent concern or question, using a calmer but still readable design.',
+    '生徒の変化ストーリー': 'Student change-story thumbnail. Show the moment of behavioral or emotional change as the hook.',
+    '先生・人物紹介': 'Person spotlight thumbnail. Use the teacher/student/person as the hero with name and personality cue.',
+    'イベント告知': 'Event/campaign thumbnail. Prioritize who it is for, when it happens, and why it matters.'
+  };
+
+  const VISUAL_EXPRESSION_OPTIONS = {
+    'おまかせ': 'Auto-select the visual expression that best fits the selected thumbnail objective and article content.',
+    '実写': VISUAL_STYLES['実写スタイル'],
+    'アニメ': VISUAL_STYLES['アニメスタイル'],
+    '漫画': VISUAL_STYLES['漫画スタイル'],
+    'インフォグラフィック': VISUAL_STYLES['インフォグラフィック']
+  };
+
+  const TEXT_IMPACT_OPTIONS = {
+    '標準': 'Readable but restrained. Use clear hierarchy and strong contrast without excessive decoration.',
+    '強め': 'Recommended. Use large bold main text, strong outline or shadow, numeric badge when available, and high thumbnail readability.',
+    '最大インパクト': 'Maximum thumbnail impact. Use the biggest safe headline, large number badge, diagonal/ribbon composition, thick outlines, and vivid contrast while preserving readability.'
+  };
 
   const COLOR_STYLES = {
     '赤': { main: 'Red', sub: 'Dark Red', hex: '#FF4444', gradient: 'Red to Dark Red' },
@@ -1695,29 +1711,44 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     createEl('p', { style: { fontWeight: 'bold', marginBottom: '6px' } }, imgSection,
       '🖼 サムネイル画像生成（ブログ用）');
 
-    createEl('label', { className: 'eisai-label' }, imgSection, '画像スタイルを選択');
-    const styleSelect = createEl('select', {
+    createEl('label', { className: 'eisai-label' }, imgSection, 'サムネイル型を選択');
+    const thumbnailTypeSelect = createEl('select', {
       className: 'eisai-input',
       style: { width: '100%', marginBottom: '8px' }
     }, imgSection);
-    ['実写スタイル', 'アニメスタイル', 'インフォグラフィックスタイル', 'YOUTUBEスタイル', '漫画スタイル', 'インパクトスタイル'].forEach(label => {
+    Object.keys(THUMBNAIL_TYPE_OPTIONS).forEach(label => {
       const opt = document.createElement('option');
       opt.value = label;
       opt.textContent = label;
-      styleSelect.appendChild(opt);
+      thumbnailTypeSelect.appendChild(opt);
     });
+    thumbnailTypeSelect.value = 'おまかせ';
 
-    createEl('label', { className: 'eisai-label' }, imgSection, '訴求スタイルを選択');
-    const appealSelect = createEl('select', {
+    createEl('label', { className: 'eisai-label' }, imgSection, '見た目の表現を選択');
+    const visualExpressionSelect = createEl('select', {
       className: 'eisai-input',
       style: { width: '100%', marginBottom: '8px' }
     }, imgSection);
-    ['共感', '驚き', '笑顔', '不安煽る', 'ポジティブ', '最高'].forEach(label => {
+    Object.keys(VISUAL_EXPRESSION_OPTIONS).forEach(label => {
       const opt = document.createElement('option');
       opt.value = label;
       opt.textContent = label;
-      appealSelect.appendChild(opt);
+      visualExpressionSelect.appendChild(opt);
     });
+    visualExpressionSelect.value = 'おまかせ';
+
+    createEl('label', { className: 'eisai-label' }, imgSection, '文字の強さを選択');
+    const textImpactSelect = createEl('select', {
+      className: 'eisai-input',
+      style: { width: '100%', marginBottom: '8px' }
+    }, imgSection);
+    Object.keys(TEXT_IMPACT_OPTIONS).forEach(label => {
+      const opt = document.createElement('option');
+      opt.value = label;
+      opt.textContent = label;
+      textImpactSelect.appendChild(opt);
+    });
+    textImpactSelect.value = '強め';
 
     createEl('label', { className: 'eisai-label' }, imgSection, 'メインカラーを選択');
     const mainColorSelect = createEl('select', {
@@ -1827,8 +1858,9 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     }, footer, 'このプロンプトで画像を生成する');
 
     imgGenBtn.onclick = () => {
-      const style = styleSelect.value;
-      const appeal = appealSelect.value;
+      const thumbnailType = thumbnailTypeSelect.value;
+      const style = visualExpressionSelect.value;
+      const textImpact = textImpactSelect.value;
       const mainColor = mainColorSelect.value;
       const subColor = subColorSelect.value;
 
@@ -1853,14 +1885,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const mainColorData = COLOR_STYLES[mainColor] || {};
       const subColorData = COLOR_STYLES[subColor] || {};
       const brandRules = mainColor === 'お任せ' || subColor === 'お任せ'
-        ? 'Color scheme optimized for appeal style'
+        ? 'Color scheme optimized for the selected thumbnail objective and visual expression'
         : ((mainColorData.sub || mainColor) + ' and ' + (subColorData.main || subColor) + ' color scheme');
-      const textGradient = mainColor === 'お任せ'
-        ? 'optimized gradient for appeal style'
-        : (mainColorData.gradient || mainColor);
       const colorScheme = mainColor === 'お任せ' || subColor === 'お任せ'
-        ? 'Colors automatically selected based on appeal style'
+        ? 'Colors automatically selected based on the selected thumbnail objective and visual expression'
         : ('Main color ' + (mainColorData.main || mainColor) + ' (' + (mainColorData.hex || '') + '), Sub color ' + (subColorData.main || subColor) + ' (' + (subColorData.hex || '') + ')');
+      const thumbnailTypeInstruction = THUMBNAIL_TYPE_OPTIONS[thumbnailType] || THUMBNAIL_TYPE_OPTIONS['おまかせ'];
+      const visualExpressionInstruction = VISUAL_EXPRESSION_OPTIONS[style] || VISUAL_EXPRESSION_OPTIONS['おまかせ'];
+      const textImpactInstruction = TEXT_IMPACT_OPTIONS[textImpact] || TEXT_IMPACT_OPTIONS['強め'];
       const artDirectionCatalog = THUMBNAIL_ART_DIRECTIONS.map((item, index) => `${index + 1}. ${item}`).join('\n');
       const layoutVariantCatalog = THUMBNAIL_LAYOUT_VARIANTS.map((item, index) => `${index + 1}. ${item}`).join('\n');
 
@@ -1877,14 +1909,18 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 ■ ブログ記事内容
 ${lastBlogHtml || 'ブログ記事が生成されていません。先にブログを生成してください。'}
 
-■ 適用するスタイルパラメータ（英語）
-1. Visual Style: ${VISUAL_STYLES[style] || style}
-2. Emotion / Appeal: ${APPEAL_STYLES[appeal] || appeal}
-3. Brand Rules: ${brandRules}, clean education brand feeling, professional appearance, readable composition, --ar 3:2
-4. Text Design Direction: choose typography that fits the selected art direction, but the main headline must always be thumbnail-strong: thick Japanese gothic/sans-serif lettering, high contrast, clear outline or shadow, readable at small size. Do not always use huge 3D letters. Use bold 3D only when Score Impact or YouTube-like impact is selected. Otherwise use flat bold poster type, label, ribbon, speech bubble, or infographic typography with strong readability.
-5. Possible Classroom Setting: ${style === '実写スタイル' ? CLASSROOM_DESCRIPTION : 'Modern educational environment appropriate for ' + style}
-6. Possible Tutoring Style: ${TUTORING_STYLE}
-7. Color Scheme: ${colorScheme}
+■ サムネイル設計の選択
+1. Thumbnail Objective: ${thumbnailType}
+   - ${thumbnailTypeInstruction}
+2. Visual Expression: ${style}
+   - ${visualExpressionInstruction}
+3. Text Impact Level: ${textImpact}
+   - ${textImpactInstruction}
+4. Brand Rules: ${brandRules}, clean education brand feeling, professional appearance, readable composition, --ar 3:2
+5. Text Design Direction: choose typography that fits the selected thumbnail objective and visual expression, but the main headline must always be thumbnail-strong: thick Japanese gothic/sans-serif lettering, high contrast, clear outline or shadow, readable at small size. Do not always use huge 3D letters. Use bold 3D only when Score Impact / 点数アップ強調 / 最大インパクト is selected. Otherwise use flat bold poster type, label, ribbon, speech bubble, or infographic typography with strong readability.
+6. Possible Classroom Setting: ${style === '実写' ? CLASSROOM_DESCRIPTION : 'Use an educational environment or evidence object background that fits the selected visual expression'}
+7. Possible Tutoring Style: ${TUTORING_STYLE}
+8. Color Scheme: ${colorScheme}
 
 ■ ユーザー入力情報
 メインキャッチ：${mainCatch}
@@ -1926,6 +1962,7 @@ ${personThumbnailRules}
 ■ アートディレクション選定（最重要）
 以下の候補から、ブログ記事の内容に最も合うものを1つだけ選んでください。
 毎回同じ「右に先生、左に大文字、白い教室背景」へ寄せないでください。
+ユーザーがサムネイル型で「おまかせ」以外を選んだ場合は、そのサムネイル型を最優先してください。
 
 ${artDirectionCatalog}
 
@@ -1946,9 +1983,9 @@ ${layoutVariantCatalog}
 ■ 思考と生成プロセス
 1. ブログ内容から学生の年代を判定（小学生/中学生/高校生）
 2. ブログの主役を判定（点数 / 悩み / ノート / 答案 / 生徒の表情 / 保護者の不安 / 先生紹介 / イベント）
-3. 上のアートディレクション候補から1つ選ぶ
+3. ユーザー指定のサムネイル型を確認し、「おまかせ」なら上のアートディレクション候補から1つ選ぶ
 4. レイアウト候補から1つ選ぶ
-5. その構図に合うキャッチフレーズを最適化
+5. 文字の強さ設定に合わせてキャッチフレーズと文字階層を最適化
 6. 画像生成AIが理解しやすい英語描写に変換
 7. 全要素を結合して、1枚の完成度が高いサムネイル用プロンプトにする
 
