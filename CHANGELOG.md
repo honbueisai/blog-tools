@@ -1,5 +1,12 @@
 # 変更履歴 (CHANGELOG)
 
+## [Userscript ChatGPT 0.1.6] - 2026-05-04
+
+### 修正
+- GitHub rawのキャッシュを避けるため、ChatGPT版の更新ボタンとTampermonkey更新URLを `github.com/.../raw/refs/heads/feature/...` 形式へ変更
+
+---
+
 ## [Userscript ChatGPT 0.1.5] - 2026-05-04
 
 ### 修正

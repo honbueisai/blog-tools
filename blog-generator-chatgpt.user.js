@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.5
+// @version      0.1.6
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
 // @match        https://chat.openai.com/*
-// @updateURL    https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js
-// @downloadURL  https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js
+// @updateURL    https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js
+// @downloadURL  https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
@@ -15,12 +15,12 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-5';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-5';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v015';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-6';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-6';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v016';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.5';
-  const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
+  const CURRENT_VERSION = '0.1.6';
+  const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const TEST_CLASSROOM = {
     name: '英才テスト校',
