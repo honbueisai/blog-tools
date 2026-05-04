@@ -129,6 +129,8 @@ const BLOG_TYPES = {
 - **見た目の表現**: おまかせ / 実写 / アニメ / 漫画 / インフォグラフィック
 - **文字の強さ**: 標準 / 強め / 最大インパクト
 - 記事内容に応じて、数字・悩み・答案・ノート・人物・イベントなど主役を自動選定
+- 古い広告風の赤オレンジ3D文字、重い黒影、巨大な青帯、同じ数字の重複強調は避ける
+- 文字要素は原則2つまでに抑え、答案・ノート・手元など現場感のある素材を主役にする
 
 #### カラースタイル
 - メインカラーとサブカラーの選択
@@ -145,7 +147,7 @@ const BLOG_TYPES = {
 
 ### ストレージキー
 - `STORAGE_KEY`: `eisai_blog_info_v05663`（バージョン依存）
-- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0118`（バージョン依存）
+- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0119`（バージョン依存）
 - ChatGPT版テストモード: `eisai_chatgpt_test_mode_enabled`（ローカル解除式）
 - `CLASSROOM_STORAGE_KEY`: `eisai_classroom_settings_persistent`（永続）
 
