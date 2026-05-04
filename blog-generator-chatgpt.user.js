@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.14
+// @version      0.1.15
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-14';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-14';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0114';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-15';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-15';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0115';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.14';
+  const CURRENT_VERSION = '0.1.15';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -2037,6 +2037,19 @@ ${personThumbnailRules}
 - 見出しはテンプレート臭を避け、記事内容が少し伝わる具体的な言葉にしてください。
 - 本文は「誰でも言えること」よりも「この入力があるから書けること」を優先してください。
 
+【タイトルの作り方：弱いタイトル禁止】
+- article.title は最初に5案を内側で考え、その中で最も「読みたくなる」1案だけを採用してください。5案は出力しないでください。
+- タイトルは18〜32文字を目安にしてください。短すぎる標語、長すぎる説明文、抽象的なまとめは禁止です。
+- タイトルには、次のうち2つ以上を必ず入れてください: 具体的な悩み / 数字 / 教科 / 学年 / 生徒の行動 / 印象的な場面 / 読者が気になる変化。
+- 「一歩」「変化」「成長」「きっかけ」「前向き」「頑張った」だけで終わる抽象タイトルは禁止です。使う場合も、必ず具体的な場面や数字と組み合わせてください。
+- 記事本文の一番印象的な場面をタイトルに反映してください。例: 「答案を自分から見せた日」「声が少し大きくなった日」「机に向かう時間が増えた夜」。
+- 大げさな広告表現は禁止です。「絶対」「必ず」「奇跡」「たったこれだけで」「誰でも」は使わないでください。
+- 成長ストーリー型は、Beforeの悩みとAfterの場面をつなぐタイトルにしてください。例: 「48点の数学、答案を見せに来た日」「途中式を嫌がったAさんの28点アップ」。
+- イベント紹介型は、イベント名だけでなく参加後に見える変化を入れてください。例: 「冬期講習で見えた、質問が増えた瞬間」。
+- 人物紹介型は、名前と人柄が伝わる場面を入れてください。例: 「田中先生が質問前に必ず聞くこと」。
+- サービス紹介型は、保護者の悩みと相談後の安心を入れてください。例: 「塾選びの不安を整理する無料相談」。
+- 点数アップ速報型は、数字だけでなく伸びた理由を示してください。例: 「33点アップの裏側にあった解き直し習慣」。
+
 【本文の書き方ルール】
 - 冒頭は、保護者の不安や悩みに寄り添うところから始めてください。いきなり成果や宣伝から入らないでください。
 - 保護者、とくにお母さんが「うちの子にも当てはまるかもしれない」「一人で抱え込まなくていいかもしれない」と感じる温度で書いてください。
@@ -2098,7 +2111,7 @@ ${personThumbnailRules}
 【JSON形式】
 {
   "article": {
-    "title": "32文字以内のブログタイトル",
+    "title": "18〜32文字程度。悩み・数字・場面・変化のうち2つ以上を含む強いブログタイトル",
     "greeting": ["冒頭のあいさつ段落"],
     "lead": ["保護者の不安に寄り添う導入段落", "入力内容につながる導入段落"],
     "empathyBox": {
