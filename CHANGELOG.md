@@ -1,5 +1,48 @@
 # 変更履歴 (CHANGELOG)
 
+## [Userscript ChatGPT 0.1.4] - 2026-05-04
+
+### 追加
+- ChatGPT版にローカル解除式のテストモードを追加
+- テストモード中は架空の教室情報（英才テスト校）を自動使用し、本番教室情報を上書きしないよう制御
+- 各記事タイプに2種類ずつテスト用サンプル入力ボタンを追加
+
+---
+
+## [Userscript ChatGPT 0.1.3] - 2026-05-04
+
+### 修正
+- Tampermonkeyのエラー行が指していた未使用の詳細スタイル定義をChatGPT版から削除
+- ChatGPT版の起動時パース対象を減らし、スタートボタン表示の安定性を改善
+
+---
+
+## [Userscript ChatGPT 0.1.2] - 2026-05-04
+
+### 修正
+- Tampermonkey注入時に `Unexpected token ')'` でChatGPT版が起動しない問題を修正
+- サムネイル生成プロンプト内の入れ子テンプレートリテラルを廃止し、注入処理で壊れにくい文字列組み立てへ変更
+
+---
+
+## [Userscript ChatGPT 0.1.1] - 2026-05-04
+
+### 修正
+- Tampermonkey注入時に `Unexpected token '('` でChatGPT版が起動しない問題を修正
+- ChatGPT版内の optional chaining / optional call を互換性の高い条件分岐へ置き換え
+
+---
+
+## [Userscript ChatGPT 0.1.0] - 2026-05-03
+
+### 追加
+- 既存のGemini版を変更せず、ChatGPT専用の `blog-generator-chatgpt.user.js` を追加
+- ChatGPTの入力欄・送信ボタン・回答欄を扱う専用アダプタを実装
+- 既存Gemini版と同等のブログ生成、CTA付与、サムネイル用プロンプト生成、画像生成プロンプト送信フローに対応
+- README / SPEC にGemini版とChatGPT版の併用方法を追記
+
+---
+
 ## [0.56.72] - 2026-05-03
 
 ### 修正

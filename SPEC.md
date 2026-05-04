@@ -2,14 +2,16 @@
 
 ## 概要
 
-英才個別学院のブログ記事を自動生成するTampermonkeyユーザースクリプト。Google Gemini（https://gemini.google.com/*）で動作し、教室情報の管理、ブログ記事の生成、サムネイル画像のプロンプト作成を行う。
+英才個別学院のブログ記事を自動生成するTampermonkeyユーザースクリプト。Google Gemini（https://gemini.google.com/*）またはChatGPT（https://chatgpt.com/* / https://chat.openai.com/*）で動作し、教室情報の管理、ブログ記事の生成、サムネイル画像のプロンプト作成を行う。
 
 ## システム要件
 
 - **ブラウザ**: Chrome, Firefox, Edge, Safari などTampermonkeyをサポートするブラウザ
 - **拡張機能**: Tampermonkey
-- **対象サイト**: https://gemini.google.com/*
-- **ストレージ**: TampermonkeyのGM_setValue/GM_getValue（永続ストレージ）
+- **対象サイト**:
+  - Gemini版: https://gemini.google.com/*
+  - ChatGPT版: https://chatgpt.com/*, https://chat.openai.com/*
+- **ストレージ**: ブラウザのlocalStorage
 
 ## アーキテクチャ
 
@@ -34,6 +36,11 @@
    - NANO BANANA PRO対応のプロンプト作成
    - 人物紹介タイプ専用のサムネイル生成
    - カラースタイルとビジュアルスタイルの適用
+
+5. **サイトアダプタ**
+   - Gemini版: Geminiの入力欄・送信・回答DOMを取得
+   - ChatGPT版: ChatGPTの入力欄・送信ボタン・回答DOMを取得
+   - UI、記事タイプ、CTA生成、サムネイル用プロンプト生成は両版で同等仕様
 
 ### データ構造
 
@@ -130,6 +137,8 @@ const BLOG_TYPES = {
 
 ### ストレージキー
 - `STORAGE_KEY`: `eisai_blog_info_v05663`（バージョン依存）
+- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v014`（バージョン依存）
+- ChatGPT版テストモード: `eisai_chatgpt_test_mode_enabled`（ローカル解除式）
 - `CLASSROOM_STORAGE_KEY`: `eisai_classroom_settings_persistent`（永続）
 
 ### 保存される情報
@@ -187,6 +196,7 @@ const BLOG_TYPES = {
 
 ### 制限事項
 - GeminiのAPI制限に依存
+- ChatGPT版はChatGPTのメッセージ数・画像生成数の利用制限に依存
 - 大量データの一括処理は非推奨
 
 ## 拡張性
@@ -212,4 +222,4 @@ const BLOG_TYPES = {
 ### デバッグ方法
 - コンソールログの確認
 - ストレージデータの検証
-- Gemini APIの応答確認
+- Gemini / ChatGPT の応答DOM確認

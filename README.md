@@ -2,6 +2,13 @@
 
 英才個別学院のブログ記事＋サムネイル画像を簡単に作成するためのツールです。
 
+現在は以下の2種類があります。
+
+- **Gemini版**: `blog-generator.user.js`
+- **ChatGPT版**: `blog-generator-chatgpt.user.js`
+
+Gemini版とChatGPT版は別ファイルです。ChatGPT版を追加しても、既存のGemini版は上書きされません。
+
 ---
 
 ## 🚀 インストール方法（社員向け）
@@ -49,8 +56,9 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 
 #### 手順
 
-1. 下のリンクをクリック  
-   👉 <a href="https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js" target="_blank">ブログ生成ツール 拡張機能にインストール</a>
+1. 利用したい版のリンクをクリック  
+   👉 <a href="https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js" target="_blank">Gemini版 ブログ生成ツールをインストール</a>  
+   👉 <a href="https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator-chatgpt.user.js" target="_blank">ChatGPT版 ブログ生成ツールをインストール</a>
 
 2. 新しいタブが開き、**Tampermonkey のインストール画面** が表示されます
 
@@ -97,10 +105,11 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 
 ## 📝 ブログ記事の作り方
 
-### STEP 1：Gemini を開く
+### STEP 1：Gemini または ChatGPT を開く
 
-1. Chrome で下のリンクを開く  
-   👉 <a href="https://gemini.google.com/app" target="_blank">Gemini を開く</a>
+1. Chrome で利用するAIのリンクを開く  
+   👉 <a href="https://gemini.google.com/app" target="_blank">Gemini を開く</a>  
+   👉 <a href="https://chatgpt.com/" target="_blank">ChatGPT を開く</a>
 
 2. 画面が表示されたら **3〜5秒待つ**
 
@@ -143,9 +152,9 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 2. **「メモ」** に補足情報を入力（任意）  
    例）「中1〜中3向け」「ワークの使い方を入れたい」
 
-3. **「Geminiへ送信して記事生成」** ボタンをクリック
+3. **「Geminiへ送信して記事生成」** または **「ChatGPTへ送信して記事生成」** ボタンをクリック
 
-4. 数十秒待つと、Gemini が記事を生成します
+4. 数十秒待つと、AI が記事を生成します
 
 5. 生成が完了すると、ツールパネルに  
    **「✅ ブログ記事の生成が完了しました」** と表示されます
@@ -199,11 +208,11 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 
 5. **「▶ 画像生成用プロンプトを作成」** をクリック
 
-6. Gemini がプロンプトを生成します
+6. AI がプロンプトを生成します
 
 7. 完了したら **「このプロンプトで画像を生成する」** をクリック
 
-8. Gemini が画像を生成します
+8. AI が画像を生成します
 
 ---
 
@@ -236,8 +245,9 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 
 ### Q. 画像が生成されない
 
-- Gemini の画像生成モード（バナナマーク）がオンになっているか確認
-- 思考モードもオンにしてください
+- Gemini版の場合は、Gemini の画像生成モード（バナナマーク）がオンになっているか確認
+- ChatGPT版の場合は、ChatGPTで画像生成が使える状態か確認
+- 無料アカウントでは画像生成枚数に制限があります
 
 ---
 
