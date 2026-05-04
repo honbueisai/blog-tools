@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.13
+// @version      0.1.14
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-13';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-13';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0113';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-14';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-14';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0114';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.13';
+  const CURRENT_VERSION = '0.1.14';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -446,12 +446,25 @@
     if (!text) return [];
     const sentences = [];
     let current = '';
+    let pendingPunctuation = false;
     Array.from(text).forEach(char => {
       current += char;
       if ('。！？'.indexOf(char) >= 0) {
+        pendingPunctuation = true;
+        return;
+      }
+      if (pendingPunctuation && char === '」') {
         const sentence = current.trim();
         if (sentence) sentences.push(sentence);
         current = '';
+        pendingPunctuation = false;
+        return;
+      }
+      if (pendingPunctuation) {
+        const sentence = current.slice(0, -1).trim();
+        if (sentence) sentences.push(sentence);
+        current = char;
+        pendingPunctuation = false;
       }
     });
     if (current.trim()) sentences.push(current.trim());
@@ -604,8 +617,10 @@
     function renderDialogues(dialogues) {
       if (dialogues.length < 2) return;
       dialogues.forEach(dialogue => {
-        const isParent = /保護者|お母|母|親/.test(dialogue.speaker);
-        const className = isParent ? 'bubble-right' : 'bubble-left';
+        const managerName = String(getSetting().manager || '').trim();
+        const isClassroomSide = /室長|先生|講師/.test(dialogue.speaker) || (managerName && dialogue.speaker.indexOf(managerName) >= 0);
+        const isReaderSide = !isClassroomSide && /保護者|お母|母|お父|父|親|生徒|さん|くん|ちゃん/.test(dialogue.speaker);
+        const className = isReaderSide ? 'bubble-right' : 'bubble-left';
         const label = escapeHtml(dialogue.speaker);
         const body = escapeHtml(dialogue.text).replace(/\n/g, '<br>');
         html.push('<div class="' + className + '"><strong>' + label + '：</strong>' + body + '</div>');
@@ -2040,13 +2055,17 @@ ${personThumbnailRules}
 
 【装飾用データの作り方】
 - article.empathyBox は、保護者の気持ちに寄り添う短い共感ボックスです。1つだけ作ってください。
+- article.empathyBox.label は記事の場面に合わせて「お母さまへ」「お父さまへ」「保護者の方へ」など自然に使い分けてください。毎回「お母さんへ」に固定しないでください。
 - article.empathyBox は article.lead と同じ内容を繰り返さず、読者の気持ちを一段深く受け止める短い文章にしてください。
 - section.highlights は、本当に読ませたい一文だけにしてください。記事全体で0〜2個までです。各セクションに必ず入れる必要はありません。
 - section.highlights は、本文段落の繰り返し・要約・言い換えは禁止です。入れるなら本文より一段深い気づきや転機の一文にしてください。
 - section.bullets は、手順・取り組み・チェックポイントなど、3項目以上で整理した方が読みやすい時だけ使ってください。文章で読ませた方が自然なら空配列にしてください。
 - section.bullets は、全セクションに入れないでください。記事全体で0〜2ブロックまでにしてください。
 - section.dialogues は、保護者と室長・先生の短いやりとりがあると読みやすい場面だけ使ってください。不要なら空配列にしてください。
-- section.dialogues を使う場合は2発話または4発話にし、保護者側は speaker を「保護者」、教室側は「室長」または「先生」にしてください。
+- section.dialogues を使う場合は2発話または4発話にしてください。
+- section.dialogues の speaker は場面に合わせて自然に使い分けてください。保護者側は「お母さま」「お父さま」、生徒本人なら「Aさん」「Bさん」、教室側は室長名（例: ${shichou || '山田'}）または「先生」にしてください。
+- speaker に「保護者」「室長」のような役割名だけを使うのは避けてください。本文に出ている人物がわかる呼び名にしてください。
+- section.dialogues の直前には、会話が出る理由がわかる導入文を paragraphs の最後に1文入れてください。例: 「その頃、保護者の方からもこんなお話をいただきました。」
 - section.dialogues は、相談・面談・声かけ・生徒の変化が伝わる場面にだけ使ってください。会話を作りすぎないでください。
 - section.managerNote は、室長の思いや感情が伝わる短いコメントです。本文全体で1〜2個は入れてください。
 - article.photoSuggestions は必須です。空配列は禁止です。2〜3個だけ作ってください。多すぎる写真挿入は本文の流れを止めるため禁止です。
@@ -2083,7 +2102,7 @@ ${personThumbnailRules}
     "greeting": ["冒頭のあいさつ段落"],
     "lead": ["保護者の不安に寄り添う導入段落", "入力内容につながる導入段落"],
     "empathyBox": {
-      "label": "お母さんへ",
+      "label": "お母さまへ / お父さまへ / 保護者の方へ のいずれか自然なもの",
       "paragraphs": ["読み手の不安に寄り添う短い共感文"]
     },
     "sections": [
@@ -2094,8 +2113,8 @@ ${personThumbnailRules}
         "bulletTitle": "取り組みポイント",
         "bullets": ["リスト化した方が読みやすい具体項目"],
         "dialogues": [
-          { "speaker": "保護者", "text": "自然な短い相談の言葉" },
-          { "speaker": "室長", "text": "それに対する短い返答" }
+          { "speaker": "お母さま", "text": "自然な短い相談の言葉" },
+          { "speaker": "${shichou || '山田'}", "text": "それに対する短い返答" }
         ],
         "managerNote": "室長の思いや感情が伝わる短いコメント"
       }
