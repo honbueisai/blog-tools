@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.10
+// @version      0.1.11
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-10';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-10';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0110';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-11';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-11';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0111';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.10';
+  const CURRENT_VERSION = '0.1.11';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -952,6 +952,12 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         statusDiv.textContent = '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。';
         statusDiv.classList.add('show');
         copyBtn.style.display = 'block';
+        if (copyBtn.parentElement) copyBtn.parentElement.style.display = 'block';
+        setTimeout(() => {
+          if (copyBtn.scrollIntoView) {
+            copyBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 50);
       }
     }, 1000);
   }
@@ -991,6 +997,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           lastPromptNode = latest;
           isGeneratingPrompt = false;
           imgExecBtn.style.display = 'block';
+          if (imgExecBtn.parentElement) imgExecBtn.parentElement.style.display = 'block';
 
           alert('画像生成用プロンプトの出力が完了しました。\n\n１．この画面の内容を確認したら閉じてください。\n２．ChatGPTの画像生成が使える状態か確認してください。\n３．「このプロンプトで画像を生成する」ボタンを押して生成をスタート。\n\nそれでは、進めてください。');
 
@@ -1118,7 +1125,8 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         background: '#ffffff',
         borderTop: '1px solid #e5e7eb',
         padding: '12px 14px',
-        boxShadow: '0 -2px 4px rgba(0,0,0,0.05)'
+        boxShadow: '0 -2px 4px rgba(0,0,0,0.05)',
+        display: 'none'
       }
     }, panel);
 
@@ -1204,6 +1212,10 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
     const selectedTypeLabel = createEl('div', {
       style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '8px',
         padding: '8px 12px',
         marginBottom: '12px',
         background: '#e0e7ff',
@@ -1212,7 +1224,17 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         fontWeight: '600',
         color: '#3730a3'
       }
-    }, step2, '📝 結果アップ・成長ストーリー');
+    }, step2);
+    const selectedTypeText = createEl('span', { style: { minWidth: '0' } }, selectedTypeLabel, '📝 結果アップ・成長ストーリー');
+    const sampleButtonWrap = createEl('div', {
+      style: {
+        display: 'none',
+        flexWrap: 'wrap',
+        gap: '4px',
+        justifyContent: 'flex-end',
+        maxWidth: '50%'
+      }
+    }, selectedTypeLabel);
 
     const formContainer = createEl('div', { id: 'eisai-form-container' }, step2);
     const formInputs = {};
@@ -1418,6 +1440,50 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       ]
     };
 
+    function clearElement(el) {
+      while (el.firstChild) {
+        el.removeChild(el.firstChild);
+      }
+    }
+
+    function applySampleValues(type, config, sample) {
+      config.fields.forEach(field => {
+        const value = sample.values[field.key] || '';
+        formInputs[type][field.key] = value;
+        const input = formInputs[type][field.key + '_el'];
+        if (input) input.value = value;
+      });
+    }
+
+    function renderSampleButtons(type, config) {
+      clearElement(sampleButtonWrap);
+      const samples = isTestModeEnabled() ? (TEST_SAMPLES[type] || []) : [];
+      if (!samples.length) {
+        sampleButtonWrap.style.display = 'none';
+        return;
+      }
+
+      sampleButtonWrap.style.display = 'flex';
+      samples.forEach(sample => {
+        const sampleBtn = createEl('button', {
+          style: {
+            padding: '3px 7px',
+            fontSize: '10px',
+            lineHeight: '1.2',
+            borderRadius: '999px',
+            border: '1px solid #a5b4fc',
+            background: '#ffffff',
+            color: '#3730a3',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            fontWeight: '700'
+          }
+        }, sampleButtonWrap, sample.label);
+        sampleBtn.title = 'テスト用サンプルを入力';
+        sampleBtn.onclick = () => applySampleValues(type, config, sample);
+      });
+    }
+
     function renderTypeForm(type) {
       while (formContainer.firstChild) {
         formContainer.removeChild(formContainer.firstChild);
@@ -1426,7 +1492,8 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const config = TYPE_FORMS[type];
       if (!config) return;
 
-      selectedTypeLabel.textContent = config.label;
+      selectedTypeText.textContent = config.label;
+      renderSampleButtons(type, config);
 
       if (config.note) {
         createEl('div', {
@@ -1469,50 +1536,6 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         formInputs[type][field.key + '_el'] = input;
       });
 
-      if (isTestModeEnabled()) {
-        const samples = TEST_SAMPLES[type] || [];
-        const sampleWrap = createEl('div', {
-          style: {
-            marginTop: '8px',
-            marginBottom: '10px',
-            padding: '8px',
-            borderRadius: '6px',
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0'
-          }
-        }, formContainer);
-        createEl('div', {
-          style: {
-            fontSize: '11px',
-            fontWeight: '700',
-            color: '#475569',
-            marginBottom: '6px'
-          }
-        }, sampleWrap, 'テスト用サンプル');
-        const sampleRow = createEl('div', { style: { display: 'flex', gap: '6px' } }, sampleWrap);
-        samples.forEach(sample => {
-          const sampleBtn = createEl('button', {
-            style: {
-              flex: '1',
-              padding: '7px 8px',
-              fontSize: '12px',
-              borderRadius: '6px',
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#334155',
-              cursor: 'pointer'
-            }
-          }, sampleRow, sample.label);
-          sampleBtn.onclick = () => {
-            config.fields.forEach(field => {
-              const value = sample.values[field.key] || '';
-              formInputs[type][field.key] = value;
-              const input = formInputs[type][field.key + '_el'];
-              if (input) input.value = value;
-            });
-          };
-        });
-      }
     }
 
     renderTypeForm(currentBlogType);
@@ -1579,7 +1602,6 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
     const copyBtn = createEl('button', {
       style: {
-        marginTop: '10px',
         width: '100%',
         padding: '10px',
         background: '#ef4444',
@@ -1591,7 +1613,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         cursor: 'pointer',
         display: 'none'
       }
-    }, content, '▶ ブログHTMLをコピーする');
+    }, footer, '▶ ブログHTMLをコピーする');
 
     const imgSection = createEl('div', {
       id: 'eisai-image-section',
@@ -1846,6 +1868,7 @@ ${personThumbnailRules}
       statusDiv.textContent = '🎯 画像生成用プロンプトを作成しています...';
       statusDiv.classList.add('show');
       imgExecBtn.style.display = 'none';
+      if (copyBtn.style.display !== 'block') footer.style.display = 'none';
 
       isGeneratingPrompt = true;
       lastPromptNode = null;
@@ -2050,6 +2073,7 @@ ${formContent}`;
       copyBtn.style.display = 'none';
       imgSection.style.display = 'none';
       imgExecBtn.style.display = 'none';
+      footer.style.display = 'none';
       lastBlogHtml = '';
 
       const responseBaseline = CHATGPT_ADAPTER.getResponseNodes().length;
