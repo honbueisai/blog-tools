@@ -1,5 +1,13 @@
 # 変更履歴 (CHANGELOG)
 
+## [Userscript ChatGPT 0.1.5] - 2026-05-04
+
+### 修正
+- ChatGPT版の更新ボタンとTampermonkey更新URLを、現在ファイルが存在する `feature/chatgpt-blog-generator` ブランチのraw URLへ変更
+- main未マージ状態でもChatGPT版をGitHub経由で更新できるよう修正
+
+---
+
 ## [Userscript ChatGPT 0.1.4] - 2026-05-04
 
 ### 追加
