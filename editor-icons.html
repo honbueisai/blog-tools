@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- 英才ブログエディタ Ver.0.8.0 -->
+<!-- 英才ブログエディタ Ver.0.9.0 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>英才ブログエディタ - アイコン版 Ver.0.8.0</title>
+  <title>英才ブログエディタ - アイコン版 Ver.0.9.0</title>
   <style>
     body {
       margin: 0;
@@ -20,18 +20,26 @@
       box-shadow: 0 8px 28px rgba(0,0,0,0.08);
       display: flex;
       gap: 24px;
+      align-items: flex-start; /* sidebar の sticky を有効化 */
+      min-height: calc(100vh - 40px);
     }
     #sidebar {
       width: 280px;
+      flex-shrink: 0;
       border-right: 1px solid #e5e7eb;
       padding-right: 16px;
+      /* Geminiライク：サイドバーを画面に固定し、内部だけスクロール */
+      position: sticky;
+      top: 24px;
+      max-height: calc(100vh - 88px);
+      overflow-y: auto;
+      overflow-x: hidden;
     }
     #playground {
       flex: 1;
-      height: calc(100vh - 88px);
+      min-width: 0;
       display: flex;
       flex-direction: column;
-      min-height: 0;
     }
     pre#html-output {
       white-space: pre-wrap;
@@ -59,6 +67,285 @@
       border-color: #9ca3af;
     }
 
+    /* === 表題バー（playground 内・toolbar直下、ページスクロール時も上部固定） === */
+    .article-title-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 14px 18px;
+      background: linear-gradient(180deg, #fffbeb 0%, #fffdf5 100%);
+      border-bottom: 2px solid #fde68a;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 25;
+    }
+    .article-title-bar::before {
+      content: '📰';
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .article-title-display {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.4;
+      border: 2px solid #fde68a;
+      border-radius: 6px;
+      background: #fff;
+      color: #111827;
+      min-width: 0;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+      transition: border-color 0.15s ease;
+    }
+    .article-title-display:focus {
+      outline: none;
+      border-color: #f59e0b;
+    }
+    .article-title-display::placeholder {
+      font-weight: 400;
+      color: #9ca3af;
+      font-size: 13px;
+    }
+    .article-title-copy {
+      padding: 10px 14px;
+      background: #f59e0b;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 3px rgba(245,158,11,0.3);
+    }
+    .article-title-copy:hover {
+      background: #d97706;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(245,158,11,0.4);
+    }
+    .article-title-copy.copy-ok {
+      background: #10b981;
+      box-shadow: 0 1px 3px rgba(16,185,129,0.3);
+    }
+
+    /* === 本文コピーボタン（表題バー内 / タイトルコピーの隣） === */
+    .article-body-copy {
+      padding: 10px 14px;
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 3px rgba(220,38,38,0.3);
+    }
+    .article-body-copy:hover {
+      background: #b91c1c;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(220,38,38,0.4);
+    }
+    .article-body-copy.copy-ok {
+      background: #10b981;
+      box-shadow: 0 1px 3px rgba(16,185,129,0.3);
+    }
+
+    /* === 履歴パネル（Geminiライク） === */
+    .history-panel {
+      margin-bottom: 16px;
+      background: #fafafa;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .history-new-btn {
+      flex: 1;
+      padding: 8px 12px;
+      background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .history-new-btn:hover {
+      background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    }
+    .history-actions {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .history-actions .draft-btn.primary {
+      flex: 1;
+    }
+    .history-actions .draft-btn:not(.primary) {
+      width: 36px;
+      padding: 6px;
+      flex-shrink: 0;
+    }
+    .history-divider {
+      font-size: 10px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 8px 4px 4px;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 4px;
+    }
+    .history-group-header {
+      font-size: 10px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 10px 4px 4px;
+    }
+    .draft-status {
+      font-size: 10px;
+      color: #6b7280;
+      font-weight: 500;
+      flex-shrink: 0;
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .draft-status.saved { color: #059669; }
+    .draft-status.saving { color: #d97706; }
+    .draft-status.error { color: #dc2626; }
+    /* 旧サイドバータイトル系（隠し要素として保持・互換用） */
+    .draft-title-input.error {
+      border-color: #dc2626;
+    }
+    .draft-btn {
+      padding: 6px 8px;
+      font-size: 11px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .draft-btn:hover {
+      background: #f3f4f6;
+      border-color: #9ca3af;
+    }
+    .draft-btn.primary {
+      background: #f59e0b;
+      color: #fff;
+      border-color: #f59e0b;
+      font-weight: 600;
+    }
+    .draft-btn.primary:hover {
+      background: #d97706;
+      border-color: #d97706;
+    }
+    .draft-list {
+      /* 縦に積み上がる履歴リスト（Geminiライク） */
+    }
+    .draft-list:empty::after {
+      content: '履歴はまだありません。GEMINI HTMLを貼り付けて「テーマを適用」を実行してください。';
+      display: block;
+      padding: 16px 8px;
+      font-size: 11px;
+      color: #9ca3af;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .draft-item {
+      padding: 8px 10px;
+      margin: 2px 0;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #374151;
+    }
+    .draft-item:hover { background: #e5e7eb; }
+    .draft-item.current {
+      background: #1f2937;
+      color: #fff;
+    }
+    .draft-item.current:hover { background: #111827; }
+    .draft-item.current::before {
+      content: '✏️';
+      flex-shrink: 0;
+      font-size: 13px;
+    }
+    .draft-item.snapshot::before {
+      content: '📌';
+      flex-shrink: 0;
+      opacity: 0.5;
+      font-size: 11px;
+    }
+    .draft-item .draft-name {
+      flex: 1;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .draft-item.current .draft-name {
+      font-weight: 600;
+    }
+    .draft-item .draft-badge {
+      font-size: 9px;
+      background: #f59e0b;
+      color: #fff;
+      padding: 1px 5px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+    .draft-item .draft-meta {
+      font-size: 10px;
+      color: #9ca3af;
+      flex-shrink: 0;
+    }
+    .draft-item.current .draft-meta {
+      color: #d1d5db;
+    }
+    .draft-item-delete {
+      border: none;
+      background: transparent;
+      color: #9ca3af;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+      line-height: 1;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.15s ease, color 0.15s ease;
+    }
+    .draft-item:hover .draft-item-delete { opacity: 1; }
+    .draft-item-delete:hover { color: #ef4444; }
+    .draft-item.current .draft-item-delete { color: #d1d5db; opacity: 0.6; }
+    .draft-item.current .draft-item-delete:hover { color: #fca5a5; opacity: 1; }
+
     /* === アイコン版エディタCSS === */
     #eisai-editor-icons {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -69,10 +356,7 @@
       background: #ffffff;
       display: flex;
       flex-direction: column;
-      height: 100%;
-      min-height: 0;
-      max-height: 100vh;
-      overflow: hidden;
+      /* 高さ固定を撤廃：本文に応じて自然に伸びる */
     }
     .eisai-header {
       background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
@@ -293,23 +577,19 @@
       border: 1px solid #e2e8f0;
       border-radius: 10px;
       margin-top: 16px;
-      flex: 1;
       display: flex;
       flex-direction: column;
-      min-height: 0;
-      overflow: hidden;
+      position: relative; /* 本文コピーボタンの絶対配置基準 */
+      /* 高さ固定撤廃：本文に応じて自然に伸びる */
     }
     .eisai-editor {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
       border: none;
       border-radius: 10px;
       padding: 20px;
       background: #ffffff;
       line-height: 1.8;
       font-size: 14px;
-      max-height: calc(100vh - 200px);
+      min-height: 500px; /* 編集しやすい最小高さ。内容が多ければ自然に伸びる */
     }
     .eisai-editor table {
       display: table;
@@ -673,6 +953,24 @@
 <body>
   <div id="app">
     <div id="sidebar">
+      <!-- 履歴パネル（v0.9.0 / Geminiライク） -->
+      <div class="history-panel">
+        <div class="history-header">
+          <button id="btn-new-draft" class="history-new-btn">🆕 新規作成</button>
+          <span id="draft-status" class="draft-status">未保存</span>
+        </div>
+        <div class="history-actions">
+          <button id="btn-save-draft" class="draft-btn primary">💾 履歴に残す</button>
+          <button id="btn-export-drafts" class="draft-btn" title="JSONエクスポート">📤</button>
+          <button id="btn-import-drafts" class="draft-btn" title="JSONインポート">📥</button>
+        </div>
+        <input type="file" id="draft-import-file" accept=".json" style="display:none;">
+        <!-- 隠しタイトル入力（旧コードとの互換用 / 表題バーと双方向同期） -->
+        <input type="text" id="draft-title-input" style="display:none;" maxlength="120">
+        <div class="history-divider">📚 履歴（自動保存＋手動スナップショット）</div>
+        <div id="draft-list" class="draft-list"></div>
+      </div>
+
       <!-- GEMINI HTML貼り付けスペース（上） -->
       <div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 16px;">
         <h3 style="font-size:13px; margin:0 0 8px 0;">🤖 GEMINI HTML貼り付け</h3>
@@ -680,7 +978,7 @@
         <button id="btn-apply-theme" class="test-btn" style="background:#10b981;color:#fff; width: 100%;">🎨 テーマを適用</button>
       </div>
       <div id="sidebar-html-export" style="margin-bottom: 16px;"></div>
-      
+
       <!-- アイコン版ツール（下） -->
       <h2 style="font-size:16px; margin-top:0;">🎨 アイコン版ツール</h2>
       <button id="btn-generate-dummy" class="test-btn">📝 ダミー記事</button>
@@ -732,8 +1030,10 @@
       function createEl(tag, props = {}, parent = null, text = '') {
         const el = document.createElement(tag);
         try {
-          const { className, ...styles } = props;
+          // id / className はDOM属性として設定し、それ以外をstyleへ
+          const { className, id, ...styles } = props;
           if (className) el.className = className;
+          if (id) el.id = id;
           Object.assign(el.style, styles);
           if (text) el.textContent = text;
           if (parent) parent.appendChild(el);
@@ -3924,6 +4224,634 @@
       return formattedHtml;
     }
 
+    // === 下書き保存システム (v0.9.0) ===
+    // データモデル:
+    //   - 履歴は localStorage に永続化（ブラウザ別 / デバイス別）
+    //   - 「現在編集中ID」は **インメモリのみ** で保持。リロードすると null に戻る
+    //   - 起動時はエディタを空にし、ユーザーが履歴をクリックするか新規編集を始めるまで何も復元しない
+    const DRAFTS_KEY = 'eisai_editor_drafts_v2';
+    const DRAFTS_MAX = 50;
+    const AUTOSAVE_DELAY_MS = 2000;
+    let _currentDraftId = ''; // インメモリ：リロードでリセット
+
+    const Drafts = {
+      // ID重複排除：同IDが複数あれば updatedAt が新しい方を残す
+      _dedupe(list) {
+        if (!Array.isArray(list)) return [];
+        const byId = new Map();
+        for (const d of list) {
+          if (!d || !d.id) continue;
+          const ex = byId.get(d.id);
+          if (!ex || (d.updatedAt || '') > (ex.updatedAt || '')) {
+            byId.set(d.id, d);
+          }
+        }
+        return Array.from(byId.values())
+          .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+      },
+      load() {
+        try {
+          const raw = localStorage.getItem(DRAFTS_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return this._dedupe(parsed);
+        } catch (e) {
+          console.warn('下書き読込エラー:', e);
+          return [];
+        }
+      },
+      save(list) {
+        try {
+          const cleaned = this._dedupe(list);
+          if (cleaned.length > DRAFTS_MAX) cleaned.length = DRAFTS_MAX;
+          localStorage.setItem(DRAFTS_KEY, JSON.stringify(cleaned));
+          return true;
+        } catch (e) {
+          console.error('下書き保存エラー:', e);
+          if (e.name === 'QuotaExceededError') {
+            alert('❌ ブラウザのストレージ容量が一杯です。古い下書きを削除してください。');
+          }
+          return false;
+        }
+      },
+      get(id) {
+        return this.load().find((d) => d.id === id);
+      },
+      remove(id) {
+        const list = this.load().filter((d) => d.id !== id);
+        this.save(list);
+        if (this.getCurrentId() === id) this.clearCurrentId();
+      },
+      // 現在編集中ID（インメモリ：リロードでリセット）
+      getCurrentId() { return _currentDraftId || ''; },
+      setCurrentId(id) { _currentDraftId = id || ''; },
+      clearCurrentId() { _currentDraftId = ''; },
+      // 新規エントリ作成
+      _newItem(title, html, kind) {
+        const now = new Date().toISOString();
+        return {
+          id: 'd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+          title: (title || '').slice(0, 80),
+          html: html || '',
+          kind: kind, // 'current' | 'snapshot'
+          createdAt: now,
+          updatedAt: now,
+        };
+      },
+      // 保存：現在編集中エントリがあれば更新、無ければ新規作成
+      // 「同じ記事の保存は新規履歴にせず、既存履歴を更新する」要件を満たす
+      saveOrUpdate(title, html) {
+        if (!title || !title.trim()) return null;
+        const list = this.load();
+        let id = this.getCurrentId();
+        let item = id ? list.find((d) => d.id === id) : null;
+        if (item) {
+          item.title = title.slice(0, 80);
+          item.html = html || '';
+          item.kind = 'current';
+          item.updatedAt = new Date().toISOString();
+        } else {
+          item = this._newItem(title, html, 'current');
+          list.push(item);
+          this.setCurrentId(item.id);
+        }
+        this.save(list);
+        return item;
+      },
+      // 既存エントリ（履歴）を「現在編集中」として開く（コピーして新IDで開始）
+      openAsCurrent(id) {
+        const src = this.get(id);
+        if (!src) return null;
+        const item = this._newItem(src.title, src.html, 'current');
+        const list = this.load();
+        list.push(item);
+        this.save(list);
+        this.setCurrentId(item.id);
+        return item;
+      },
+    };
+
+    function formatDate(iso) {
+      try {
+        const d = new Date(iso);
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `${d.getFullYear()}/${m}/${day} ${h}:${min}`;
+      } catch (e) { return ''; }
+    }
+
+    function setDraftStatus(label, type) {
+      const el = document.getElementById('draft-status');
+      if (!el) return;
+      el.textContent = label;
+      el.classList.remove('saved', 'saving', 'error');
+      if (type) el.classList.add(type);
+    }
+
+    function getDraftTitle() {
+      // 表題バー（playground内）を優先、なければサイドバー入力
+      const articleEl = document.getElementById('article-title-display');
+      if (articleEl && articleEl.value.trim()) return articleEl.value.trim();
+      const sidebarEl = document.getElementById('draft-title-input');
+      return sidebarEl ? sidebarEl.value.trim() : '';
+    }
+
+    function setDraftTitle(t) {
+      const v = t || '';
+      const sidebarEl = document.getElementById('draft-title-input');
+      if (sidebarEl) sidebarEl.value = v;
+      const articleEl = document.getElementById('article-title-display');
+      if (articleEl) articleEl.value = v;
+    }
+
+    function flashTitleError() {
+      const el = document.getElementById('draft-title-input');
+      if (!el) return;
+      el.classList.add('error');
+      el.focus();
+      setTimeout(() => el.classList.remove('error'), 1500);
+    }
+
+    // 本文の取得／反映は `.eisai-editor`（contentEditable）に対して行う。
+    // `#playground` 全体を書き換えるとエディタ枠（ツールバー・表題バー含む）が消滅するため厳禁。
+    function getPlaygroundHtml() {
+      const editorEl = document.querySelector('.eisai-editor');
+      return editorEl ? editorEl.innerHTML : '';
+    }
+
+    // 旧バージョンで保存された履歴がエディタ枠ごと格納されているケースがあるため、
+    // 読み込み時に `.eisai-editor` 配下だけを取り出すサニタイズを行う。
+    function extractBodyHtml(html) {
+      if (!html) return '';
+      if (html.indexOf('eisai-editor') === -1) return html; // クリーンなHTML
+      try {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        // 一番内側の .eisai-editor を採用（多重入れ子も救済）
+        const all = tmp.querySelectorAll('.eisai-editor');
+        if (all.length > 0) {
+          const inner = all[all.length - 1];
+          return inner.innerHTML;
+        }
+        // 旧IDでパネル丸ごとのケース
+        const panel = tmp.querySelector('#eisai-editor-icons');
+        if (panel) {
+          const ed = panel.querySelector('.eisai-editor');
+          if (ed) return ed.innerHTML;
+        }
+      } catch (e) {
+        console.warn('extractBodyHtml失敗:', e);
+      }
+      return html;
+    }
+
+    function setPlaygroundHtml(html) {
+      const editorEl = document.querySelector('.eisai-editor');
+      if (editorEl) editorEl.innerHTML = extractBodyHtml(html);
+    }
+
+    // 日付グループ判定（今日/昨日/今週/過去）
+    function classifyByDate(iso) {
+      try {
+        const d = new Date(iso);
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const target = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const dayDiff = Math.floor((today - target) / 86400000);
+        if (dayDiff <= 0) return { key: 'today', label: '今日' };
+        if (dayDiff === 1) return { key: 'yesterday', label: '昨日' };
+        if (dayDiff <= 7) return { key: 'thisWeek', label: '今週（過去7日）' };
+        if (dayDiff <= 30) return { key: 'thisMonth', label: '今月（過去30日）' };
+        return { key: 'older', label: 'それ以前' };
+      } catch (e) {
+        return { key: 'older', label: 'それ以前' };
+      }
+    }
+
+    // 時刻のみ表示（履歴アイテム用）
+    function formatTime(iso) {
+      try {
+        const d = new Date(iso);
+        const h = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `${h}:${min}`;
+      } catch (e) { return ''; }
+    }
+
+    function renderDraftList() {
+      const listEl = document.getElementById('draft-list');
+      if (!listEl) return;
+      const drafts = Drafts.load();
+      const currentId = Drafts.getCurrentId();
+      listEl.innerHTML = '';
+
+      // 日付でグループ化
+      const groups = { today: [], yesterday: [], thisWeek: [], thisMonth: [], older: [] };
+      const groupLabels = {
+        today: '今日',
+        yesterday: '昨日',
+        thisWeek: '今週（過去7日）',
+        thisMonth: '今月（過去30日）',
+        older: 'それ以前',
+      };
+      drafts.forEach((d) => {
+        const cls = classifyByDate(d.updatedAt);
+        if (groups[cls.key]) groups[cls.key].push(d);
+      });
+
+      // 順番にレンダリング
+      ['today', 'yesterday', 'thisWeek', 'thisMonth', 'older'].forEach((key) => {
+        const list = groups[key];
+        if (list.length === 0) return;
+
+        const header = document.createElement('div');
+        header.className = 'history-group-header';
+        header.textContent = groupLabels[key];
+        listEl.appendChild(header);
+
+        list.forEach((d) => {
+          const item = document.createElement('div');
+          const isCurrent = d.id === currentId;
+          item.className = 'draft-item ' + (isCurrent ? 'current' : 'snapshot');
+          item.title = `作成: ${formatDate(d.createdAt)}\n更新: ${formatDate(d.updatedAt)}\nクリックで読込`;
+
+          const name = document.createElement('span');
+          name.className = 'draft-name';
+          name.textContent = d.title || '(無題)';
+
+          const meta = document.createElement('span');
+          meta.className = 'draft-meta';
+          meta.textContent = key === 'today' || key === 'yesterday' ? formatTime(d.updatedAt) : formatDate(d.updatedAt).slice(5);
+
+          const del = document.createElement('button');
+          del.className = 'draft-item-delete';
+          del.textContent = '×';
+          del.title = '削除';
+          del.onclick = (e) => {
+            e.stopPropagation();
+            if (confirm(`「${d.title || '(無題)'}」を削除しますか？`)) {
+              Drafts.remove(d.id);
+              renderDraftList();
+            }
+          };
+
+          item.appendChild(name);
+          if (isCurrent) {
+            const badge = document.createElement('span');
+            badge.className = 'draft-badge';
+            badge.textContent = '編集中';
+            item.appendChild(badge);
+          }
+          item.appendChild(meta);
+          item.appendChild(del);
+          item.onclick = () => openHistoryItem(d.id);
+          listEl.appendChild(item);
+        });
+      });
+    }
+
+    // 履歴項目クリック時の挙動：そのエントリを直接「現在編集中」にする（コピーしない）
+    // 現在の編集内容は自動保存で履歴に残っているため、確認なしでそのまま読込する
+    // 旧バグでエディタ枠ごと保存されたエントリは、読み込み時にクリーン版へ自動修復する
+    function openHistoryItem(id) {
+      const src = Drafts.get(id);
+      if (!src) return;
+      if (id === Drafts.getCurrentId()) return;
+      Drafts.setCurrentId(id);
+      const cleaned = extractBodyHtml(src.html);
+      setDraftTitle(src.title);
+      setPlaygroundHtml(cleaned);
+      // 旧バグの巻き添えエントリをクリーン版で自動修復（永続化）
+      if (cleaned !== src.html) {
+        const list = Drafts.load();
+        const idx = list.findIndex((d) => d.id === id);
+        if (idx >= 0) {
+          list[idx].html = cleaned;
+          list[idx].updatedAt = new Date().toISOString();
+          Drafts.save(list);
+          console.log('[Eisai] 旧バグ履歴を自動修復:', src.title);
+        }
+      }
+      setDraftStatus(`読込: ${src.title}`, 'saved');
+      renderDraftList();
+    }
+
+    // 「💾 履歴に残す」ボタン：現在編集中があれば更新、無ければ新規作成
+    function saveDraft() {
+      const title = getDraftTitle();
+      if (!title) {
+        alert('表題が空です。「テーマを適用」でH1から自動入力できます。');
+        flashTitleError();
+        return;
+      }
+      let html = getPlaygroundHtml();
+      if (!html || html.trim().length === 0) {
+        alert('本文が空です。');
+        return;
+      }
+      // 拡張機能の注入要素を除去してから保存（履歴も常にクリーンに保つ）
+      if (typeof stripExtensionInjectedNodes === 'function') {
+        html = stripExtensionInjectedNodes(html);
+      }
+      const wasUpdate = !!Drafts.getCurrentId();
+      const item = Drafts.saveOrUpdate(title, html);
+      if (!item) return;
+      setDraftStatus((wasUpdate ? '✅ 履歴を更新' : '✅ 新規保存') + ': ' + formatDate(item.updatedAt), 'saved');
+      renderDraftList();
+    }
+
+    // 新規作成：現在の編集内容は自動保存で履歴に残っているため、確認なしで即座にまっさらへ
+    function newDraft() {
+      Drafts.clearCurrentId();
+      setDraftTitle('');
+      setPlaygroundHtml('');
+      setDraftStatus('未保存（新規）', '');
+      renderDraftList();
+      // 表題バーへフォーカス
+      const articleEl = document.getElementById('article-title-display');
+      if (articleEl) articleEl.focus();
+    }
+
+    function exportAllDrafts() {
+      const drafts = Drafts.load();
+      if (drafts.length === 0) {
+        alert('エクスポートする下書きがありません。');
+        return;
+      }
+      const payload = {
+        format: 'eisai-editor-drafts',
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        drafts,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `eisai-drafts-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importDrafts(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.format !== 'eisai-editor-drafts' || !Array.isArray(data.drafts)) {
+            alert('❌ ファイル形式が正しくありません。');
+            return;
+          }
+          // v1（旧 name フィールド）→ v2（title）の互換変換
+          const normalized = data.drafts.map((d) => ({
+            id: d.id || ('d_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+            title: (d.title != null ? d.title : (d.name || '')).slice(0, 80),
+            html: d.html || '',
+            kind: d.kind || 'snapshot',
+            createdAt: d.createdAt || new Date().toISOString(),
+            updatedAt: d.updatedAt || new Date().toISOString(),
+          }));
+          const existing = Drafts.load();
+          const merged = normalized.concat(existing);
+          Drafts.save(merged);
+          renderDraftList();
+          alert(`✅ ${normalized.length}件の下書きをインポートしました。`);
+        } catch (err) {
+          alert('❌ ファイルの読込に失敗しました: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // 自動保存は廃止。変更があった場合のみ「未保存の変更あり」とステータス表示する。
+    function markUnsavedChange() {
+      const title = getDraftTitle();
+      if (!title) {
+        setDraftStatus('タイトル待ち（テーマを適用してください）', 'error');
+        return;
+      }
+      setDraftStatus('● 未保存の変更あり', 'saving');
+    }
+
+    // タイトル変更ハンドラ：エラー解除と未保存マーク
+    function onTitleInput() {
+      const titleEl = document.getElementById('draft-title-input');
+      if (titleEl) titleEl.classList.remove('error');
+      markUnsavedChange();
+    }
+
+    // 起動時はまっさら状態を維持（Gemini/ChatGPT 方式）。
+    // 過去の編集は履歴サイドバーから明示的に選択して開く。
+    // ※ この関数は互換のために残してあるが、現状の設計では呼び出さない。
+    function tryRestoreCurrent() {
+      // 何もしない（意図的）
+    }
+
+    // === 表題バー / 本文コピーバー（playground内・v0.9.0） ===
+    function escapeHtmlAttr(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ブラウザ拡張機能（LanguageTool / Grammarly 等）が contentEditable に注入する
+    // ラッパー要素・装飾要素を除去する。コピー結果がCMSで正しく描画されない原因になる。
+    function stripExtensionInjectedNodes(html) {
+      if (!html) return '';
+      try {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+
+        // 完全に削除する要素（中身ごと）
+        const removeSelectors = [
+          'lt-toolbar', 'lt-popup', 'lt-panel',
+          'grammarly-extension', 'grammarly-popups',
+          '[data-grammarly-shadow-root]',
+        ];
+        removeSelectors.forEach((sel) => {
+          tmp.querySelectorAll(sel).forEach((el) => el.remove());
+        });
+
+        // ラッパー（unwrap）する要素：中身は残してタグだけ取り除く
+        const unwrapSelectors = [
+          '.lg-badge-container',           // LanguageTool バッジコンテナ
+          '.grammarly-btn', '.gr_-editor',
+          '[class*="lt-"]',                // LanguageTool 系 lt-* クラス
+          '[class*="grammarly-"]',
+          'lt-div',
+        ];
+        unwrapSelectors.forEach((sel) => {
+          try {
+            tmp.querySelectorAll(sel).forEach((el) => {
+              const parent = el.parentNode;
+              if (!parent) return;
+              while (el.firstChild) parent.insertBefore(el.firstChild, el);
+              parent.removeChild(el);
+            });
+          } catch (e) {}
+        });
+
+        // 拡張機能由来のdata属性を持つ要素（属性だけ削除）
+        tmp.querySelectorAll('[data-lt-installed], [data-gramm], [data-gramm_editor]').forEach((el) => {
+          el.removeAttribute('data-lt-installed');
+          el.removeAttribute('data-gramm');
+          el.removeAttribute('data-gramm_editor');
+        });
+
+        return tmp.innerHTML;
+      } catch (e) {
+        console.warn('拡張機能タグ除去に失敗:', e);
+        return html;
+      }
+    }
+
+    function flashCopyOK(btn, msg) {
+      if (!btn) return;
+      const original = btn.textContent;
+      btn.textContent = msg;
+      btn.classList.add('copy-ok');
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.classList.remove('copy-ok');
+      }, 1800);
+    }
+
+    function injectArticleTitleBar(retry = 0) {
+      // パネルは class 経由で逆引き（id 設定が確実でないケースに備える）
+      const fixedHeader = document.querySelector('.eisai-fixed-header');
+      const editorArea = document.querySelector('.eisai-editor-container');
+      if (!fixedHeader || !editorArea) {
+        if (retry < 10) {
+          console.log('[Eisai] エディタDOM未準備、リトライ', retry);
+          setTimeout(() => injectArticleTitleBar(retry + 1), 200);
+        } else {
+          console.warn('[Eisai] 表題バー注入失敗：エディタDOMが見つかりません');
+        }
+        return;
+      }
+      const panel = editorArea.parentElement;
+      if (!panel) return;
+
+      // 表題バー（H1表示 + タイトルコピー + 本文コピー）
+      if (!document.getElementById('article-title-bar')) {
+        const titleBar = document.createElement('div');
+        titleBar.id = 'article-title-bar';
+        titleBar.className = 'article-title-bar';
+        titleBar.innerHTML = `
+          <input type="text" id="article-title-display" class="article-title-display"
+                 placeholder="表題はここ（テーマを適用するとH1が自動入力されます）" maxlength="120" autocomplete="off">
+          <button id="btn-copy-title" class="article-title-copy" title="表題HTMLをコピー">📋 タイトル</button>
+          <button id="btn-copy-body" class="article-body-copy" title="本文HTMLをコピー">📋 本文</button>
+        `;
+        panel.insertBefore(titleBar, editorArea);
+      }
+
+      bindTitleAndBodyCopy();
+    }
+
+    function bindTitleAndBodyCopy() {
+      const articleEl = document.getElementById('article-title-display');
+      const sidebarEl = document.getElementById('draft-title-input');
+
+      // 双方向同期：表題バー ↔ サイドバー入力
+      if (articleEl && sidebarEl) {
+        articleEl.value = sidebarEl.value;
+        articleEl.addEventListener('input', () => {
+          sidebarEl.value = articleEl.value;
+          if (typeof onTitleInput === 'function') onTitleInput();
+        });
+        sidebarEl.addEventListener('input', () => {
+          articleEl.value = sidebarEl.value;
+        });
+      }
+
+      // タイトルコピー（H1タグ付き）
+      const copyTitleBtn = document.getElementById('btn-copy-title');
+      if (copyTitleBtn) {
+        copyTitleBtn.onclick = () => {
+          const title = (articleEl ? articleEl.value : '').trim();
+          if (!title) {
+            alert('表題が空です。テーマを適用してください。');
+            return;
+          }
+          const html = `<h1>${escapeHtmlAttr(title)}</h1>`;
+          navigator.clipboard.writeText(html).then(() => {
+            flashCopyOK(copyTitleBtn, '✅ コピー完了');
+          }).catch((err) => {
+            console.error('タイトルコピー失敗:', err);
+            alert('❌ コピーに失敗しました。');
+          });
+        };
+      }
+
+      // 本文コピー（テーマ装飾をインライン化、ブログ貼付用）
+      const copyBodyBtn = document.getElementById('btn-copy-body');
+      if (copyBodyBtn) {
+        copyBodyBtn.onclick = () => {
+          const editorEl = document.querySelector('.eisai-editor');
+          if (!editorEl) {
+            alert('本文エディタが見つかりません。');
+            return;
+          }
+          let html = editorEl.innerHTML || '';
+          if (!html.replace(/\s|<br\s*\/?>/g, '').trim()) {
+            alert('本文が空です。');
+            return;
+          }
+          // ★ LanguageTool / Grammarly 等の拡張機能が注入したラッパーを除去
+          //   （これがCMSで本文が表示されない原因になっていた）
+          html = stripExtensionInjectedNodes(html);
+          // 既存のonCopyHtmlロジックと同等の整形
+          html = html.replace(/data-onclick="([^"]*)" onclick="event\.preventDefault\(\);"/g, 'onclick="$1"');
+          if (typeof convertThemeClassesToInlineStyles === 'function') {
+            html = convertThemeClassesToInlineStyles(html);
+          }
+          if (typeof formatHtmlForBlog === 'function') {
+            html = formatHtmlForBlog(html);
+          }
+          navigator.clipboard.writeText(html).then(() => {
+            flashCopyOK(copyBodyBtn, '✅ コピー完了');
+          }).catch((err) => {
+            console.error('本文コピー失敗:', err);
+            alert('❌ コピーに失敗しました。');
+          });
+        };
+      }
+    }
+
+    function bindDraftUI() {
+      document.getElementById('btn-save-draft').onclick = saveDraft;
+      document.getElementById('btn-new-draft').onclick = newDraft;
+      document.getElementById('btn-export-drafts').onclick = exportAllDrafts;
+      document.getElementById('btn-import-drafts').onclick = () => {
+        document.getElementById('draft-import-file').click();
+      };
+      document.getElementById('draft-import-file').onchange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) importDrafts(file);
+        e.target.value = '';
+      };
+
+      // タイトル入力監視（未保存マーク表示用、保存はしない）
+      const titleEl = document.getElementById('draft-title-input');
+      if (titleEl) {
+        titleEl.addEventListener('input', onTitleInput);
+      }
+
+      // 編集監視：自動保存はしない。「未保存の変更あり」のステータス表示のみ
+      const editorEl = document.querySelector('.eisai-editor');
+      if (editorEl && 'MutationObserver' in window) {
+        const obs = new MutationObserver(() => markUnsavedChange());
+        obs.observe(editorEl, { childList: true, subtree: true, characterData: true });
+      }
+
+      renderDraftList();
+    }
+
     // === アプリケーション初期化 ===
     let latestHtml = '';
     let editor = null;
@@ -3933,13 +4861,16 @@
         target: document.getElementById('playground'),
         initialContent: '',
         onCopyHtml: (html) => {
+          // ★ ブラウザ拡張（LanguageTool / Grammarly等）の注入要素を除去
+          let outputHtml = (typeof stripExtensionInjectedNodes === 'function')
+            ? stripExtensionInjectedNodes(html)
+            : html;
           // ボタンのonclickを復元（エディタ用の無効化を解除）
-          let outputHtml = html;
           outputHtml = outputHtml.replace(/data-onclick="([^"]*)" onclick="event\.preventDefault\(\);"/g, 'onclick="$1"');
-          
+
           // テーマクラスをインラインスタイルに変換（ブログ貼り付け用）
           outputHtml = convertThemeClassesToInlineStyles(outputHtml);
-          
+
           // ブロック要素間に改行を追加して読みやすくする
           outputHtml = formatHtmlForBlog(outputHtml);
           
@@ -4650,6 +5581,51 @@
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = geminiHtml;
 
+      // 表題自動抽出 → 表題フォームへ反映 + 本文（tempDiv）からは除去
+      // ・H1優先（記事タイトル）。H1が無ければ最初のH2 → 最初のH3 → 本文先頭60字 でフォールバック
+      // ・抽出した見出し要素自体を tempDiv から削除し、本文への二重表示を防ぐ
+      try {
+        let extractedTitle = '';
+        let source = '';
+        let titleNode = tempDiv.querySelector('h1');
+        if (titleNode && titleNode.textContent.trim()) {
+          extractedTitle = titleNode.textContent.trim();
+          source = 'H1';
+        } else {
+          titleNode = tempDiv.querySelector('h2');
+          if (titleNode && titleNode.textContent.trim()) {
+            extractedTitle = titleNode.textContent.trim();
+            source = 'H2(H1なし)';
+          } else {
+            titleNode = tempDiv.querySelector('h3');
+            if (titleNode && titleNode.textContent.trim()) {
+              extractedTitle = titleNode.textContent.trim();
+              source = 'H3(H1/H2なし)';
+            } else {
+              titleNode = null;
+              const firstP = tempDiv.querySelector('p');
+              if (firstP && firstP.textContent.trim()) {
+                extractedTitle = firstP.textContent.trim().slice(0, 60);
+                source = '本文先頭(見出しなし)';
+              }
+            }
+          }
+        }
+        // 抽出した見出しノードを本文DOMから除去（本文側に出さない）
+        if (titleNode && titleNode.parentNode) {
+          titleNode.parentNode.removeChild(titleNode);
+          console.log('[Eisai] 表題ノードを本文から除去:', source, extractedTitle.slice(0, 40));
+        }
+        if (extractedTitle && typeof setDraftTitle === 'function') {
+          setDraftTitle(extractedTitle);
+          if (typeof setDraftStatus === 'function') {
+            setDraftStatus('表題抽出 (' + source + '): ' + extractedTitle.slice(0, 40) + '（未保存）', 'saving');
+          }
+        }
+      } catch (e) {
+        console.warn('表題自動抽出に失敗:', e);
+      }
+
       // CTAセクション（data-cta-protected）を事前に退避しておく
       const ctaNodes = Array.from(tempDiv.querySelectorAll('[data-cta-protected]'));
       const ctaHtml = ctaNodes.map(node => node.outerHTML).join('\n');
@@ -4659,6 +5635,7 @@
       let themedHtml = '';
 
       // 各要素を処理（吹き出し内の要素を除外）
+      // ★ 抽出済みの表題ノードは tempDiv から既に removeChild 済みのため、本文には出ない
       const elements = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote, table, div[class*="bubble"]');
       const filteredElements = Array.from(elements).filter(el => {
         // 吹き出しdiv自体は保持し、吹き出し内の子要素のみ除外
@@ -4763,7 +5740,7 @@
     // イベントリスナー設定
     document.addEventListener('DOMContentLoaded', () => {
       initEditor();
-      
+
       document.getElementById('btn-generate-dummy').onclick = generateDummyArticle;
       document.getElementById('btn-generate-sample').onclick = generateSampleArticle;
       document.getElementById('btn-generate-full').onclick = generateFullDemo;
@@ -4771,6 +5748,29 @@
       document.getElementById('btn-custom-samples').onclick = generateCustomToolSamples;
       document.getElementById('btn-clear-content').onclick = clearContent;
       // テーマ適用ボタンと左カラムHTML出力ボタンの初期化は initEditor 内で実施
+
+      // 表題バー＆本文コピーバー注入（v0.9.0）
+      injectArticleTitleBar();
+
+      // 下書き保存システム初期化（v0.9.0）
+      // 起動時はまっさら：履歴は localStorage に永続化されているが
+      // 「現在編集中」はインメモリのため自動的にリセット済み
+      try { localStorage.removeItem('eisai_editor_current_id_v2'); } catch (e) {}
+      // 既存の履歴データを起動時に重複排除して再保存（過去バグの巻き添え対策）
+      try {
+        const before = JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]');
+        const after = Drafts.load();
+        if (Array.isArray(before) && before.length !== after.length) {
+          Drafts.save(after);
+          console.log('[Eisai] 起動時重複排除:', before.length, '→', after.length);
+        }
+      } catch (e) {}
+      bindDraftUI();
+      // エディタは空のまま起動。履歴サイドバーから明示選択するか、
+      // GEMINI HTMLを貼って「テーマを適用」した時点で初めて新規エントリが作られる
+      setDraftTitle('');
+      setPlaygroundHtml('');
+      setDraftStatus('まっさら（履歴から選択 or 新規入力）', '');
     });
   </script>
 </body>
