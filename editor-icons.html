@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- 英才ブログエディタ Ver.0.9.1 -->
+<!-- 英才ブログエディタ Ver.0.9.2 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>英才ブログエディタ - アイコン版 Ver.0.9.1</title>
+  <title>英才ブログエディタ - アイコン版 Ver.0.9.2</title>
   <style>
     body {
       margin: 0;
@@ -3345,15 +3345,25 @@
       }
 
       // 選択範囲を保存（ボタンクリック時にフォーカスが外れても復元できるようにする）
+      // ★ cloneRange() で独立コピーを取ることで、execCommand によるDOM変更で
+      //    保存済み range が無効化されないようにする
       const saveSelection = () => {
         const sel = window.getSelection();
         if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
-          globalSavedRange = sel.getRangeAt(0);
+          globalSavedRange = sel.getRangeAt(0).cloneRange();
         }
       };
       // 入力操作やマウス操作時のみ更新する（エディタ外へフォーカスが移った blur では上書きしない）
       editor.addEventListener('keyup', saveSelection);
       editor.addEventListener('mouseup', saveSelection);
+      // ★ selectionchange も拾って、execCommand 後の最新 selection を保存
+      //    （ただし editor 内のときだけ）
+      document.addEventListener('selectionchange', () => {
+        const sel = window.getSelection();
+        if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+          try { globalSavedRange = sel.getRangeAt(0).cloneRange(); } catch (e) {}
+        }
+      });
       
       // 装飾ブロックかどうかを判定するヘルパー関数
       function isDecorationElement(el) {
