@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- 英才ブログエディタ Ver.0.9.0 -->
+<!-- 英才ブログエディタ Ver.0.9.1 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>英才ブログエディタ - アイコン版 Ver.0.9.0</title>
+  <title>英才ブログエディタ - アイコン版 Ver.0.9.1</title>
   <style>
     body {
       margin: 0;
@@ -371,7 +371,8 @@
       flex-shrink: 0;
       position: sticky;
       top: 0;
-      z-index: 10;
+      /* ヘッダーは toolbar-container(30) よりも上に */
+      z-index: 31;
     }
     .eisai-toolbar-container {
       display: flex;
@@ -381,7 +382,9 @@
       flex-shrink: 0;
       position: sticky;
       top: 60px;
-      z-index: 9;
+      /* ★ z-index は title bar(25) より大きく：内側のドロップダウン・ポップアップが
+         表題バーに隠れず、ボタンクリックも吸われないようにする */
+      z-index: 30;
     }
     .eisai-toolbar {
       display: flex;
@@ -2169,12 +2172,17 @@
           if (!block.style.width) {
             block.style.width = 'fit-content';
           }
-          
+
+          // ★ 配置をmargin autoで効かせるためには block レベルが必須
+          // MOCAテンプレートで `display: inline-block` のものは margin: auto が無視されて
+          // 右配置を選んでも左にとどまる不具合があるため、ここで強制的に block へ変更する
+          block.style.display = 'block';
+
           // margin を配置に応じて変更
           const currentMargin = block.style.margin || '';
           const marginMatch = currentMargin.match(/^(\d+(?:\.\d+)?(?:em|px)?)/);
           const topMargin = marginMatch ? marginMatch[1] : '1em';
-          
+
           switch (alignment) {
             case 'left':
               block.style.margin = `${topMargin} auto ${topMargin} 0`;
@@ -3293,7 +3301,16 @@
         presetButtons.querySelectorAll('.preset-btn').forEach(btn => {
           btn.style.borderColor = color;
         });
+        // ★ 動的テーマCSSを再注入（吹き出し等のスタイル）
+        if (typeof addThemeStyles === 'function') {
+          addThemeStyles(currentTheme, PRESET_THEMES[currentTheme]);
+        }
       };
+
+      // ★ 起動時：デフォルトテーマのCSSを即座に注入（プリセットモードのプレビュー用）
+      if (typeof addThemeStyles === 'function' && PRESET_THEMES[currentTheme]) {
+        addThemeStyles(currentTheme, PRESET_THEMES[currentTheme]);
+      }
       
       // カスタムモード切り替え（トグルスイッチ）
       toggleSwitch.onclick = () => {
@@ -5320,228 +5337,127 @@
       navigator.clipboard.writeText(outputHtml);
     }
 
-    // テーマCSSを動的に追加する関数
+    // テーマCSSを動的に追加する関数（全テーマ対応・汎用）
+    // 旧版は business-blue 専用のハードコードCSSしか生成しておらず、他テーマで
+    // 吹き出し等のスタイルが当たらず「右向き吹き出しが左に配置される」等の
+    // 不具合が発生していた。theme.color / subColor / lightColor を使って動的生成する。
     function addThemeStyles(themeName, theme) {
       // 既存のテーマスタイルを削除
       const existingStyle = document.getElementById('theme-styles');
       if (existingStyle) {
         existingStyle.remove();
       }
+      if (!theme) return;
 
-      // 新しいスタイルタグを作成
+      const c = theme.color || '#2980b9';
+      const cs = theme.subColor || '#7fb3d5';
+      const cl = theme.lightColor || '#ebf5fb';
+      const sel = `[data-theme="${themeName}"]`;
+
       const style = document.createElement('style');
       style.id = 'theme-styles';
-      
-      // ビジネスブルーのCSSルール
-      if (themeName === 'business-blue') {
-        style.textContent = `
-          /* テーマスタイル - ビジネスブルー */
-          .eisai-editor .theme-heading[data-theme="business-blue"] {
-            background: #ebf5fb !important;
-            border-left: 5px solid #2980b9 !important;
-            padding: 15px 20px !important;
-            font-size: 120% !important;
-            font-weight: bold !important;
-            margin: 20px 0 !important;
-          }
-          
-          .eisai-editor .theme-subheading[data-theme="business-blue"] {
-            color: #2980b9 !important;
-            font-size: 105% !important;
-            font-weight: bold !important;
-            margin: 15px 0 !important;
-            padding: 8px 0 !important;
-            border-bottom: 2px solid #7fb3d5 !important;
-            padding-left: 10px !important;
-          }
-          
-          .eisai-editor .theme-box[data-theme="business-blue"] {
-            border: 1px solid #2980b9 !important;
-            border-radius: 4px !important;
-            padding: 20px !important;
-            margin: 1em 0 !important;
-          }
-          
-          .eisai-editor .theme-list[data-theme="business-blue"] {
-            border: 2px solid #2980b9 !important;
-            border-radius: 6px !important;
-            margin: 1em 0 !important;
-            overflow: hidden !important; /* 角丸からはみ出さないようにする */
-          }
-          
-          /* リストタイトル: data-theme は親の .theme-list に付与されるので、子セレクタで指定する */
-          .eisai-editor .theme-list[data-theme="business-blue"] .theme-list-title {
-            background: #2980b9 !important;
-            color: #fff !important;
-            padding: 8px 15px !important;
-            font-weight: bold !important;
-            margin: 0 !important;
-            /* 角丸は親で管理するのでここでは付けない */
-          }
-          
-          .eisai-editor .theme-list[data-theme="business-blue"] ul {
-            margin: 0 !important;
-            padding: 15px 15px 15px 35px !important;
-          }
-          
-          /* 吹き出し：ビジネスブルー 左（教室側） */
-          .eisai-editor .theme-bubble-left[data-theme="business-blue"] {
-            position: relative !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: flex-start !important;
-            background: #2980b9 !important;
-            color: #fff !important;
-            border-radius: 20px !important;
-            padding: 12px 16px !important;
-            margin: 1em 0 1em 30px !important;
-            max-width: 80% !important;
-            line-height: 1.6 !important;
-          }
-
-          .eisai-editor .theme-bubble-left[data-theme="business-blue"] > span {
-            position: absolute !important;
-            left: -16px !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            border: 10px solid transparent !important;
-            border-right: 16px solid #2980b9 !important;
-          }
-
-          /* 吹き出し：ビジネスブルー 右（保護者側） */
-          .eisai-editor .theme-bubble-right[data-theme="business-blue"] {
-            position: relative !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: flex-end !important;
-            background: #ebf5fb !important;
-            color: #154360 !important;
-            border-radius: 20px !important;
-            padding: 12px 16px !important;
-            margin: 1em 30px 1em auto !important;
-            max-width: 80% !important;
-            width: fit-content !important;
-            line-height: 1.6 !important;
-          }
-
-          .eisai-editor .theme-bubble-right[data-theme="business-blue"] > span {
-            position: absolute !important;
-            right: -16px !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            border: 10px solid transparent !important;
-            border-left: 16px solid #ebf5fb !important;
-          }
-
-          .eisai-editor .theme-button[data-theme="business-blue"] {
-            display: block !important;
-            margin: 20px auto !important;
-            padding: 12px 30px !important;
-            background: #2980b9 !important;
-            color: #fff !important;
-            border: none !important;
-            border-radius: 4px !important;
-            font-weight: bold !important;
-            cursor: pointer !important;
-            transition: background 0.3s !important;
-          }
-
-          .eisai-editor .theme-button[data-theme="business-blue"]:hover {
-            background: #1a5276 !important;
-          }
-          
-          /* テーマサブ見出し - ナチュラルグリーン */
-          .eisai-editor .theme-subheading[data-theme="natural-green"] {
-            color: #27ae60 !important;
-            font-size: 105% !important;
-            font-weight: bold !important;
-            margin: 15px 0 !important;
-            padding: 8px 0 !important;
-            border-bottom: 2px solid #82e0aa !important;
-            padding-left: 10px !important;
-          }
-          
-          /* テーマサブ見出し - ポップオレンジ */
-          .eisai-editor .theme-subheading[data-theme="pop-orange"] {
-            color: #e67e22 !important;
-            font-size: 105% !important;
-            font-weight: bold !important;
-            margin: 15px 0 !important;
-            padding: 8px 0 !important;
-            border-bottom: 2px solid #f5b041 !important;
-            padding-left: 10px !important;
-          }
-          
-          /* テーマサブ見出し - エレガントパープル */
-          .eisai-editor .theme-subheading[data-theme="elegant-purple"] {
-            color: #8e44ad !important;
-            font-size: 105% !important;
-            font-weight: bold !important;
-            margin: 15px 0 !important;
-            padding: 8px 0 !important;
-            border-bottom: 2px solid #bb8fce !important;
-            padding-left: 10px !important;
-          }
-          
-          /* テーマサブ見出し - ガーリーピンク */
-          .eisai-editor .theme-subheading[data-theme="girly-pink"] {
-            color: #e91e63 !important;
-            font-size: 105% !important;
-            font-weight: bold !important;
-            margin: 15px 0 !important;
-            padding: 8px 0 !important;
-            border-bottom: 2px solid #f48fb1 !important;
-            padding-left: 10px !important;
-          }
-          
-          /* テーマサブ見出し - ふんわりパステル */
-          .eisai-editor .theme-subheading[data-theme="soft-pastel"] {
-            color: #f1948a !important;
-            font-size: 105% !important;
-            font-weight: bold !important;
-            margin: 15px 0 !important;
-            padding: 8px 0 !important;
-            border-bottom: 2px solid #fadbd8 !important;
-            padding-left: 10px !important;
-          }
-          
-          /* テーマサブ見出し - モノトーンシック */
-          .eisai-editor .theme-subheading[data-theme="monotone-chic"] {
-            color: #2c3e50 !important;
-            font-size: 105% !important;
-            font-weight: bold !important;
-            margin: 15px 0 !important;
-            padding: 8px 0 !important;
-            border-bottom: 2px solid #85929e !important;
-            padding-left: 10px !important;
-          }
-          
-          /* テーマサブ見出し - カフェブラウン */
-          .eisai-editor .theme-subheading[data-theme="cafe-brown"] {
-            color: #795548 !important;
-            font-size: 105% !important;
-            font-weight: bold !important;
-            margin: 15px 0 !important;
-            padding: 8px 0 !important;
-            border-bottom: 2px solid #bcaaa4 !important;
-            padding-left: 10px !important;
-          }
-          
-          /* テーマサブ見出し - フレッシュアクア */
-          .eisai-editor .theme-subheading[data-theme="fresh-aqua"] {
-            color: #00acc1 !important;
-            font-size: 105% !important;
-            font-weight: bold !important;
-            margin: 15px 0 !important;
-            padding: 8px 0 !important;
-            border-bottom: 2px solid #80deea !important;
-            padding-left: 10px !important;
-          }
-        `;
-      }
-      
+      style.textContent = `
+        /* === 動的テーマCSS: ${themeName} === */
+        .eisai-editor .theme-heading${sel} {
+          background: ${cl} !important;
+          border-left: 5px solid ${c} !important;
+          padding: 15px 20px !important;
+          font-size: 120% !important;
+          font-weight: bold !important;
+          margin: 20px 0 !important;
+        }
+        .eisai-editor .theme-subheading${sel} {
+          color: ${c} !important;
+          font-size: 105% !important;
+          font-weight: bold !important;
+          margin: 15px 0 !important;
+          padding: 8px 0 8px 10px !important;
+          border-bottom: 2px solid ${cs} !important;
+        }
+        .eisai-editor .theme-box${sel} {
+          border: 1px solid ${c} !important;
+          border-radius: 4px !important;
+          padding: 20px !important;
+          margin: 1em 0 !important;
+        }
+        .eisai-editor .theme-list${sel} {
+          border: 2px solid ${c} !important;
+          border-radius: 6px !important;
+          margin: 1em 0 !important;
+          overflow: hidden !important;
+        }
+        .eisai-editor .theme-list${sel} .theme-list-title {
+          background: ${c} !important;
+          color: #fff !important;
+          padding: 8px 15px !important;
+          font-weight: bold !important;
+          margin: 0 !important;
+        }
+        .eisai-editor .theme-list${sel} ul {
+          margin: 0 !important;
+          padding: 15px 15px 15px 35px !important;
+        }
+        /* 吹き出し（左：濃色 / 教室側） */
+        .eisai-editor .theme-bubble-left${sel} {
+          position: relative !important;
+          display: block !important;
+          background: ${c} !important;
+          color: #fff !important;
+          border-radius: 20px !important;
+          padding: 12px 16px !important;
+          margin: 1em auto 1em 30px !important;
+          max-width: 80% !important;
+          width: fit-content !important;
+          line-height: 1.6 !important;
+        }
+        .eisai-editor .theme-bubble-left${sel} > span {
+          position: absolute !important;
+          left: -16px !important;
+          top: 50% !important;
+          transform: translateY(-50%) !important;
+          border: 10px solid transparent !important;
+          border-right: 16px solid ${c} !important;
+        }
+        /* 吹き出し（右：淡色 / 保護者側） */
+        .eisai-editor .theme-bubble-right${sel} {
+          position: relative !important;
+          display: block !important;
+          background: ${cl} !important;
+          color: ${c} !important;
+          border-radius: 20px !important;
+          padding: 12px 16px !important;
+          margin: 1em 30px 1em auto !important;
+          max-width: 80% !important;
+          width: fit-content !important;
+          line-height: 1.6 !important;
+        }
+        .eisai-editor .theme-bubble-right${sel} > span {
+          position: absolute !important;
+          right: -16px !important;
+          top: 50% !important;
+          transform: translateY(-50%) !important;
+          border: 10px solid transparent !important;
+          border-left: 16px solid ${cl} !important;
+        }
+        .eisai-editor .theme-button${sel} {
+          display: block !important;
+          margin: 20px auto !important;
+          padding: 12px 30px !important;
+          background: ${c} !important;
+          color: #fff !important;
+          border: none !important;
+          border-radius: 4px !important;
+          font-weight: bold !important;
+          cursor: pointer !important;
+          transition: background 0.3s !important;
+        }
+        .eisai-editor .theme-button${sel}:hover {
+          filter: brightness(0.9);
+        }
+      `;
       document.head.appendChild(style);
     }
+
 
     // === GEMINI HTMLにテーマを適用する関数 ===
     function applyThemeToGeminiHtml() {
