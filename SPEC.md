@@ -41,7 +41,7 @@
 ```javascript
 {
   // バージョン管理データ
-  version: "0.56.63",
+  version: "0.60.00",
   classroomName: "",
   managerName: "",
   classroomUrl: "",
@@ -129,7 +129,7 @@ const BLOG_TYPES = {
 ## 保存データ
 
 ### ストレージキー
-- `STORAGE_KEY`: `eisai_blog_info_v05663`（バージョン依存）
+- `STORAGE_KEY`: `eisai_blog_info_v06000`（バージョン依存）
 - `CLASSROOM_STORAGE_KEY`: `eisai_classroom_settings_persistent`（永続）
 
 ### 保存される情報
@@ -140,7 +140,7 @@ const BLOG_TYPES = {
 ## バージョン管理
 
 ### バージョン形式
-- セマンティックバージョニング: `0.56.59`
+- セマンティックバージョニング: `0.60.00`
 - 主要コンポーネントの同期:
   - `@version`
   - `TOOL_ID`
