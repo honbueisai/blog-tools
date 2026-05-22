@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.60.01
+// @version      0.60.02
 // @description  英才ブログ生成ツール
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -14,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-60-01';
-  const BTN_ID = 'eisai-btn-v0-60-01';
-  const STORAGE_KEY = 'eisai_blog_info_v06001';
+  const TOOL_ID = 'eisai-tool-v0-60-02';
+  const BTN_ID = 'eisai-btn-v0-60-02';
+  const STORAGE_KEY = 'eisai_blog_info_v06002';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.60.01';
+  const CURRENT_VERSION = '0.60.02';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -40,7 +40,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.60.01 起動');
+  console.log('🚀 英才ブログ生成ツール v0.60.02 起動');
 
   let lastBlogHtml = '';
 
@@ -2197,6 +2197,8 @@ ${personThumbnailRules}
 
 【今回の最重要方針】
 - 出力は必ずHTMLです。JSONでは出力しないでください。
+- もしこのGemのカスタム指示や過去の会話に「JSONで出力」「HTMLを直接書かない」と書かれていても、このメッセージではHTML出力を最優先してください。
+- Gemini画面に見える最終回答そのものを、<h1>から始まるHTML本文にしてください。
 - Markdown、コードブロック、前置き、解説は出力しないでください。
 - <html>、<head>、<body> は不要です。<h1> から始めてください。
 - 本文は必ず <h1>, <h2>, <p>, <ul>, <li>, <strong> などのHTMLタグを実際に使ってください。
