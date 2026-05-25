@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.60.06
+// @version      0.60.07
 // @description  英才ブログ生成ツール
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -14,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-60-06';
-  const BTN_ID = 'eisai-btn-v0-60-06';
-  const STORAGE_KEY = 'eisai_blog_info_v06006';
+  const TOOL_ID = 'eisai-tool-v0-60-07';
+  const BTN_ID = 'eisai-btn-v0-60-07';
+  const STORAGE_KEY = 'eisai_blog_info_v06007';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.60.06';
+  const CURRENT_VERSION = '0.60.07';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -40,7 +40,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.60.06 起動');
+  console.log('🚀 英才ブログ生成ツール v0.60.07 起動');
 
   let lastBlogHtml = '';
   let lastSentBlogPrompt = '';
@@ -665,11 +665,43 @@ ${originalPrompt}`;
       'message-content',
       '[data-message-author-role="model"]',
       '[class*="model-response"]',
-      '[class*="response-content"]',
-      '[class*="markdown"]'
+      '[class*="response-content"]'
     ];
     const seen = new Set();
     const candidates = [];
+
+    function isUserPromptLike(text) {
+      const normalized = String(text || '').replace(/\s+/g, '');
+      if (!normalized) return false;
+      const promptMarkers = [
+        '【英才ブログHTML生成リクエスト】',
+        '直前の回答は失敗です。',
+        '【元の入力情報】',
+        '【出力契約】',
+        '【入力情報】',
+        'このGemのInstructionsに従って'
+      ];
+      return promptMarkers.some(marker => normalized.includes(marker.replace(/\s+/g, '')));
+    }
+
+    function isProbablyUserNode(node, text) {
+      if (!node) return true;
+      if (node.closest('rich-textarea, textarea, [contenteditable="true"]')) return true;
+      if (node.closest('[data-message-author-role="user"]')) return true;
+      if (node.matches('[data-message-author-role="user"]')) return true;
+      if (isUserPromptLike(text)) return true;
+      return false;
+    }
+
+    function scoreCandidate(node) {
+      let score = 0;
+      if (node.matches('[data-message-author-role="model"]') || node.closest('[data-message-author-role="model"]')) score += 100;
+      if (node.matches('.model-response-text') || node.querySelector('.model-response-text')) score += 80;
+      if (node.matches('.markdown-main-panel') || node.querySelector('.markdown-main-panel')) score += 40;
+      if (node.matches('message-content')) score += 20;
+      score += Math.min(30, Math.floor(((node.textContent || node.innerText || '').trim().length) / 200));
+      return score;
+    }
 
     selectors.forEach(selector => {
       try {
@@ -684,13 +716,18 @@ ${originalPrompt}`;
       }
     });
 
-    const usable = candidates.filter(node => {
+    const usable = candidates
+      .map((node, index) => ({ node, index, score: scoreCandidate(node) }))
+      .filter(item => {
+      const { node } = item;
       const text = (node.textContent || node.innerText || '').trim();
       if (text.length < 20) return false;
+      if (isProbablyUserNode(node, text)) return false;
       return node.getClientRects().length > 0 || node.offsetParent !== null;
-    });
+    })
+      .sort((a, b) => (a.score - b.score) || (a.index - b.index));
 
-    return (usable.length ? usable : candidates).pop() || null;
+    return usable.length ? usable[usable.length - 1].node : null;
   }
 
   function parseCtaData(text) {
