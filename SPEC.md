@@ -33,6 +33,8 @@
    - 記事タイプ別のプロンプト生成
    - テンプレート管理
    - HTMLコンテンツの生成
+   - ChatGPT版はエディター貼り付け前提で、AI応答そのものを `<h1>` から始まるHTMLとして生成
+   - ChatGPT版のJSON応答解析は旧応答救済用のフォールバックとしてのみ保持
 
 4. **画像生成モジュール**
    - NANO BANANA PRO対応のプロンプト作成
@@ -150,7 +152,7 @@ const BLOG_TYPES = {
 
 ### ストレージキー
 - `STORAGE_KEY`: `eisai_blog_info_v05663`（バージョン依存）
-- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0121`（バージョン依存）
+- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0122`（バージョン依存）
 - ChatGPT版テストモード: `eisai_chatgpt_test_mode_enabled`（ローカル解除式）
 - `CLASSROOM_STORAGE_KEY`: `eisai_classroom_settings_persistent`（永続）
 
