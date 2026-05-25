@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.60.08
+// @version      0.60.09
 // @description  英才ブログ生成ツール
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -14,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-60-08';
-  const BTN_ID = 'eisai-btn-v0-60-08';
-  const STORAGE_KEY = 'eisai_blog_info_v06008';
+  const TOOL_ID = 'eisai-tool-v0-60-09';
+  const BTN_ID = 'eisai-btn-v0-60-09';
+  const STORAGE_KEY = 'eisai_blog_info_v06009';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.60.08';
+  const CURRENT_VERSION = '0.60.09';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
   const NORMAL_GEMINI_URL = 'https://gemini.google.com/app?hl=ja';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -40,7 +40,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.60.08 起動');
+  console.log('🚀 英才ブログ生成ツール v0.60.09 起動');
 
   let lastBlogHtml = '';
   let lastSentBlogPrompt = '';
@@ -377,8 +377,19 @@
     return location.pathname.indexOf('/gem/' + THUMBNAIL_GEM_ID) !== -1;
   }
 
+  function isCustomGemActivePage() {
+    if (location.pathname.indexOf('/gem/') !== -1) return true;
+
+    const text = (document.body && document.body.innerText ? document.body.innerText : '').slice(0, 4000);
+    return text.includes('カスタム Gem') || text.includes('カスタムGem');
+  }
+
   function isNormalGeminiNewChatPage() {
-    return location.pathname === '/app' || location.pathname === '/app/';
+    return (location.pathname === '/app' || location.pathname === '/app/') && !isCustomGemActivePage();
+  }
+
+  function normalGeminiUrlForBlog() {
+    return `${NORMAL_GEMINI_URL}&eisai_normal=${Date.now()}`;
   }
 
   function findGeminiInput() {
@@ -1551,7 +1562,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
               blogAutoRetryCount++;
               lastBlogHtml = '';
               copyBtn.style.display = 'none';
-              statusDiv.textContent = '⚠️ GemがCTA素材だけを返したため、本文HTML必須条件を強めて1回だけ自動再送します...';
+              statusDiv.textContent = '⚠️ GeminiがCTA素材だけを返したため、本文HTML必須条件を強めて1回だけ自動再送します...';
               statusDiv.classList.add('show');
 
               insertPromptAndSend(buildBlogRetryPrompt(lastSentBlogPrompt)).then(sent => {
@@ -1563,14 +1574,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
                 }
               }).catch(e => {
                 console.error('[Eisai] ブログ本文の自動再送に失敗しました:', e);
-                statusDiv.textContent = '❌ Gemの出力がCTA素材だけだったため再送を試みましたが、エラーが発生しました。もう一度「Geminiへ送信して記事生成」を押してください。';
+                statusDiv.textContent = '❌ Geminiの出力がCTA素材だけだったため再送を試みましたが、エラーが発生しました。もう一度「Geminiへ送信して記事生成」を押してください。';
                 statusDiv.classList.add('show');
               });
               return;
             }
 
             lastBlogHtml = '';
-            statusDiv.textContent = '❌ Gemの出力にブログ本文が見つかりませんでした。CTA素材だけの可能性があります。Gemの本文を確認し、もう一度「Geminiへ送信して記事生成」を押してください。';
+            statusDiv.textContent = '❌ Geminiの出力にブログ本文が見つかりませんでした。CTA素材だけの可能性があります。通常Gemini画面で生成されているか確認し、もう一度「Geminiへ送信して記事生成」を押してください。';
             statusDiv.classList.add('show');
             copyBtn.style.display = 'none';
             return;
@@ -2509,7 +2520,7 @@ ${personThumbnailRules}
       if (!isNormalGeminiNewChatPage()) {
         savePendingBlogPrompt(prompt, currentBlogType);
         localStorage.setItem('eisai_collapsed', 'false');
-        location.href = NORMAL_GEMINI_URL;
+        location.href = normalGeminiUrlForBlog();
         return;
       }
 
