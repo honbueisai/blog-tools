@@ -130,6 +130,8 @@ const BLOG_TYPES = {
 - **文字の強さ**: 標準 / 強め / 最大インパクト
 - 記事内容に応じて、数字・悩み・答案・ノート・人物・イベントなど主役を自動選定
 - `強め` ではメイン文字を横幅50〜70%程度、`最大インパクト` では横幅60〜82%程度の主役として扱う
+- IMAGE2.0向けには、厳密な座標や比率で縛らず、ラフなアートディレクションとして短めに出力する
+- 内部で複数案を検討し、最終的に1つの画像生成プロンプトだけを出力する
 - 古い広告風の赤オレンジ3D文字、巨大な青帯、同じ数字の重複強調は避ける
 - 文字要素は原則2つまでに抑え、答案・ノート・手元など現場感のある素材を主役にする
 
@@ -148,7 +150,7 @@ const BLOG_TYPES = {
 
 ### ストレージキー
 - `STORAGE_KEY`: `eisai_blog_info_v05663`（バージョン依存）
-- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0120`（バージョン依存）
+- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0121`（バージョン依存）
 - ChatGPT版テストモード: `eisai_chatgpt_test_mode_enabled`（ローカル解除式）
 - `CLASSROOM_STORAGE_KEY`: `eisai_classroom_settings_persistent`（永続）
 

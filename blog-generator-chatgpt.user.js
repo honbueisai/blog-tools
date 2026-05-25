@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.20
+// @version      0.1.21
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-20';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-20';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0120';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-21';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-21';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0121';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.20';
+  const CURRENT_VERSION = '0.1.21';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -113,9 +113,9 @@
   };
 
   const TEXT_IMPACT_OPTIONS = {
-    '標準': 'Readable but restrained. Use clear hierarchy and strong contrast without excessive decoration.',
-    '強め': 'Recommended. The main headline must dominate the thumbnail. Use huge bold Japanese text, vivid fill, thick white outline, strong dark shadow or offset layer, and a sticker/badge composition. Text impact is more important than showing the full photo.',
-    '最大インパクト': 'Maximum impact. Use one massive hero number or phrase that occupies most of the canvas, with bold flat typography, thick outline, strong shadow, sticker/badge shapes, dramatic crop, and very high contrast.'
+    '標準': 'Readable and clean. A clear headline, calm photo, and simple contrast.',
+    '強め': 'Recommended. Make the headline feel big, loud, and instantly readable, like a strong YouTube/blog thumbnail. Let the text overlap the photo if it helps.',
+    '最大インパクト': 'Maximum impact. One huge phrase or number should hit first, with bold color, thick outline, and a dramatic crop.'
   };
 
   const COLOR_STYLES = {
@@ -1893,8 +1893,6 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const thumbnailTypeInstruction = THUMBNAIL_TYPE_OPTIONS[thumbnailType] || THUMBNAIL_TYPE_OPTIONS['おまかせ'];
       const visualExpressionInstruction = VISUAL_EXPRESSION_OPTIONS[style] || VISUAL_EXPRESSION_OPTIONS['おまかせ'];
       const textImpactInstruction = TEXT_IMPACT_OPTIONS[textImpact] || TEXT_IMPACT_OPTIONS['強め'];
-      const artDirectionCatalog = THUMBNAIL_ART_DIRECTIONS.map((item, index) => `${index + 1}. ${item}`).join('\n');
-      const layoutVariantCatalog = THUMBNAIL_LAYOUT_VARIANTS.map((item, index) => `${index + 1}. ${item}`).join('\n');
 
       const input = getChatInput();
       if (!input) {
@@ -1910,17 +1908,21 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 ${lastBlogHtml || 'ブログ記事が生成されていません。先にブログを生成してください。'}
 
 ■ サムネイル設計の選択
-1. Thumbnail Objective: ${thumbnailType}
-   - ${thumbnailTypeInstruction}
-2. Visual Expression: ${style}
-   - ${visualExpressionInstruction}
-3. Text Impact Level: ${textImpact}
-   - ${textImpactInstruction}
-4. Brand Rules: ${brandRules}, clean education brand feeling, professional appearance, readable composition, --ar 3:2
-5. Text Design Direction: choose typography that fits the selected thumbnail objective and visual expression, but the main headline must always be thumbnail-strong: modern thick Japanese gothic/sans-serif lettering, high contrast, thick outline, strong shadow or offset layer, readable at small size. Prefer bold flat poster typography, clean badges, editorial labels, speech bubbles, or infographic typography. Avoid dated glossy 3D lettering and huge generic blue lower-third banners, but do NOT make the text weak, subtle, elegant, or small.
-6. Possible Classroom Setting: ${style === '実写' ? CLASSROOM_DESCRIPTION : 'Use an educational environment or evidence object background that fits the selected visual expression'}
-7. Possible Tutoring Style: ${TUTORING_STYLE}
-8. Color Scheme: ${colorScheme}
+- サムネイル型: ${thumbnailType}
+  ${thumbnailTypeInstruction}
+- 見た目の表現: ${style}
+  ${visualExpressionInstruction}
+- 文字の強さ: ${textImpact}
+  ${textImpactInstruction}
+- 色: ${colorScheme}
+
+■ IMAGE2.0向けの考え方
+細かい仕様で縛りすぎると、画像が固く、似た構図になりやすいです。
+最終的な画像生成プロンプトは、設計書のように細かく書かず、
+「こんな感じ」「このあたりに文字をドンと」「答案を大きめに」くらいの余白を残してください。
+
+目的は、完璧に指示通りのレイアウトを作ることではなく、
+ブログの内容が一瞬で伝わる、目を止めるサムネイルにすることです。
 
 ■ ユーザー入力情報
 メインキャッチ：${mainCatch}
@@ -1928,103 +1930,50 @@ ${lastBlogHtml || 'ブログ記事が生成されていません。先にブロ�
 ポイント：${points}
 ${personThumbnailRules}
 
-■ キャッチフレーズ作成の原則（最高品質のテキスト生成）
-【メインキャッチフレーズ】
-- 文字数：4-12文字を第一候補にしてください。長くても15文字以内です。
-- 心理トリガー：好奇心、不安の言語化、期待感、変化の場面
-- 入力にない数字・期間・実績は作らない
-- 過度な煽りや嘘っぽい表現は禁止。「99%」「誰でも」「絶対」「奇跡」「たったこれだけ」は使わない
-- 具体例：「途中式で28点アップ」「答案を見せた日」「計算ミスが減った理由」
-- 点数アップ、得点、期間などの数字が記事にある場合は、数字をメインキャッチまたは巨大バッジとして必ず主役にしてください。例：「28点アップ」「76点」「2週間」。
-- 「答案を見せた日」「変わった理由」のような情緒的なコピーだけを主役にしないでください。使う場合は、必ず数字や教科を一緒に見せてください。
+■ キャッチと見せ方の考え方
+- まず、記事の中でいちばん目を引く素材を1つ選んでください。
+  例：点数、答案、ノート、手元、表情、親の悩み、イベント名など。
+- 文字は短くしてください。メインは1フレーズ、サブは必要な時だけ。
+- 点数や期間がある記事では、数字を大きく見せると強いです。
+- ただし数字を2つも3つも同じ強さで並べず、主役は1つだけにしてください。
+- 「強め」なら、文字はガンと大きく。写真に少しかぶってもOKです。
+- 「標準」なら、少し落ち着いた編集部っぽい見せ方でOKです。
+- 「最大インパクト」なら、ひと目で読める大文字を画面の主役にしてください。
 
-【サブキャッチフレーズ】
-- 文字数：15-25文字（補足情報、具体性）
-- 役割：メインの裏付け、信頼性構築、共感誘導
+■ 方向性の作り方
+いきなり1つに決めず、内部で軽く3案くらい考えてください。
+例：
+- 案A：答案を大きく見せて、左側に「28点アップ」をドンと置く
+- 案B：ノートの手元を寄りで見せて、中央に「途中式で変わる」
+- 案C：点数バッジを右上に置き、下に「中2数学」を添える
 
-【ポイント・特徴】
-- 文字数：8-12文字（キーワード、短いフレーズ）
-- おまかせモード：Pointsは一切生成しないでください
-- 手動入力モード：入力されている場合は必ずサムネイルに組み込む
+その中から、記事内容に一番合うものを1つ選んでください。
+この3案の検討は出力しないでください。
 
-■ サムネイル文字の強さ（最重要）
-- 画像を320px幅で表示しても、メインキャッチが一瞬で読めるサイズにしてください。読めない・弱い・上品すぎる文字は失敗です。
-- メインキャッチは画面内で最も大きい要素にしてください。写真や答案より先に、文字が目に入る必要があります。
-- 現在の文字の強さ設定は「${textImpact}」です。
-- 「標準」の場合: メインキャッチは画面横幅の35〜50%を占める大きさ。
-- 「強め」の場合: メインキャッチは画面横幅の50〜70%、画面高さの20〜35%を占める大きさ。写真より文字が主役です。
-- 「最大インパクト」の場合: メインキャッチは画面横幅の60〜82%、画面高さの28〜45%を占める大きさ。少し画面からはみ出すくらいの迫力でもよいです。
-- 文字要素は最大2つを基本にしてください。どうしても必要な場合だけ、3つ目として小さな補助ラベルまたは数字バッジを使ってください。
-- メインキャッチには細い明朝体、上品な筆文字、薄い影だけの文字を使わないでください。太いゴシック体、鮮やかな塗り、厚い白フチ、濃紺または黒の強い影、色面パネル、ステッカー型バッジ、太い縁取り、強いコントラストを使ってください。
-- 「強め」以上では、薄い黄色の付箋風パネル、淡い水色の細枠、控えめな影、細い文字は禁止です。弱く見えます。
-- 「強め」以上では、メインキャッチを左上の小さなラベルにしないでください。画面中央寄り、または左〜中央を大きく占有してください。
-- 実写背景の上に文字を置く場合は、必ず白帯・濃色帯・半透明パネル・縁取り・ドロップシャドウのいずれかで背景から分離してください。
-- インパクトを出す場合でも、古い3D広告風にしないでください。数字やキーワードは、フラットな巨大文字、ステッカー、雑誌見出し、斜めラベル、余白との対比で見せてください。
-- 「答案を見せたあの日」のような長く情緒的な一文を最大文字にしないでください。最大文字は「28点アップ」「途中式」「計算ミス」など、短い強い言葉にしてください。
-- 良い文字階層の例: メイン「28点アップ」 / サブ「途中式で変わった中2数学」 / 小ラベル「答案を見せた日」。
-- 良い文字階層の例: メイン「途中式で変わる」 / サブ「48点から76点へ」 / 小ラベル「中2数学」。
-- 悪い例: メイン「答案を見せたあの日」だけ。サムネイルでは弱いので禁止です。
+■ 最終プロンプトの書き方
+最終的な画像生成プロンプトは、長い仕様書にしないでください。
+日本語で、下のような温度感で書いてください。
 
-■ ダサくしないためのデザイン品質ルール
-- 「古いYouTube広告」ではなく「2026年の教育系メディア/塾ブログの強いサムネイル」として設計してください。
-- 禁止: 光沢の強い赤オレンジ3D文字、巨大な青い下帯、白フチを何重にも重ねた文字、爆発エフェクト、過剰な斜め文字、同じ数字の重複表示。
-- 禁止: 「28点アップ」と「48点→76点」を同じ強さで両方大きく置くこと。どちらかを主役、もう片方を小さな補助にしてください。
-- 禁止: 左右をただ真っ二つに割っただけのBefore/After。分割するなら、明暗差・紙の重なり・カード・矢印・余白で自然に見せてください。
-- 禁止: 下部いっぱいの青い帯に長い説明文を入れるテンプレ構図。
-- 禁止: 文字を写真の余白に小さく添えるだけの上品なバナー。サムネイルとして弱いです。
-- 推奨: 写真・答案・ノート・手元のリアルさを活かし、文字は短く、余白を作り、1秒で意味が伝わる構図にしてください。
-- 推奨: メイン文字は太く、近く、前面に。必要なら写真の一部に重ねてください。可読性が最優先です。
-- 推奨: 点数系は「答案/赤ペン/点数」を主役にし、人物は必要なときだけ使ってください。
-- 推奨: 成長ストーリー系は「表情・手元・答案を差し出す場面」など記事の場面を主役にしてください。
+例：
+「3:2のブログサムネイル。数学の答案用紙を手に持っている写真っぽい画。左〜中央に『28点アップ』をかなり大きく、太いオレンジ文字＋白フチ＋濃い影でドンと置く。右上に小さく『48点→76点』。下に『途中式で変わった中2数学』を短く添える。全体は明るい教室の雰囲気。文字は写真より先に目に入る感じ。古い広告っぽいギラギラ3Dや巨大な青帯にはしない。」
 
-■ アートディレクション選定（最重要）
-以下の候補から、ブログ記事の内容に最も合うものを1つだけ選んでください。
-毎回同じ「右に先生、左に大文字、白い教室背景」へ寄せないでください。
-ユーザーがサムネイル型で「おまかせ」以外を選んだ場合は、そのサムネイル型を最優先してください。
+このくらいのラフさで十分です。
+細かい座標、厳密な比率、禁止事項の長い列挙は入れないでください。
+IMAGE2.0が自由に良い絵を作れる余白を残してください。
 
-${artDirectionCatalog}
-
-■ レイアウト候補
-以下の候補から、選んだアートディレクションに合うレイアウトを1つだけ選んでください。
-前回と似た構図になりやすい固定構図は避け、記事の主役が「人物」なのか「ノート」なのか「答案」なのか「悩み」なのかを判断してください。
-
-${layoutVariantCatalog}
-
-■ バリエーションを出すための禁止事項
-- 教師・白衣・教室背景を毎回必ず出さないでください
-- 人物が不要な記事では、ノート、答案、教材、カレンダー、手元、赤ペン、学校ワークなどの象徴物を主役にしてください
-- 大きな3D文字だけで画面を埋める構図を使わないでください。ただし「強め」以上では、太い影・太い白フチ・大きな色面は積極的に使ってください
-- 青い横帯に長いサブタイトルを入れる量産テンプレ構図を使わないでください
-- 同じ文言を複数回表示しないでください
-- 文字が生徒や先生の顔、ノートの重要部分に重ならないようにしてください
-- 背景に塾名や架空のロゴ、読めない日本語、余計な英字を入れないでください
-
-■ 思考と生成プロセス
-1. ブログ内容から学生の年代を判定（小学生/中学生/高校生）
-2. ブログの主役を判定（点数 / 悩み / ノート / 答案 / 生徒の表情 / 保護者の不安 / 先生紹介 / イベント）
-3. ユーザー指定のサムネイル型を確認し、「おまかせ」なら上のアートディレクション候補から1つ選ぶ
-4. レイアウト候補から1つ選ぶ
-5. 文字の強さ設定に合わせてキャッチフレーズと文字階層を最適化
-6. 画像生成AIが理解しやすい英語描写に変換
-7. 全要素を結合して、1枚の完成度が高いサムネイル用プロンプトにする
-
-■ 画像生成プロンプトの要件
-- 画像サイズは必ず3:2比率で指定
-- 視認性の高いテキスト配置、読みやすさを最優先
-- 構図は画面全体を使い、不自然な空白エリアを作らないこと。ただし、文字を読ませるための意図的な余白は歓迎
-- 【最重要】塾名「英才個別学院」や類似の文字を背景や画像内に一切表示しないこと
-- 【禁止】同じテキストを複数回表示しないこと
-- 【禁止】毎回同じ「白い教室 + 先生右側 + 巨大3D文字」の構図にしないこと
-- 【禁止】古い広告風の赤オレンジ3D文字、巨大な青い下帯を使わないこと
-- 【必須】「強め」以上では、メイン文字を写真よりも強い主役として配置すること
+■ 最低限守ること
+- 画像比率は3:2
+- 文字は日本語
+- 塾名やロゴは入れない
+- 同じ文言を何度も繰り返さない
+- メイン文字は読みやすく、サムネイルとして目立つ
+- 記事にない実績や数字は作らない
 
 ■ 出力形式
 ---
 以下のプロンプトで画像を生成してください
 
-[選定したアートディレクション名]
-[選定したレイアウト名]
-[詳細な画像生成プロンプト]
+[ここに、IMAGE2.0へそのまま渡せる短めの画像生成プロンプト]
 
 このプロンプトで画像を生成してください。
 ---
