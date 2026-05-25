@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.26
+// @version      0.1.27
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,14 +15,15 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-26';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-26';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0126';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-27';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-27';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0127';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.26';
+  const CURRENT_VERSION = '0.1.27';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
+  const PANEL_TAB_WIDTH_FALLBACK = 42;
   const PANEL_OPEN_LAYOUT_CLASS = 'eisai-chatgpt-panel-open';
   const TEST_CLASSROOM = {
     name: '英才テスト校',
@@ -232,13 +233,20 @@
 
   function setChatAvoidance(enabled) {
     const shouldApply = enabled && window.innerWidth > 900;
+    const toggleBtn = document.getElementById('eisai-toggle-btn');
+    const tabWidth = toggleBtn ? Math.ceil(toggleBtn.getBoundingClientRect().width || PANEL_TAB_WIDTH_FALLBACK) : PANEL_TAB_WIDTH_FALLBACK;
+    const reservedWidth = PANEL_WIDTH + tabWidth;
     document.documentElement.classList.toggle(PANEL_OPEN_LAYOUT_CLASS, shouldApply);
     if (document.body) {
       document.body.classList.toggle(PANEL_OPEN_LAYOUT_CLASS, shouldApply);
       if (shouldApply) {
         document.body.style.setProperty('--eisai-chatgpt-panel-width', `${PANEL_WIDTH}px`);
+        document.body.style.setProperty('--eisai-chatgpt-tab-width', `${tabWidth}px`);
+        document.body.style.setProperty('--eisai-chatgpt-reserved-width', `${reservedWidth}px`);
       } else {
         document.body.style.removeProperty('--eisai-chatgpt-panel-width');
+        document.body.style.removeProperty('--eisai-chatgpt-tab-width');
+        document.body.style.removeProperty('--eisai-chatgpt-reserved-width');
       }
     }
   }
@@ -904,9 +912,9 @@
 }
 html.${PANEL_OPEN_LAYOUT_CLASS} main,
 html.${PANEL_OPEN_LAYOUT_CLASS} [role="main"] {
-  width: calc(100vw - ${PANEL_WIDTH}px) !important;
-  margin-right: ${PANEL_WIDTH}px !important;
-  max-width: calc(100vw - ${PANEL_WIDTH}px) !important;
+  width: calc(100vw - var(--eisai-chatgpt-reserved-width, ${PANEL_WIDTH + PANEL_TAB_WIDTH_FALLBACK}px)) !important;
+  margin-right: var(--eisai-chatgpt-reserved-width, ${PANEL_WIDTH + PANEL_TAB_WIDTH_FALLBACK}px) !important;
+  max-width: calc(100vw - var(--eisai-chatgpt-reserved-width, ${PANEL_WIDTH + PANEL_TAB_WIDTH_FALLBACK}px)) !important;
   box-sizing: border-box !important;
   transition: width 0.3s ease, margin-right 0.3s ease, max-width 0.3s ease;
 }
@@ -916,18 +924,26 @@ html.${PANEL_OPEN_LAYOUT_CLASS} [role="main"] > div {
   box-sizing: border-box !important;
 }
 html.${PANEL_OPEN_LAYOUT_CLASS} #thread-bottom-container {
-  right: ${PANEL_WIDTH}px !important;
-  width: calc(100vw - ${PANEL_WIDTH}px) !important;
-  max-width: calc(100vw - ${PANEL_WIDTH}px) !important;
+  left: 0 !important;
+  right: var(--eisai-chatgpt-reserved-width, ${PANEL_WIDTH + PANEL_TAB_WIDTH_FALLBACK}px) !important;
+  width: auto !important;
+  max-width: calc(100vw - var(--eisai-chatgpt-reserved-width, ${PANEL_WIDTH + PANEL_TAB_WIDTH_FALLBACK}px)) !important;
   box-sizing: border-box !important;
   transition: right 0.3s ease, width 0.3s ease, max-width 0.3s ease;
+}
+html.${PANEL_OPEN_LAYOUT_CLASS} #thread-bottom-container > * {
+  max-width: min(calc(100vw - var(--eisai-chatgpt-reserved-width, ${PANEL_WIDTH + PANEL_TAB_WIDTH_FALLBACK}px) - 32px), 48rem) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box !important;
 }
 html.${PANEL_OPEN_LAYOUT_CLASS} form[data-type="unified-composer"],
 html.${PANEL_OPEN_LAYOUT_CLASS} [data-testid="composer"],
 html.${PANEL_OPEN_LAYOUT_CLASS} [data-testid="composer-bar"] {
-  max-width: min(100%, 48rem) !important;
+  max-width: min(calc(100vw - var(--eisai-chatgpt-reserved-width, ${PANEL_WIDTH + PANEL_TAB_WIDTH_FALLBACK}px) - 32px), 48rem) !important;
   margin-left: auto !important;
   margin-right: auto !important;
+  box-sizing: border-box !important;
 }
 #eisai-toggle-btn {
   position: fixed; top: 50%; right: ${PANEL_WIDTH}px; transform: translateY(-50%);
