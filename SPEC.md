@@ -26,7 +26,8 @@
    - パネルインターフェースの動的生成
    - フォーム要素の作成とイベント管理
    - トグルスイッチ、ボタン、セレクトボックス等
-   - ChatGPT版はパネル表示中のみ本文エリアを右パネル幅ぶん避け、閉じたら解除
+   - ChatGPT版はパネル表示中のみ本文エリア・入力欄を右パネル幅ぶん縮小し、閉じたら解除
+   - ChatGPT版は初回起動用の左丸ボタンと開閉用の右タブを重複表示させず、パネル作成後は右タブで開閉する
    - ChatGPT版はGemini版 v0.60.00 と同等の対象エリア・記事タイプ別入力フォームを持つ
 
 3. **ブログ生成モジュール**
@@ -153,7 +154,7 @@ const BLOG_TYPES = {
 
 ### ストレージキー
 - `STORAGE_KEY`: `eisai_blog_info_v05663`（バージョン依存）
-- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0125`（バージョン依存）
+- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0126`（バージョン依存）
 - ChatGPT版テストモード: `eisai_chatgpt_test_mode_enabled`（ローカル解除式）
 - `CLASSROOM_STORAGE_KEY`: `eisai_classroom_settings_persistent`（永続）
 

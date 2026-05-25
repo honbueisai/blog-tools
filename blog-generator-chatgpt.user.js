@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.25
+// @version      0.1.26
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-25';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-25';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0125';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-26';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-26';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0126';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.25';
+  const CURRENT_VERSION = '0.1.26';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -235,7 +235,26 @@
     document.documentElement.classList.toggle(PANEL_OPEN_LAYOUT_CLASS, shouldApply);
     if (document.body) {
       document.body.classList.toggle(PANEL_OPEN_LAYOUT_CLASS, shouldApply);
+      if (shouldApply) {
+        document.body.style.setProperty('--eisai-chatgpt-panel-width', `${PANEL_WIDTH}px`);
+      } else {
+        document.body.style.removeProperty('--eisai-chatgpt-panel-width');
+      }
     }
+  }
+
+  function removeLauncherButton() {
+    const launcher = document.getElementById(BTN_ID);
+    if (launcher) launcher.remove();
+  }
+
+  function setPanelCollapsed(panel, toggleBtn, collapsed) {
+    if (!panel) return;
+    panel.style.display = 'flex';
+    panel.classList.toggle('collapsed', collapsed);
+    if (toggleBtn) toggleBtn.classList.toggle('collapsed', collapsed);
+    localStorage.setItem('eisai_collapsed', collapsed ? 'true' : 'false');
+    syncChatAvoidance(panel);
   }
 
   function syncChatAvoidance(panel) {
@@ -885,14 +904,30 @@
 }
 html.${PANEL_OPEN_LAYOUT_CLASS} main,
 html.${PANEL_OPEN_LAYOUT_CLASS} [role="main"] {
+  width: calc(100vw - ${PANEL_WIDTH}px) !important;
   margin-right: ${PANEL_WIDTH}px !important;
   max-width: calc(100vw - ${PANEL_WIDTH}px) !important;
-  transition: margin-right 0.3s ease, max-width 0.3s ease;
+  box-sizing: border-box !important;
+  transition: width 0.3s ease, margin-right 0.3s ease, max-width 0.3s ease;
+}
+html.${PANEL_OPEN_LAYOUT_CLASS} main > div,
+html.${PANEL_OPEN_LAYOUT_CLASS} [role="main"] > div {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 html.${PANEL_OPEN_LAYOUT_CLASS} #thread-bottom-container {
   right: ${PANEL_WIDTH}px !important;
-  width: auto !important;
-  transition: right 0.3s ease;
+  width: calc(100vw - ${PANEL_WIDTH}px) !important;
+  max-width: calc(100vw - ${PANEL_WIDTH}px) !important;
+  box-sizing: border-box !important;
+  transition: right 0.3s ease, width 0.3s ease, max-width 0.3s ease;
+}
+html.${PANEL_OPEN_LAYOUT_CLASS} form[data-type="unified-composer"],
+html.${PANEL_OPEN_LAYOUT_CLASS} [data-testid="composer"],
+html.${PANEL_OPEN_LAYOUT_CLASS} [data-testid="composer-bar"] {
+  max-width: min(100%, 48rem) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 #eisai-toggle-btn {
   position: fixed; top: 50%; right: ${PANEL_WIDTH}px; transform: translateY(-50%);
@@ -912,6 +947,7 @@ html.${PANEL_OPEN_LAYOUT_CLASS} #thread-bottom-container {
   html.${PANEL_OPEN_LAYOUT_CLASS} main,
   html.${PANEL_OPEN_LAYOUT_CLASS} [role="main"],
   html.${PANEL_OPEN_LAYOUT_CLASS} #thread-bottom-container {
+    width: 100vw !important;
     margin-right: 0 !important;
     max-width: 100vw !important;
     right: 0 !important;
@@ -1159,10 +1195,18 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
   // =========================================================
   // 9. パネルUI本体
   // =========================================================
-  function buildPanel() {
+  function buildPanel(options = {}) {
+    const forceOpen = options.forceOpen === true;
     const existingPanel = document.getElementById(TOOL_ID);
     if (existingPanel) {
-      syncChatAvoidance(existingPanel);
+      const existingToggle = document.getElementById('eisai-toggle-btn');
+      if (forceOpen) {
+        setPanelCollapsed(existingPanel, existingToggle, false);
+      } else {
+        existingPanel.style.display = 'flex';
+        syncChatAvoidance(existingPanel);
+      }
+      removeLauncherButton();
       return;
     }
 
@@ -1171,20 +1215,21 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     document.head.appendChild(styleTag);
     bindChatAvoidanceResize();
 
-    const isCollapsed = localStorage.getItem('eisai_collapsed') === 'true';
+    const isCollapsed = forceOpen ? false : localStorage.getItem('eisai_collapsed') === 'true';
 
     const panel = createEl('div', { id: TOOL_ID }, document.body);
     if (isCollapsed) panel.classList.add('collapsed');
+    removeLauncherButton();
+
+    const staleToggleBtn = document.getElementById('eisai-toggle-btn');
+    if (staleToggleBtn) staleToggleBtn.remove();
 
     const toggleBtn = createEl('button', { id: 'eisai-toggle-btn' }, document.body);
     toggleBtn.textContent = '📝 ブログツール';
     if (isCollapsed) toggleBtn.classList.add('collapsed');
 
     toggleBtn.onclick = () => {
-      const collapsed = panel.classList.toggle('collapsed');
-      toggleBtn.classList.toggle('collapsed');
-      localStorage.setItem('eisai_collapsed', collapsed);
-      syncChatAvoidance(panel);
+      setPanelCollapsed(panel, toggleBtn, !panel.classList.contains('collapsed'));
     };
 
     const header = createEl('div', { className: 'eisai-header' }, panel);
@@ -1230,7 +1275,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       setChatAvoidance(false);
       panel.remove();
       toggleBtn.remove();
-      buildPanel();
+      buildPanel({ forceOpen: true });
     };
 
     const updateBtn = createEl('button', {
@@ -1248,10 +1293,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     const closeBtn = createEl('button', { textContent: '←', style: { background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', padding: '4px 8px' } }, headerRight);
     closeBtn.title = 'サイドパネルを閉じる';
     closeBtn.onclick = () => {
-      panel.classList.add('collapsed');
-      toggleBtn.classList.add('collapsed');
-      localStorage.setItem('eisai_collapsed', 'true');
-      syncChatAvoidance(panel);
+      setPanelCollapsed(panel, toggleBtn, true);
     };
 
     updateBtn.onclick = () => {
@@ -2413,8 +2455,17 @@ ${formContent}`;
     if (!isNewChatPage()) {
       const exist = document.getElementById(BTN_ID);
       if (exist) exist.remove();
+      setChatAvoidance(false);
       return;
     }
+
+    const panel = document.getElementById(TOOL_ID);
+    if (panel) {
+      removeLauncherButton();
+      syncChatAvoidance(panel);
+      return;
+    }
+
     if (document.getElementById(BTN_ID)) return;
 
     const btn = createEl('button', {
@@ -2480,15 +2531,7 @@ ${formContent}`;
     setTimeout(() => btn.classList.remove('eisai-btn-pulse'), 6000);
 
     btn.onclick = () => {
-      const panel = document.getElementById(TOOL_ID);
-      if (!panel) {
-        buildPanel();
-        return;
-      }
-
-      const willShow = panel.style.display === 'none';
-      panel.style.display = willShow ? 'flex' : 'none';
-      syncChatAvoidance(panel);
+      buildPanel({ forceOpen: true });
     };
   }
 
