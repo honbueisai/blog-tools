@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.60.03
+// @version      0.60.04
 // @description  英才ブログ生成ツール
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -14,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-60-03';
-  const BTN_ID = 'eisai-btn-v0-60-03';
-  const STORAGE_KEY = 'eisai_blog_info_v06003';
+  const TOOL_ID = 'eisai-tool-v0-60-04';
+  const BTN_ID = 'eisai-btn-v0-60-04';
+  const STORAGE_KEY = 'eisai_blog_info_v06004';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.60.03';
+  const CURRENT_VERSION = '0.60.04';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -40,7 +40,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.60.03 起動');
+  console.log('🚀 英才ブログ生成ツール v0.60.04 起動');
 
   let lastBlogHtml = '';
 
@@ -311,6 +311,135 @@
     }));
   }
 
+  function isElementVisible(el) {
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    const style = window.getComputedStyle(el);
+    return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+  }
+
+  function isDisabledButton(button) {
+    return button.disabled || button.getAttribute('aria-disabled') === 'true' || button.hasAttribute('disabled');
+  }
+
+  function getButtonSearchText(button) {
+    return [
+      button.getAttribute('aria-label') || '',
+      button.getAttribute('title') || '',
+      button.getAttribute('data-testid') || '',
+      button.getAttribute('data-test-id') || '',
+      button.textContent || ''
+    ].join(' ');
+  }
+
+  function triggerButtonClick(button) {
+    ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
+      button.dispatchEvent(new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      }));
+    });
+  }
+
+  function findGeminiSendButton(input = null) {
+    const selectors = [
+      'button[aria-label*="送信"]',
+      'button[aria-label*="送る"]',
+      'button[aria-label*="Send"]',
+      'button[aria-label*="submit"]',
+      'button[aria-label*="Submit"]',
+      'button[data-testid*="send"]',
+      'button[data-test-id*="send"]'
+    ];
+
+    const matchesSendLabel = (button) => {
+      const label = getButtonSearchText(button);
+      return /送信|送る|Send|send|Submit|submit/.test(label);
+    };
+
+    const isClearlyNotSendButton = (button) => {
+      const label = getButtonSearchText(button);
+      return /音声|マイク|録音|添付|追加|ツール|閉じる|戻る|更新|Voice|voice|Mic|mic|Microphone|microphone|Attach|attach|Add|add|Tool|tool|Close|close|Back|back|Update|update/.test(label);
+    };
+
+    const pickUsableButton = (buttons) => {
+      return buttons.find(button => (
+        button &&
+        button.tagName === 'BUTTON' &&
+        isElementVisible(button) &&
+        !isDisabledButton(button) &&
+        matchesSendLabel(button)
+      )) || null;
+    };
+
+    for (const selector of selectors) {
+      try {
+        const button = pickUsableButton(Array.from(document.querySelectorAll(selector)));
+        if (button) return button;
+      } catch (e) {
+        console.warn('[Eisai] 送信ボタン候補セレクタを読み飛ばしました:', selector, e);
+      }
+    }
+
+    let scope = input;
+    for (let depth = 0; scope && depth < 8; depth++) {
+      const button = pickUsableButton(Array.from(scope.querySelectorAll ? scope.querySelectorAll('button') : []));
+      if (button) return button;
+      scope = scope.parentElement;
+    }
+
+    if (input) {
+      const inputRect = input.getBoundingClientRect();
+      const candidates = Array.from(document.querySelectorAll('button')).filter(button => {
+        if (!isElementVisible(button) || isDisabledButton(button) || isClearlyNotSendButton(button)) return false;
+        const rect = button.getBoundingClientRect();
+        const isNearInputY = rect.top < inputRect.bottom + 120 && rect.bottom > inputRect.top - 40;
+        const isRightSide = rect.left > inputRect.left + (inputRect.width * 0.45);
+        const isLikelyComposerButton = rect.width <= 90 && rect.height <= 90;
+        const isOutsideTool = !button.closest('#' + TOOL_ID);
+        return isNearInputY && isRightSide && isLikelyComposerButton && isOutsideTool;
+      });
+
+      candidates.sort((a, b) => {
+        const aRect = a.getBoundingClientRect();
+        const bRect = b.getBoundingClientRect();
+        return bRect.right - aRect.right;
+      });
+
+      if (candidates[0]) return candidates[0];
+    }
+
+    return null;
+  }
+
+  async function waitForGeminiSendButton(input, timeoutMs = 10000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const button = findGeminiSendButton(input);
+      if (button) return button;
+      await sleep(300);
+    }
+    return null;
+  }
+
+  async function sendGeminiPrompt(input) {
+    if (!input) return false;
+    input.focus();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await sleep(800);
+
+    const sendButton = await waitForGeminiSendButton(input);
+    if (sendButton) {
+      triggerButtonClick(sendButton);
+      return true;
+    }
+
+    console.warn('[Eisai] Geminiの送信ボタンを検出できなかったため、Enter送信にフォールバックします');
+    sendMessageViaEnter(input);
+    return true;
+  }
+
   function isBlogGemPage() {
     return location.pathname.indexOf('/gem/' + BLOG_GEM_ID) !== -1;
   }
@@ -331,6 +460,36 @@
       await sleep(500);
     }
     return null;
+  }
+
+  function dispatchGeminiInputEvents(input) {
+    try {
+      input.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText'
+      }));
+    } catch {
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function replaceGeminiInputText(input, text) {
+    if (!input) return false;
+    input.focus();
+    document.execCommand('selectAll', false, null);
+    document.execCommand('delete', false, null);
+    document.execCommand('insertText', false, text);
+    dispatchGeminiInputEvents(input);
+
+    const visibleText = (input.innerText || input.textContent || '').trim();
+    const probe = String(text || '').trim().slice(0, 80);
+    if (probe && !visibleText.includes(probe)) {
+      input.textContent = text;
+      dispatchGeminiInputEvents(input);
+    }
+    return true;
   }
 
   function savePendingBlogPrompt(prompt, blogType = currentBlogType) {
@@ -410,13 +569,8 @@
     const input = await waitForGeminiInput();
     if (!input) return false;
 
-    input.focus();
-    document.execCommand('selectAll', false, null);
-    document.execCommand('insertText', false, prompt);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-
-    await sleep(500);
-    sendMessageViaEnter(input);
+    replaceGeminiInputText(input, prompt);
+    await sendGeminiPrompt(input);
     return true;
   }
 
@@ -1398,12 +1552,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         borderRadius: '4px',
         border: '1px solid #d1d5db',
         background: '#f9fafb',
+        color: '#374151',
+        fontWeight: '700',
         cursor: 'pointer',
         whiteSpace: 'nowrap'
       }
     }, headerRight, '更新');
 
-    const closeBtn = createEl('button', { textContent: '←', style: { background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', padding: '4px 8px' } }, headerRight);
+    const closeBtn = createEl('button', { textContent: '←', style: { background: 'none', border: 'none', color: '#374151', fontSize: '16px', fontWeight: '700', cursor: 'pointer', padding: '4px 8px' } }, headerRight);
     closeBtn.title = 'サイドパネルを閉じる';
     closeBtn.onclick = () => {
       panel.classList.add('collapsed');
@@ -1455,7 +1611,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     const saveBtn = createEl('button', {
       style: {
         padding: '6px 10px', fontSize: '12px', cursor: 'pointer',
-        background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', marginTop: '4px'
+        background: '#f3f4f6', color: '#374151', fontWeight: '700', border: '1px solid #d1d5db', borderRadius: '4px', marginTop: '4px'
       }
     }, dContent, '教室情報を保存');
     saveBtn.onclick = () => {
@@ -1990,7 +2146,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
     }, footer, 'このプロンプトで画像を生成する');
 
-    imgGenBtn.onclick = () => {
+    imgGenBtn.onclick = async () => {
       const style = styleSelect.value;
       const appeal = appealSelect.value;
       const mainColor = mainColorSelect.value;
@@ -2107,12 +2263,8 @@ ${personThumbnailRules}
       isGeneratingPrompt = true;
       lastPromptNode = null;
 
-      input.focus();
-      document.execCommand('selectAll', false, null);
-      document.execCommand('insertText', false, promptRequest);
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-
-      sendMessageViaEnter(input);
+      replaceGeminiInputText(input, promptRequest);
+      await sendGeminiPrompt(input);
       watchThumbnailPrompt(statusDiv, imgExecBtn);
     };
 
@@ -2387,12 +2539,8 @@ ${formContent}`;
       statusDiv.textContent = '🖼 画像生成プロンプトを送信しました。画像が生成されます。';
       statusDiv.classList.add('show');
 
-      input.focus();
-      document.execCommand('selectAll', false, null);
-      document.execCommand('insertText', false, prompt);
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-
-      sendMessageViaEnter(input);
+      replaceGeminiInputText(input, prompt);
+      await sendGeminiPrompt(input);
     };
 
     async function runPendingBlogPromptIfNeeded() {
