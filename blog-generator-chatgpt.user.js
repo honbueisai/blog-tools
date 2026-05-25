@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.24
+// @version      0.1.25
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-24';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-24';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0124';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-25';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-25';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0125';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.24';
+  const CURRENT_VERSION = '0.1.25';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -406,6 +406,21 @@
       if (text.includes('<h1') || text.includes('<!--CTA_DATA_START-->')) return text;
       if (html.includes('<h1') || html.includes('<!--CTA_DATA_START-->')) return html;
       return text;
+    },
+
+    isGenerating() {
+      const selectors = [
+        'button[data-testid="stop-button"]',
+        'button[data-testid="composer-stop-button"]',
+        'button[aria-label*="Stop"]',
+        'button[aria-label*="stop"]',
+        'button[aria-label*="停止"]',
+        'button[aria-label*="中止"]'
+      ];
+      return selectors.some(selector => {
+        const btn = document.querySelector(selector);
+        return btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true';
+      });
     }
   };
 
@@ -976,12 +991,25 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
   function looksCompleteBlogHtml(raw) {
     const decoded = decodeHtmlText(raw || '');
-    return /<h1[\s>]/i.test(decoded) &&
-      (
-        /<!--CTA_DATA_END-->/i.test(decoded) ||
-        /締めの言葉[:：]/.test(decoded) ||
-        /<\/h2>[\s\S]*<\/p>/i.test(decoded)
-      );
+    return /<h1[\s>]/i.test(decoded) && /<!--CTA_DATA_END-->/i.test(decoded);
+  }
+
+  function getArticlePlainLength(html) {
+    return String(html || '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, '')
+      .trim()
+      .length;
+  }
+
+  function hasEnoughArticleHtml(html) {
+    const source = String(html || '');
+    const headingCount = (source.match(/<h2[\s>]/gi) || []).length;
+    const paragraphCount = (source.match(/<p[\s>]/gi) || []).length;
+    return /<h1[\s>]/i.test(source) &&
+      headingCount >= 2 &&
+      paragraphCount >= 4 &&
+      getArticlePlainLength(source) >= 300;
   }
 
   function watchBlogResponseAndEnableCopy(statusDiv, copyBtn, baselineCount = 0) {
@@ -1010,10 +1038,10 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
 
       const isCompleteHtml = looksCompleteBlogHtml(text);
-      const isStableLongResponse = stableCount >= 3 && text.length > 500;
-      const isStableShortHtml = stableCount >= 2 && /<h1[\s>]/i.test(decodeHtmlText(text || '')) && text.length > 250;
+      const isGenerationStopped = !CHATGPT_ADAPTER.isGenerating();
+      const isReadyToFinalize = isCompleteHtml && isGenerationStopped && stableCount >= 5;
 
-      if (isCompleteHtml || isStableLongResponse || isStableShortHtml) {
+      if (isReadyToFinalize) {
         clearInterval(timer);
 
         try {
@@ -1043,6 +1071,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           decoded = decoded.replace(/説明文1[:：].+[\s\S]*?締めの言葉[:：].+/gi, '');
           decoded = decoded.replace(/<p[^>]*style=['"][^'"]*color:\s*red[^'"]*['"][^>]*>\s*■+CTAセクション■+\s*<\/p>/gi, '');
           decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '');
+
+          if (!hasEnoughArticleHtml(decoded)) {
+            lastBlogHtml = '';
+            statusDiv.textContent = '⚠️ ブログ本文が途中までしか取得できませんでした。赤いコピーは出さずに止めています。ChatGPTの生成完了後、もう一度「ChatGPTへ送信して記事生成」を押してください。';
+            statusDiv.classList.add('show');
+            copyBtn.style.display = 'none';
+            return;
+          }
 
           const info = getSetting();
           let ctaUrl = (info.url || '').trim();
