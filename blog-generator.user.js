@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.60.09
+// @version      0.60.10
 // @description  英才ブログ生成ツール
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -14,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-60-09';
-  const BTN_ID = 'eisai-btn-v0-60-09';
-  const STORAGE_KEY = 'eisai_blog_info_v06009';
+  const TOOL_ID = 'eisai-tool-v0-60-10';
+  const BTN_ID = 'eisai-btn-v0-60-10';
+  const STORAGE_KEY = 'eisai_blog_info_v06010';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.60.09';
+  const CURRENT_VERSION = '0.60.10';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
   const NORMAL_GEMINI_URL = 'https://gemini.google.com/app?hl=ja';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -40,10 +40,11 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.60.09 起動');
+  console.log('🚀 英才ブログ生成ツール v0.60.10 起動');
 
   let lastBlogHtml = '';
   let lastSentBlogPrompt = '';
+  let lastLocalCtaData = null;
   let blogAutoRetryCount = 0;
 
   // =========================================================
@@ -436,10 +437,11 @@
     return true;
   }
 
-  function savePendingBlogPrompt(prompt, blogType = currentBlogType) {
+  function savePendingBlogPrompt(prompt, blogType = currentBlogType, ctaData = null) {
     localStorage.setItem(PENDING_BLOG_PROMPT_KEY, JSON.stringify({
       prompt,
       blogType,
+      ctaData,
       createdAt: Date.now()
     }));
   }
@@ -520,15 +522,16 @@
 
   function buildBlogRetryPrompt(originalPrompt) {
     return `直前の回答は失敗です。
-CTA素材だけ、相談ポイントだけ、または要約だけが出力されており、ブログ本文HTMLがありませんでした。
+ブログ本文ではない短い素材や要約だけが出力されており、ブログ本文HTMLがありませんでした。
 この再送ではGemのカスタム指示や過去の流れに依存せず、下記の条件だけを最優先してください。
 
 【最優先の出力形式】
 - 最終回答の1文字目は必ず「<」です。
 - 1行目は必ず <h1>...</h1> です。
 - JSON、Markdown、コードブロック、前置き、解説は禁止です。
-- 「説明文1：」「相談ポイント1：」「体験ポイント1：」から始める回答は禁止です。
-- 最初にブログ本文HTMLを完成させ、CTA_DATAは一番最後にだけ付けてください。
+- 受付案内用の短い素材や要約だけの回答は禁止です。
+- ブログ本文HTML以外は一切出力しないでください。
+- ブログ本文HTMLだけを出力してください。
 
 【本文の必須構成】
 - <h1>を1個
@@ -540,27 +543,11 @@ CTA素材だけ、相談ポイントだけ、または要約だけが出力さ�
 
 【文章ルール】
 - 保護者の不安に寄り添うところから始めてください。
-- いきなり宣伝やCTA素材から入らないでください。
+- いきなり宣伝や受付案内から入らないでください。
 - 入力された学校名、学年、教科、点数、生徒の様子、教室で行ったことを本文に反映してください。
 - 「何をしたか」だけでなく、「生徒がどう変わったか」「室長がどう感じたか」を書いてください。
 - 架空の実績、入力にない点数、合格校、キャンペーンは作らないでください。
 - 硬すぎる業務文ではなく、保護者に近い距離の自然な敬体で書いてください。
-
-【CTA_DATA】
-本文HTMLをすべて書き終えた後、最後にだけ以下を付けてください。
-<!--CTA_DATA_START-->
-説明文1：[記事内容に合わせた、不安を解消する一言]
-説明文2：[教室見学や相談へのハードルを下げる優しい一言]
-相談ポイント1：[記事関連の相談内容1]
-相談ポイント2：[記事関連の相談内容2]
-相談ポイント3：[記事関連の相談内容3]
-相談ポイント4：[記事関連の相談内容4]
-体験ポイント1：[体験で得られるメリット1]
-体験ポイント2：[体験で得られるメリット2]
-体験ポイント3：[体験で得られるメリット3]
-体験ポイント4：[体験で得られるメリット4]
-締めの言葉：[記事内容に合わせた具体的な一文。定型句しか書けない場合は空欄]
-<!--CTA_DATA_END-->
 
 【元の入力情報】
 ${originalPrompt}`;
@@ -576,8 +563,9 @@ ${originalPrompt}`;
 - <!--EISAI_ARTICLE_START--> の次の行は、必ず <h1> から始まるHTML本文にしてください。
 - Markdown、コードブロック、前置き、解説は出力しないでください。
 - <html>、<head>、<body> は不要です。
-- CTA素材だけ、相談ポイントだけ、要約だけ、箇条書きだけの記事は禁止です。
-- 本文HTMLをすべて書き終えた後、最後にCTA_DATAブロックを出力してください。
+- 受付案内用の短い素材、要約だけ、箇条書きだけの記事は禁止です。
+- ブログ本文HTML以外は出力しないでください。
+- CTA部分はツール側で自動生成します。あなたはブログ本文HTMLだけを書いてください。
 - 回答の最後は必ず <!--EISAI_ARTICLE_END--> で終えてください。
 
 【出力構成】
@@ -590,7 +578,6 @@ ${originalPrompt}`;
 7. 室長の思いや感情が伝わる一文を本文全体で1〜2回入れる
 8. 写真挿入マークを本文の流れに合わせて3〜5個入れる
 9. 結び：保護者への前向きな<p>を2段落
-10. 最後にCTA_DATAブロック
 
 【冒頭あいさつ】
 - 対象エリアがある場合は「${area || '◯◯エリア'}の個別指導塾、英才個別学院 ${kosha} 室長の${shichou}です！」のように始めてください。
@@ -628,25 +615,6 @@ ${originalPrompt}`;
 - p本文を中心にしてください。
 - ul/li は必要な時だけ使ってください。
 
-【CTA_DATA形式】
-本文HTMLの最後に、必ず以下の形式でCTA_DATAを出力してください。
-
-<!--CTA_DATA_START-->
-説明文1：[記事内容に合わせた、不安を解消する一言]
-説明文2：[教室見学や相談へのハードルを下げる優しい一言]
-相談ポイント1：[記事関連の相談内容1]
-相談ポイント2：[記事関連の相談内容2]
-相談ポイント3：[記事関連の相談内容3]
-相談ポイント4：[記事関連の相談内容4]
-体験ポイント1：[体験で得られるメリット1]
-体験ポイント2：[体験で得られるメリット2]
-体験ポイント3：[体験で得られるメリット3]
-体験ポイント4：[体験で得られるメリット4]
-締めの言葉：[記事内容に合わせた具体的な一文。定型句しか書けない場合は空欄]
-<!--CTA_DATA_END-->
-
-<!--EISAI_ARTICLE_END-->
-
 【教室情報】
 校舎名: ${kosha}
 室長名: ${shichou}
@@ -658,7 +626,7 @@ ${typeInstruction}
 ${formContent}
 
 【最終確認】
-回答を書き始める直前に、内部で「EISAI_ARTICLE_STARTの次に<h1>、本文HTMLが先、CTA_DATAが最後、EISAI_ARTICLE_ENDで終了」になっているか確認してください。確認結果は出力しないでください。`;
+回答を書き始める直前に、内部で「EISAI_ARTICLE_STARTの次に<h1>、ブログ本文HTMLのみ、EISAI_ARTICLE_ENDで終了」になっているか確認してください。確認結果は出力しないでください。`;
   }
 
   function decodeHtmlText(raw) {
@@ -1279,6 +1247,83 @@ ${formContent}
     '締めの言葉': 'お子さまの「これから」のために、まずは私たちにお話を聞かせてください。一緒に最善の一歩を見つけましょう。'
   };
 
+  function buildLocalCtaData(blogType, typeData = {}) {
+    const text = Object.values(typeData)
+      .filter(value => typeof value === 'string')
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const hasTest = /テスト|点|内申|定期|模試/.test(text);
+    const hasStudyHabit = /自習|家庭|習慣|ワーク|ノート|宿題/.test(text);
+    const hasAnxiety = /苦手|不安|迷|焦|嫌|無理|つまず/.test(text);
+
+    const byType = {
+      [BLOG_TYPES.GROWTH]: {
+        '説明文1': '今回の記事のような小さな変化も、今の学習状況を整理するところから見つかります。',
+        '説明文2': '点数や答案だけで判断せず、お子さまに合う進め方を一緒に考えます。',
+        '相談ポイント1': hasTest ? '今回のテスト結果から次に直すポイントを整理' : '今のつまずきの原因を一緒に確認',
+        '相談ポイント2': hasStudyHabit ? '家庭学習やノートの使い方を見直す相談' : '苦手科目への向き合い方の相談',
+        '相談ポイント3': hasAnxiety ? '「苦手」「無理」という気持ちへの声かけ相談' : 'お子さまに合う学習ペースの相談',
+        '相談ポイント4': '次回テストに向けた具体的な学習計画づくり',
+        '体験ポイント1': '実際の授業でつまずきポイントを確認',
+        '体験ポイント2': '先生との相性や教室の雰囲気を確認',
+        '体験ポイント3': '解き方やノートの残し方をその場で体験',
+        '体験ポイント4': '自習室や学習環境の使い方を確認'
+      },
+      [BLOG_TYPES.EVENT]: {
+        '説明文1': '講習やイベントを通じて、今必要な学習を無理なく整理できます。',
+        '説明文2': '参加前の不安や予定の相談も、まずはお気軽にお話しください。',
+        '相談ポイント1': '講習やイベント内容が合うかの相談',
+        '相談ポイント2': '学校予定や部活と両立できる学習計画の相談',
+        '相談ポイント3': '苦手単元をどこから復習するかの相談',
+        '相談ポイント4': '参加後にどう家庭学習へつなげるかの相談',
+        '体験ポイント1': '教室の雰囲気や授業の進め方を確認',
+        '体験ポイント2': '今の学力に合った学習内容を体験',
+        '体験ポイント3': '短期間で取り組むべきポイントを確認',
+        '体験ポイント4': '先生との相性や質問しやすさを確認'
+      },
+      [BLOG_TYPES.PERSON]: {
+        '説明文1': '先生との相性や教室の雰囲気は、実際に話してみると見えてくることがあります。',
+        '説明文2': 'お子さまが安心して質問できる関わり方を大切にしています。',
+        '相談ポイント1': 'お子さまに合う先生や声かけの相談',
+        '相談ポイント2': '質問しやすい授業環境についての相談',
+        '相談ポイント3': '苦手科目への向き合い方の相談',
+        '相談ポイント4': '通塾後の学習ペースづくりの相談',
+        '体験ポイント1': '実際の先生との相性を確認',
+        '体験ポイント2': '質問しやすい雰囲気を体験',
+        '体験ポイント3': 'お子さまに合わせた説明を体験',
+        '体験ポイント4': '教室全体の雰囲気を確認'
+      },
+      [BLOG_TYPES.SERVICE]: {
+        '説明文1': '勉強のお悩みは、状況を整理するだけでも次の一歩が見えやすくなります。',
+        '説明文2': '無理なご案内ではなく、まずは今のお困りごとをお聞きします。',
+        '相談ポイント1': '今の学習状況と課題の整理',
+        '相談ポイント2': '家庭学習やテスト勉強の進め方相談',
+        '相談ポイント3': '塾選びや通い方への不安相談',
+        '相談ポイント4': 'お子さまに合う学習プランの相談',
+        '体験ポイント1': '現在のつまずきポイントを確認',
+        '体験ポイント2': '実際の個別指導を体験',
+        '体験ポイント3': '先生との相性や教室環境を確認',
+        '体験ポイント4': '今後の学習計画のイメージを確認'
+      },
+      [BLOG_TYPES.SCORE]: {
+        '説明文1': '点数アップの裏側にある取り組みを、次はお子さまに合わせて一緒に作っていきます。',
+        '説明文2': '結果だけでなく、次に何を変えるかを具体的に整理できます。',
+        '相談ポイント1': '今回のテスト結果の振り返り',
+        '相談ポイント2': '点数アップにつながる勉強法の相談',
+        '相談ポイント3': '苦手単元と優先順位の整理',
+        '相談ポイント4': '次回テストまでの学習計画づくり',
+        '体験ポイント1': '答案やノートから弱点を確認',
+        '体験ポイント2': '苦手単元の個別指導を体験',
+        '体験ポイント3': '自習室や質問しやすい環境を確認',
+        '体験ポイント4': '次の目標に向けた進め方を確認'
+      },
+      [BLOG_TYPES.OTHER]: defaultCtaData
+    };
+
+    return { ...defaultCtaData, ...(byType[blogType] || byType[BLOG_TYPES.OTHER]) };
+  }
+
   function buildCtaHtml(url, tel, ctaData = null) {
     const d = ctaData || defaultCtaData;
     const closingMessage = getCtaClosingMessage(d);
@@ -1512,16 +1557,16 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           }
           raw = innerHtmlRaw || innerTextRaw;
 
-          let ctaData = null;
+          let ctaData = lastLocalCtaData;
           const blogJson = parseBlogJsonResponse(innerTextRaw || decodeHtmlText(innerHtmlRaw));
 
           if (blogJson) {
             decoded = renderBlogJsonHtml(blogJson);
             const articleJson = blogJson.article && typeof blogJson.article === 'object' ? blogJson.article : blogJson;
-            ctaData = normalizeJsonCtaData(blogJson.cta || blogJson.ctaData || blogJson.cta_data || articleJson.cta);
+            ctaData = normalizeJsonCtaData(blogJson.cta || blogJson.ctaData || blogJson.cta_data || articleJson.cta) || ctaData;
             console.log('[Eisai] JSON応答からブログHTMLを生成しました');
           } else {
-            ctaData = parseCtaData(innerTextRaw || decodeHtmlText(innerHtmlRaw));
+            ctaData = parseCtaData(innerTextRaw || decodeHtmlText(innerHtmlRaw)) || ctaData;
 
             decoded = sanitizeGeminiHtml(innerHtmlRaw);
             decoded = decoded.replace(/^```(?:html)?\s*/i, '').replace(/\s*```$/i, '');
@@ -1562,7 +1607,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
               blogAutoRetryCount++;
               lastBlogHtml = '';
               copyBtn.style.display = 'none';
-              statusDiv.textContent = '⚠️ GeminiがCTA素材だけを返したため、本文HTML必須条件を強めて1回だけ自動再送します...';
+              statusDiv.textContent = '⚠️ Geminiがブログ本文ではない短い素材を返したため、本文HTML必須条件を強めて1回だけ自動再送します...';
               statusDiv.classList.add('show');
 
               insertPromptAndSend(buildBlogRetryPrompt(lastSentBlogPrompt)).then(sent => {
@@ -1574,14 +1619,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
                 }
               }).catch(e => {
                 console.error('[Eisai] ブログ本文の自動再送に失敗しました:', e);
-                statusDiv.textContent = '❌ Geminiの出力がCTA素材だけだったため再送を試みましたが、エラーが発生しました。もう一度「Geminiへ送信して記事生成」を押してください。';
+                statusDiv.textContent = '❌ Geminiの出力がブログ本文ではなかったため再送を試みましたが、エラーが発生しました。もう一度「Geminiへ送信して記事生成」を押してください。';
                 statusDiv.classList.add('show');
               });
               return;
             }
 
             lastBlogHtml = '';
-            statusDiv.textContent = '❌ Geminiの出力にブログ本文が見つかりませんでした。CTA素材だけの可能性があります。通常Gemini画面で生成されているか確認し、もう一度「Geminiへ送信して記事生成」を押してください。';
+            statusDiv.textContent = '❌ Geminiの出力にブログ本文が見つかりませんでした。短い素材や要約だけの可能性があります。通常Gemini画面で生成されているか確認し、もう一度「Geminiへ送信して記事生成」を押してください。';
             statusDiv.classList.add('show');
             copyBtn.style.display = 'none';
             return;
@@ -2502,6 +2547,7 @@ ${personThumbnailRules}
 
       const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
+      const localCtaData = buildLocalCtaData(currentBlogType, typeData);
       const prompt = buildFullBlogPrompt({ kosha, shichou, area, typeInstruction, formContent });
 
       formStatusDiv.textContent = isNormalGeminiNewChatPage()
@@ -2515,10 +2561,11 @@ ${personThumbnailRules}
       imgExecBtn.style.display = 'none';
       lastBlogHtml = '';
       lastSentBlogPrompt = prompt;
+      lastLocalCtaData = localCtaData;
       blogAutoRetryCount = 0;
 
       if (!isNormalGeminiNewChatPage()) {
-        savePendingBlogPrompt(prompt, currentBlogType);
+        savePendingBlogPrompt(prompt, currentBlogType, localCtaData);
         localStorage.setItem('eisai_collapsed', 'false');
         location.href = normalGeminiUrlForBlog();
         return;
@@ -2618,6 +2665,7 @@ ${personThumbnailRules}
       imgExecBtn.style.display = 'none';
       lastBlogHtml = '';
       lastSentBlogPrompt = pending.prompt;
+      lastLocalCtaData = pending.ctaData || null;
       blogAutoRetryCount = 0;
 
       const sent = await insertPromptAndSend(pending.prompt);
