@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.22
+// @version      0.1.23
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-22';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-22';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0122';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-23';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-23';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0123';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.22';
+  const CURRENT_VERSION = '0.1.23';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -1933,7 +1933,12 @@ ${personThumbnailRules}
 ■ キャッチと見せ方の考え方
 - まず、記事の中でいちばん目を引く素材を1つ選んでください。
   例：点数、答案、ノート、手元、表情、親の悩み、イベント名など。
-- 文字は短くしてください。メインは1フレーズ、サブは必要な時だけ。
+- 文字は短くしてください。メインは必ず1フレーズだけ、サブキャッチは状況に応じて0〜2本まで使ってください。
+- サブキャッチ1本目は「何の記事か」を補足します。例：「途中式で変わった中2数学」「テスト前に動ける子へ」。
+- サブキャッチ2本目は、必要な時だけ「対象・状況・ベネフィット」を短く補足します。例：「48点→76点」「小6英語の自信」「無料テスト対策」。
+- サブキャッチを2本使う場合でも、どちらもメインよりかなり小さくしてください。メインの邪魔をしないことが最優先です。
+- 小さなバッジやアイコンは0〜2個まで使ってOKです。使うなら意味のあるものだけにしてください。例：答案アイコン、チェック、矢印、赤ペン、テスト対策ラベル、点数バッジ。
+- 装飾だけのキラキラ、爆発、意味のないスタンプ、読めない英字は使わないでください。
 - 点数や期間がある記事では、数字を大きく見せると強いです。
 - ただし数字を2つも3つも同じ強さで並べず、主役は1つだけにしてください。
 - 「強め」なら、文字はガンと大きく。写真に少しかぶってもOKです。
@@ -1955,7 +1960,7 @@ ${personThumbnailRules}
 日本語で、下のような温度感で書いてください。
 
 例：
-「3:2のブログサムネイル。数学の答案用紙を手に持っている写真っぽい画。左〜中央に『28点アップ』をかなり大きく、太いオレンジ文字＋白フチ＋濃い影でドンと置く。右上に小さく『48点→76点』。下に『途中式で変わった中2数学』を短く添える。全体は明るい教室の雰囲気。文字は写真より先に目に入る感じ。古い広告っぽいギラギラ3Dや巨大な青帯にはしない。」
+「3:2のブログサムネイル。数学の答案用紙を手に持っている写真っぽい画。左〜中央に『28点アップ』をかなり大きく、太いオレンジ文字＋白フチ＋濃い影でドンと置く。サブで『途中式で変わった中2数学』を短く添える。右上に小さな点数バッジ『48点→76点』、必要ならチェックアイコンを1つ。全体は明るい教室の雰囲気。文字は写真より先に目に入る感じ。古い広告っぽいギラギラ3Dや巨大な青帯にはしない。」
 
 このくらいのラフさで十分です。
 細かい座標、厳密な比率、禁止事項の長い列挙は入れないでください。
@@ -1967,6 +1972,8 @@ IMAGE2.0が自由に良い絵を作れる余白を残してください。
 - 塾名やロゴは入れない
 - 同じ文言を何度も繰り返さない
 - メイン文字は読みやすく、サムネイルとして目立つ
+- サブキャッチは最大2本まで。必要ない時は1本または無しでよい
+- アイコンやバッジは最大2個まで。意味があるものだけ使う
 - 記事にない実績や数字は作らない
 
 ■ 出力形式

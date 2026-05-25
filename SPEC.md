@@ -136,6 +136,7 @@ const BLOG_TYPES = {
 - 内部で複数案を検討し、最終的に1つの画像生成プロンプトだけを出力する
 - 古い広告風の赤オレンジ3D文字、巨大な青帯、同じ数字の重複強調は避ける
 - 文字要素は原則2つまでに抑え、答案・ノート・手元など現場感のある素材を主役にする
+- 記事内容に応じてサブキャッチは最大2本まで許可し、点数バッジ・答案・チェック・矢印など意味のある小アイコンは最大2個まで使える
 
 #### カラースタイル
 - メインカラーとサブカラーの選択
@@ -152,7 +153,7 @@ const BLOG_TYPES = {
 
 ### ストレージキー
 - `STORAGE_KEY`: `eisai_blog_info_v05663`（バージョン依存）
-- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0122`（バージョン依存）
+- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0123`（バージョン依存）
 - ChatGPT版テストモード: `eisai_chatgpt_test_mode_enabled`（ローカル解除式）
 - `CLASSROOM_STORAGE_KEY`: `eisai_classroom_settings_persistent`（永続）
 
