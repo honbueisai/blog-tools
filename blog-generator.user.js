@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.60.07
+// @version      0.60.08
 // @description  英才ブログ生成ツール
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -14,13 +14,13 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-60-07';
-  const BTN_ID = 'eisai-btn-v0-60-07';
-  const STORAGE_KEY = 'eisai_blog_info_v06007';
+  const TOOL_ID = 'eisai-tool-v0-60-08';
+  const BTN_ID = 'eisai-btn-v0-60-08';
+  const STORAGE_KEY = 'eisai_blog_info_v06008';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.60.07';
+  const CURRENT_VERSION = '0.60.08';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
-  const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
+  const NORMAL_GEMINI_URL = 'https://gemini.google.com/app?hl=ja';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
   const BLOG_GEM_ID = '1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf';
   const THUMBNAIL_GEM_ID = '1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ';
@@ -40,7 +40,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.60.07 起動');
+  console.log('🚀 英才ブログ生成ツール v0.60.08 起動');
 
   let lastBlogHtml = '';
   let lastSentBlogPrompt = '';
@@ -377,6 +377,10 @@
     return location.pathname.indexOf('/gem/' + THUMBNAIL_GEM_ID) !== -1;
   }
 
+  function isNormalGeminiNewChatPage() {
+    return location.pathname === '/app' || location.pathname === '/app/';
+  }
+
   function findGeminiInput() {
     return document.querySelector('div[contenteditable="true"], rich-textarea div[contenteditable="true"]');
   }
@@ -551,6 +555,101 @@ CTA素材だけ、相談ポイントだけ、または要約だけが出力さ�
 ${originalPrompt}`;
   }
 
+  function buildFullBlogPrompt({ kosha, shichou, area, typeInstruction, formContent }) {
+    return `あなたは英才個別学院の教室ブログ専門ライターです。
+以下の入力情報をもとに、保護者向けブログ記事をHTML形式で作成してください。
+
+【最重要】
+- 出力は必ずHTMLです。JSONでは出力しないでください。
+- Gemini画面に見える最終回答は、必ず <!--EISAI_ARTICLE_START--> から始めてください。
+- <!--EISAI_ARTICLE_START--> の次の行は、必ず <h1> から始まるHTML本文にしてください。
+- Markdown、コードブロック、前置き、解説は出力しないでください。
+- <html>、<head>、<body> は不要です。
+- CTA素材だけ、相談ポイントだけ、要約だけ、箇条書きだけの記事は禁止です。
+- 本文HTMLをすべて書き終えた後、最後にCTA_DATAブロックを出力してください。
+- 回答の最後は必ず <!--EISAI_ARTICLE_END--> で終えてください。
+
+【出力構成】
+1. <h1>：32文字以内のブログタイトル
+2. 冒頭あいさつ：<p>で1段落
+3. 導入：保護者の不安に寄り添う<p>を2段落
+4. 本文セクション：<h2>を3〜4個。それぞれに<p>を2段落以上
+5. 必要な場面だけ <ul><li>...</li></ul> で取り組みやチェックポイントを整理
+6. 必要な場面だけ、保護者と室長の短い会話を <p><strong>保護者：</strong>...</p> のように入れる
+7. 室長の思いや感情が伝わる一文を本文全体で1〜2回入れる
+8. 写真挿入マークを本文の流れに合わせて3〜5個入れる
+9. 結び：保護者への前向きな<p>を2段落
+10. 最後にCTA_DATAブロック
+
+【冒頭あいさつ】
+- 対象エリアがある場合は「${area || '◯◯エリア'}の個別指導塾、英才個別学院 ${kosha} 室長の${shichou}です！」のように始めてください。
+- 対象エリアが空欄の場合は「英才個別学院 ${kosha} 室長の${shichou}です！」のように始めてください。
+- あいさつの後に、「今日は、〜についてお話しします。」という自然な導入を続けてください。
+- 毎回まったく同じ定型文にせず、記事内容に合わせて少し変化をつけてください。
+
+【本文の書き方】
+- 冒頭は、保護者の不安や悩みに寄り添うところから始めてください。いきなり成果や宣伝から入らないでください。
+- 保護者、とくにお母さんが「うちの子にも当てはまるかもしれない」「一人で抱え込まなくていいかもしれない」と感じる温度で書いてください。
+- 家で見える不安、親子でピリピリしてしまう気持ち、声かけに迷う気持ちにやさしく触れてください。ただし保護者を責めないでください。
+- 文体は敬体を基本にしつつ、少し近い距離で話しかけてください。「ですよね」「かもしれません」「まずは」「少しずつ」のような自然な言葉を使ってください。
+- 「〜いたします」「〜させていただきます」「ご確認ください」「サポートいたします」などの硬い業務文は使いすぎないでください。
+- 本文は自然な段落で書いてください。箇条書きは補助だけにし、本文の中心にしないでください。
+- 各段落は1〜2文程度で短くしてください。長い説明を1段落に詰め込まないでください。
+- 「何をしたか」だけでなく、「生徒がどう変わったか」「教室でどんな場面があったか」を書いてください。
+- 入力された学校名、学年、教科、点数、期間、生徒の様子、先生・室長コメントを本文に反映してください。
+- 室長目線は売り込みではなく、そばで見守っていた人の言葉として自然に入れてください。
+- 入力にない実績、点数、学校名、生徒発言、キャンペーンは作らないでください。
+- 大げさな広告表現、断定表現、「必ず伸びる」「絶対合格」は使わないでください。
+
+【装飾と写真挿入】
+- 読ませたい言葉は必要な箇所だけ <strong>...</strong> にしてください。強調しすぎは禁止です。
+- リストは、手順・取り組み・チェックポイントなど、3項目以上で整理した方が読みやすい時だけ使ってください。
+- 写真挿入マークは必ず次の形式で、1行だけ入れてください。説明文は付けないでください。
+  <p><strong>■■■■■■■■ 写真挿入（ノートの写真） ■■■■■■■■</strong></p>
+- 写真候補は文章の流れに沿って、ノート・途中式・解き直しリスト・答案・確認テスト・自習風景・教室内の教材など、実際の現場で撮れる写真を優先してください。
+- 汎用的な悩み写真、人物の頭抱え写真、フリー素材風のイメージ写真、冒頭用の雰囲気写真は作らないでください。
+- 写真挿入マークを同じ場所にまとめないでください。本文全体に自然に分散してください。
+- すべてのセクションに写真を入れる必要はありません。本当に現場感が伝わる場面だけを選んでください。
+
+【文章量】
+- 本文全体は900〜1400字程度。
+- h2見出しは3〜4個。
+- p本文を中心にしてください。
+- ul/li は必要な時だけ使ってください。
+
+【CTA_DATA形式】
+本文HTMLの最後に、必ず以下の形式でCTA_DATAを出力してください。
+
+<!--CTA_DATA_START-->
+説明文1：[記事内容に合わせた、不安を解消する一言]
+説明文2：[教室見学や相談へのハードルを下げる優しい一言]
+相談ポイント1：[記事関連の相談内容1]
+相談ポイント2：[記事関連の相談内容2]
+相談ポイント3：[記事関連の相談内容3]
+相談ポイント4：[記事関連の相談内容4]
+体験ポイント1：[体験で得られるメリット1]
+体験ポイント2：[体験で得られるメリット2]
+体験ポイント3：[体験で得られるメリット3]
+体験ポイント4：[体験で得られるメリット4]
+締めの言葉：[記事内容に合わせた具体的な一文。定型句しか書けない場合は空欄]
+<!--CTA_DATA_END-->
+
+<!--EISAI_ARTICLE_END-->
+
+【教室情報】
+校舎名: ${kosha}
+室長名: ${shichou}
+対象エリア: ${area || '未設定'}
+
+${typeInstruction}
+
+【入力情報】
+${formContent}
+
+【最終確認】
+回答を書き始める直前に、内部で「EISAI_ARTICLE_STARTの次に<h1>、本文HTMLが先、CTA_DATAが最後、EISAI_ARTICLE_ENDで終了」になっているか確認してください。確認結果は出力しないでください。`;
+  }
+
   function decodeHtmlText(raw) {
     return (raw || '')
       .replace(/&lt;/g, '<')
@@ -676,7 +775,9 @@ ${originalPrompt}`;
       const promptMarkers = [
         '【英才ブログHTML生成リクエスト】',
         '直前の回答は失敗です。',
+        'あなたは英才個別学院の教室ブログ専門ライターです。',
         '【元の入力情報】',
+        '【最重要】',
         '【出力契約】',
         '【入力情報】',
         'このGemのInstructionsに従って'
@@ -1419,10 +1520,17 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
             decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '').trim();
           }
 
+          decoded = decoded
+            .replace(/<!--EISAI_ARTICLE_START-->/gi, '')
+            .replace(/<!--EISAI_ARTICLE_END-->/gi, '')
+            .trim();
+
           let hasRequiredHtml = /<h1[\s>]/i.test(decoded) && /<p[\s>]/i.test(decoded);
 
           if (!blogJson && !hasRequiredHtml) {
             const fallbackText = decodeHtmlText(innerTextRaw)
+              .replace(/<!--EISAI_ARTICLE_START-->/gi, '')
+              .replace(/<!--EISAI_ARTICLE_END-->/gi, '')
               .replace(/<!--CTA_DATA_START-->[\s\S]*?<!--CTA_DATA_END-->/gi, '')
               .replace(/^\s*(説明文[12]|相談ポイント\d+|体験ポイント\d+|締めの言葉)[:：].*$/gim, '')
               .trim();
@@ -2383,33 +2491,11 @@ ${personThumbnailRules}
 
       const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
-      const prompt = `【英才ブログHTML生成リクエスト】
-このGemのInstructionsに従って、以下の入力情報から保護者向けブログ記事を作成してください。
+      const prompt = buildFullBlogPrompt({ kosha, shichou, area, typeInstruction, formContent });
 
-【出力契約】
-- 最終回答は必ずHTMLです。JSONは禁止です。
-- 最初の1文字は必ず「<」です。
-- 1行目は必ず <h1>...</h1> です。
-- 本文HTMLを先に完成させ、最後にCTA_DATAを付けてください。
-- 「説明文1：」「相談ポイント1：」「体験ポイント1：」から始める回答は禁止です。
-- Markdown、コードブロック、前置き、解説は不要です。
-
-【教室情報】
-校舎名: ${kosha}
-室長名: ${shichou}
-対象エリア: ${area || '未設定'}
-
-${typeInstruction}
-
-【入力情報】
-${formContent}
-
-【最終確認】
-回答を書き始める直前に、内部で「<h1>から始まる本文HTMLが先、CTA_DATAが最後」になっているか確認してください。確認結果は出力しないでください。`;
-
-      formStatusDiv.textContent = isBlogGemPage()
-        ? '📨 ブログGemへ送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。'
-        : '📨 ブログGemへ移動して送信します。Gemが開いたら自動で入力・送信されます。';
+      formStatusDiv.textContent = isNormalGeminiNewChatPage()
+        ? '📨 通常のGeminiへ送信しました。生成が完了したら、完了画面に切り替わります。入力内容はこのまま残ります。'
+        : '📨 通常のGeminiへ移動して送信します。Gemは使わず、自動で入力・送信されます。';
       formStatusDiv.classList.add('show');
       resultStep.style.display = 'none';
       returnResultBtn.style.display = 'none';
@@ -2420,16 +2506,16 @@ ${formContent}
       lastSentBlogPrompt = prompt;
       blogAutoRetryCount = 0;
 
-      if (!isBlogGemPage()) {
+      if (!isNormalGeminiNewChatPage()) {
         savePendingBlogPrompt(prompt, currentBlogType);
         localStorage.setItem('eisai_collapsed', 'false');
-        location.href = BLOG_GEM_URL;
+        location.href = NORMAL_GEMINI_URL;
         return;
       }
 
       const sent = await insertPromptAndSend(prompt);
       if (!sent) {
-        alert('Geminiの入力欄が見つかりませんでした。ブログGemが開いているか確認してください。');
+        alert('Geminiの入力欄が見つかりませんでした。通常のGemini画面が開いているか確認してください。');
         return;
       }
 
@@ -2504,7 +2590,7 @@ ${formContent}
     };
 
     async function runPendingBlogPromptIfNeeded() {
-      if (!isBlogGemPage()) return;
+      if (!isNormalGeminiNewChatPage()) return;
 
       const pending = loadPendingBlogPrompt();
       if (!pending) return;
@@ -2514,7 +2600,7 @@ ${formContent}
       step1.style.display = 'none';
       step2.style.display = 'block';
       resultStep.style.display = 'none';
-      formStatusDiv.textContent = '📨 ブログGemを開きました。保存していた入力内容を自動送信しています...';
+      formStatusDiv.textContent = '📨 通常のGeminiを開きました。保存していた入力内容を自動送信しています...';
       formStatusDiv.classList.add('show');
       copyBtn.style.display = 'none';
       imgSection.style.display = 'none';
@@ -2525,12 +2611,12 @@ ${formContent}
 
       const sent = await insertPromptAndSend(pending.prompt);
       if (!sent) {
-        formStatusDiv.textContent = '❌ ブログGemの入力欄を検出できませんでした。ページの読み込み完了後、もう一度「Geminiへ送信して記事生成」を押してください。';
+        formStatusDiv.textContent = '❌ 通常のGemini入力欄を検出できませんでした。ページの読み込み完了後、もう一度「Geminiへ送信して記事生成」を押してください。';
         formStatusDiv.classList.add('show');
         return;
       }
 
-      formStatusDiv.textContent = '📨 ブログGemへ送信しました。生成が完了したら、完了画面に切り替わります。';
+      formStatusDiv.textContent = '📨 通常のGeminiへ送信しました。生成が完了したら、完了画面に切り替わります。';
       formStatusDiv.classList.add('show');
       watchBlogResponseAndEnableCopy(formStatusDiv, copyBtn, showResultStep);
     }
@@ -2591,7 +2677,7 @@ ${formContent}
     }
     if (document.getElementById(BTN_ID)) return;
 
-    if ((isBlogGemPage() && loadPendingBlogPrompt() || isThumbnailGemPage() && loadPendingThumbnailPrompt()) && !document.getElementById(TOOL_ID)) {
+    if ((isNormalGeminiNewChatPage() && loadPendingBlogPrompt() || isThumbnailGemPage() && loadPendingThumbnailPrompt()) && !document.getElementById(TOOL_ID)) {
       buildPanel();
     }
 
