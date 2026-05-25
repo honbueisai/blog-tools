@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.23
+// @version      0.1.24
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-23';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-23';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0123';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-24';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-24';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0124';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.23';
+  const CURRENT_VERSION = '0.1.24';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -966,15 +966,40 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
   // =========================================================
   // 6. ウォッチャー：ブログ生成完了
   // =========================================================
+  function getLatestResponseNodeAfterBaseline(baselineCount = 0) {
+    const nodes = CHATGPT_ADAPTER.getResponseNodes();
+    if (!nodes.length) return null;
+    const safeBaseline = Math.max(0, Math.min(Number(baselineCount) || 0, nodes.length));
+    const newNodes = nodes.slice(safeBaseline);
+    return (newNodes.length ? newNodes : nodes)[(newNodes.length ? newNodes : nodes).length - 1] || null;
+  }
+
+  function looksCompleteBlogHtml(raw) {
+    const decoded = decodeHtmlText(raw || '');
+    return /<h1[\s>]/i.test(decoded) &&
+      (
+        /<!--CTA_DATA_END-->/i.test(decoded) ||
+        /締めの言葉[:：]/.test(decoded) ||
+        /<\/h2>[\s\S]*<\/p>/i.test(decoded)
+      );
+  }
+
   function watchBlogResponseAndEnableCopy(statusDiv, copyBtn, baselineCount = 0) {
     let last = '';
     let stableCount = 0;
+    let pollCount = 0;
 
     const timer = setInterval(() => {
-      const nodes = CHATGPT_ADAPTER.getResponseNodes().slice(baselineCount);
-      if (!nodes.length) return;
+      pollCount++;
+      const latest = getLatestResponseNodeAfterBaseline(baselineCount);
+      if (!latest) {
+        if (pollCount === 20) {
+          statusDiv.textContent = '⚠️ ChatGPTの回答欄をまだ検出できません。生成が終わっているのにボタンが出ない場合は、少し待つか再生成してください。';
+          statusDiv.classList.add('show');
+        }
+        return;
+      }
 
-      const latest = nodes[nodes.length - 1];
       const text = CHATGPT_ADAPTER.getResponseText(latest);
 
       if (text === last) {
@@ -984,7 +1009,11 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         stableCount = 0;
       }
 
-      if (stableCount >= 3 && text.length > 500) {
+      const isCompleteHtml = looksCompleteBlogHtml(text);
+      const isStableLongResponse = stableCount >= 3 && text.length > 500;
+      const isStableShortHtml = stableCount >= 2 && /<h1[\s>]/i.test(decodeHtmlText(text || '')) && text.length > 250;
+
+      if (isCompleteHtml || isStableLongResponse || isStableShortHtml) {
         clearInterval(timer);
 
         try {
