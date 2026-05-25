@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.60.02
+// @version      0.60.03
 // @description  英才ブログ生成ツール
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -14,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-60-02';
-  const BTN_ID = 'eisai-btn-v0-60-02';
-  const STORAGE_KEY = 'eisai_blog_info_v06002';
+  const TOOL_ID = 'eisai-tool-v0-60-03';
+  const BTN_ID = 'eisai-btn-v0-60-03';
+  const STORAGE_KEY = 'eisai_blog_info_v06003';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.60.02';
+  const CURRENT_VERSION = '0.60.03';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -40,7 +40,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.60.02 起動');
+  console.log('🚀 英才ブログ生成ツール v0.60.03 起動');
 
   let lastBlogHtml = '';
 
@@ -1101,6 +1101,8 @@
   min-width: 140px;
   padding: 6px 8px;
   font-size: 11px;
+  font-weight: 700;
+  color: #374151;
   border-radius: 999px;
   border: 1px solid #d1d5db;
   background: #f9fafb;
@@ -1111,6 +1113,7 @@
 .eisai-type-btn:hover {
   background: #e0e7ff;
   border-color: #6366f1;
+  color: #1e3a8a;
 }
 .eisai-type-btn-active {
   background: #1d4ed8;
