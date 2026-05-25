@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.27
+// @version      0.1.28
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-27';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-27';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0127';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-28';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-28';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0128';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.27';
+  const CURRENT_VERSION = '0.1.28';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -1980,6 +1980,16 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
     }, footer, 'このプロンプトで画像を生成する');
 
+    function syncFooterButtons() {
+      const hasVisibleAction = copyBtn.style.display === 'block' || imgExecBtn.style.display === 'block';
+      footer.style.display = hasVisibleAction ? 'block' : 'none';
+    }
+
+    function hideBlogCopyButton() {
+      copyBtn.style.display = 'none';
+      syncFooterButtons();
+    }
+
     imgGenBtn.onclick = () => {
       const thumbnailType = thumbnailTypeSelect.value;
       const style = visualExpressionSelect.value;
@@ -2112,8 +2122,9 @@ IMAGE2.0が自由に良い絵を作れる余白を残してください。
 
       statusDiv.textContent = '🎯 画像生成用プロンプトを作成しています...';
       statusDiv.classList.add('show');
+      hideBlogCopyButton();
       imgExecBtn.style.display = 'none';
-      if (copyBtn.style.display !== 'block') footer.style.display = 'none';
+      syncFooterButtons();
 
       isGeneratingPrompt = true;
       lastPromptNode = null;
@@ -2378,10 +2389,10 @@ ${formContent}`;
 
       statusDiv.textContent = '📨 ブログ生成用プロンプトを送信しました。生成が完了したら、下にコピー用ボタンが出ます。';
       statusDiv.classList.add('show');
-      copyBtn.style.display = 'none';
+      hideBlogCopyButton();
       imgSection.style.display = 'none';
       imgExecBtn.style.display = 'none';
-      footer.style.display = 'none';
+      syncFooterButtons();
       lastBlogHtml = '';
 
       const responseBaseline = CHATGPT_ADAPTER.getResponseNodes().length;
@@ -2453,6 +2464,8 @@ ${formContent}`;
 
       statusDiv.textContent = '🖼 画像生成プロンプトを送信しました。画像が生成されます。';
       statusDiv.classList.add('show');
+      imgExecBtn.style.display = 'none';
+      syncFooterButtons();
 
       CHATGPT_ADAPTER.setComposerText(input, prompt);
       sendMessage(input);
