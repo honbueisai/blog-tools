@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.60.10
+// @version      0.60.11
 // @description  英才ブログ生成ツール
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -14,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-60-10';
-  const BTN_ID = 'eisai-btn-v0-60-10';
-  const STORAGE_KEY = 'eisai_blog_info_v06010';
+  const TOOL_ID = 'eisai-tool-v0-60-11';
+  const BTN_ID = 'eisai-btn-v0-60-11';
+  const STORAGE_KEY = 'eisai_blog_info_v06011';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.60.10';
+  const CURRENT_VERSION = '0.60.11';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
   const NORMAL_GEMINI_URL = 'https://gemini.google.com/app?hl=ja';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -40,11 +40,12 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.60.10 起動');
+  console.log('🚀 英才ブログ生成ツール v0.60.11 起動');
 
   let lastBlogHtml = '';
   let lastSentBlogPrompt = '';
   let lastLocalCtaData = null;
+  let lastArticleContext = null;
   let blogAutoRetryCount = 0;
 
   // =========================================================
@@ -437,11 +438,12 @@
     return true;
   }
 
-  function savePendingBlogPrompt(prompt, blogType = currentBlogType, ctaData = null) {
+  function savePendingBlogPrompt(prompt, blogType = currentBlogType, ctaData = null, articleContext = null) {
     localStorage.setItem(PENDING_BLOG_PROMPT_KEY, JSON.stringify({
       prompt,
       blogType,
       ctaData,
+      articleContext,
       createdAt: Date.now()
     }));
   }
@@ -567,6 +569,14 @@ ${originalPrompt}`;
 - ブログ本文HTML以外は出力しないでください。
 - CTA部分はツール側で自動生成します。あなたはブログ本文HTMLだけを書いてください。
 - 回答の最後は必ず <!--EISAI_ARTICLE_END--> で終えてください。
+
+【品質基準】
+- この記事は「説明」ではなく「現場のストーリー」として書いてください。
+- 読者が読み終えた時に、少なくとも1つの場面を頭に思い浮かべられる文章にしてください。
+- 抽象語だけで終わらせず、近くに具体的な行動・表情・会話・ノート・答案・授業風景を添えてください。
+- 似た意味の共感文を繰り返さないでください。保護者への共感は深く、短く、重複なく書いてください。
+- 見出しはテンプレート臭を避け、記事内容が少し伝わる具体的な言葉にしてください。
+- 本文は「誰でも言えること」よりも「この入力があるから書けること」を優先してください。
 
 【出力構成】
 1. <h1>：32文字以内のブログタイトル
@@ -1233,6 +1243,199 @@ ${formContent}
     return html.join('\n').trim();
   }
 
+  function splitInputItems(raw) {
+    return String(raw || '')
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .map(line => line.replace(/^[\s・\-*●○□■✓✔︎]+/, '').trim())
+      .filter(Boolean);
+  }
+
+  function firstSentence(raw, fallback = '') {
+    const text = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (!text) return fallback;
+    const match = text.match(/^(.+?[。！？])/);
+    return (match ? match[1] : text).trim();
+  }
+
+  function clipText(raw, limit = 90) {
+    const text = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (text.length <= limit) return text;
+    return text.slice(0, limit).replace(/[、。,.，．]\s*$/, '') + '...';
+  }
+
+  function inferStudentMeta(studentInfo) {
+    const parts = String(studentInfo || '')
+      .split(/[・,、／\/\s]+/)
+      .map(part => part.trim())
+      .filter(Boolean);
+    const meta = {
+      grade: parts.find(part => /^(小|中|高)\d|小学|中学|高校/.test(part)) || '',
+      school: parts.find(part => /校|中|小|高/.test(part) && !/^(小|中|高)\d/.test(part)) || '',
+      name: parts.find(part => /(さん|くん|君|ちゃん|先生|講師|室長)$/.test(part)) || '',
+      subject: ''
+    };
+    const subjectCandidates = ['数学', '英語', '国語', '理科', '社会', '算数', '作文', '小論文'];
+    meta.subject = parts.find(part => subjectCandidates.some(subject => part.includes(subject))) || parts[parts.length - 1] || '';
+    return meta;
+  }
+
+  function buildLocalPhotoSuggestions(type, typeData = {}) {
+    const joined = Object.values(typeData).join(' ');
+    const suggestions = [];
+    function add(afterSection, label) {
+      if (!suggestions.some(item => item.label === label)) suggestions.push({ afterSection, label });
+    }
+
+    if (/ノート|途中式|単語|作文|解き直し|復習/.test(joined)) add(1, /単語/.test(joined) ? '単語練習ノートの写真' : 'ノートの写真');
+    if (/答案|点|テスト|確認/.test(joined)) add(2, /確認/.test(joined) ? '確認テストの写真' : '答案の写真');
+    if (/自習|ワーク|宿題|学校ワーク/.test(joined)) add(2, /ワーク/.test(joined) ? '学校ワークの写真' : '自習風景');
+    if (/先生|講師|室長|声かけ|質問/.test(joined) || type === BLOG_TYPES.PERSON) add(3, '室長・先生の写真');
+
+    if (!suggestions.length) {
+      add(1, 'ノートの写真');
+      add(2, '教室内の教材写真');
+    }
+    if (suggestions.length < 2) add(3, '教室の写真');
+    return suggestions.slice(0, 3);
+  }
+
+  function buildLocalArticleData(context) {
+    if (!context || !context.typeData) return null;
+    const type = context.blogType || BLOG_TYPES.OTHER;
+    const data = context.typeData || {};
+    const kosha = String(context.kosha || '').trim() || '英才個別学院';
+    const shichou = String(context.shichou || '').trim() || '室長';
+    const area = String(context.area || '').trim();
+    const areaPrefix = area ? area + 'の個別指導塾、' : '';
+    const greetingBase = areaPrefix + '英才個別学院 ' + kosha + ' 室長の' + shichou + 'です！';
+
+    function v(key, fallback = '') {
+      return String(data[key] || '').trim() || fallback;
+    }
+
+    function pointItems(raw, fallbackItems) {
+      const items = splitInputItems(raw);
+      return items.length ? items : fallbackItems;
+    }
+
+    const article = {
+      title: '',
+      greeting: [],
+      lead: [],
+      empathyBox: null,
+      sections: [],
+      closing: [],
+      photoSuggestions: buildLocalPhotoSuggestions(type, data)
+    };
+
+    if (type === BLOG_TYPES.GROWTH) {
+      const meta = inferStudentMeta(v('student'));
+      const subject = meta.subject || '勉強';
+      const studentName = meta.name || 'お子さま';
+      const after = v('after', '少しずつ成果が見え始めました。');
+      const before = v('before', '以前は苦手意識があり、なかなか自信を持てない様子でした。');
+      const reality = v('reality', '教室でも、表情や質問の仕方に少しずつ変化が見えてきました。');
+      const episode = v('episode', '結果だけでなく、取り組み方が変わったことが大きな成長だと感じています。');
+      const pointMatch = after.match(/([0-9０-９]+)\s*点アップ|([0-9０-９]+)\s*点/);
+      const resultWord = pointMatch ? pointMatch[0].replace(/\s+/g, '') : '変化';
+
+      article.title = (subject + 'の苦手から見えた' + resultWord).slice(0, 32);
+      article.greeting = [
+        greetingBase + '今日は、' + studentName + 'の' + subject + 'で見えた成長についてお話しします。'
+      ];
+      article.lead = [
+        '「このままで大丈夫かな」と感じながらも、どこから手をつければいいか迷うことはありますよね。',
+        '今回の話は、大きな魔法のような変化ではありません。教室で一つずつ確認し、本人の中に少しずつ手応えが生まれていった記録です。'
+      ];
+      article.empathyBox = {
+        label: '保護者の方へ',
+        paragraphs: ['点数だけを見ると不安が大きくなりがちですが、答案やノートには次に変えられるヒントが残っています。']
+      };
+      article.sections = [
+        {
+          heading: '最初に見えていた課題',
+          paragraphs: [
+            firstSentence(before),
+            '教室で話を聞いていくと、できないのではなく、どこでつまずいているかがまだ整理できていない状態でした。まずは本人の不安を受け止め、できている部分も一緒に確認しました。'
+          ],
+          highlights: ['最初に大切にしたのは、責めることではなく「どこで止まっているか」を一緒に見ることでした。']
+        },
+        {
+          heading: '教室で変えた取り組み',
+          paragraphs: [
+            '授業では、いきなり難しい問題へ進むのではなく、毎回の流れを決めて小さく確認する形にしました。',
+            '本人が「これならできそう」と思える場面を増やすことで、勉強への向き合い方も少しずつ変わっていきました。'
+          ],
+          bulletTitle: '教室で意識したこと',
+          bullets: pointItems(v('actions'), ['つまずいた問題を一緒に確認する', 'ノートや答案に解き方を残す', '次回までに取り組むことを小さく決める'])
+        },
+        {
+          heading: '結果以上に嬉しかった変化',
+          paragraphs: [
+            firstSentence(after),
+            firstSentence(reality),
+            'そばで見ていて嬉しかったのは、点数そのもの以上に、本人が「自分にもできるかもしれない」と感じ始めていたことです。'
+          ],
+          managerNote: episode
+        }
+      ];
+      article.closing = [
+        'お子さまの苦手は、本人のやる気だけで片づけられないこともあります。',
+        '今の状況を一緒に整理しながら、次のテストに向けて何を変えるかを考えていきましょう。'
+      ];
+      return { article };
+    }
+
+    if (type === BLOG_TYPES.EVENT) {
+      const eventName = v('eventName', '教室イベント');
+      article.title = clipText(eventName + 'で見える学習の一歩', 32);
+      article.greeting = [greetingBase + '今日は、' + eventName + 'についてお話しします。'];
+      article.lead = [
+        '講習やイベントは、ただ授業を増やすためのものではありません。',
+        '普段の学習で後回しになっているところを整理し、次に向けて動き出すきっかけにする時間です。'
+      ];
+      article.sections = [
+        { heading: '今回の内容', paragraphs: [firstSentence(v('flow', eventName + 'では、今必要な学習を一つずつ確認します。'))], bulletTitle: '主な内容', bullets: pointItems(v('flow'), ['学習状況の確認', '苦手単元の整理', '確認テスト']) },
+        { heading: '教室で見える生徒の様子', paragraphs: [firstSentence(v('scene', '最初は不安そうでも、できる問題が増えると表情が少しずつ明るくなっていきます。')), 'こうした変化は、家だけではなかなか見えにくい部分かもしれません。'] },
+        { heading: '参加後につなげたいこと', paragraphs: [firstSentence(v('benefit', '参加後は、次に何を勉強するかが見えやすくなります。')), firstSentence(v('example', 'まずは今の課題を一緒に整理するところから始めていきます。'))] }
+      ];
+      article.closing = ['気になることがあれば、参加前でも遠慮なくご相談ください。', 'お子さまに合う進め方を一緒に考えていきます。'];
+      return { article };
+    }
+
+    if (type === BLOG_TYPES.PERSON) {
+      const person = v('personInfo', '先生');
+      article.title = clipText(person + 'の関わり方', 32);
+      article.greeting = [greetingBase + '今日は、教室で生徒たちを支えている' + person + 'についてご紹介します。'];
+      article.lead = ['塾選びでは、授業内容だけでなく「どんな先生が関わるのか」も気になりますよね。', 'お子さまが安心して質問できる相手かどうかは、勉強への向き合い方にも大きく関わります。'];
+      article.sections = [
+        { heading: 'その人らしさが出る場面', paragraphs: ['生徒との関わりで大切にしているのは、ただ答えを教えることではありません。', '本人がどこまで考えたかを聞きながら、次の一歩を一緒に探していきます。'], bulletTitle: 'らしさポイント', bullets: pointItems(v('points'), ['生徒の考えを先に聞く', 'できたところを具体的にほめる', '質問しやすい空気を作る']) },
+        { heading: '印象に残っているエピソード', paragraphs: [firstSentence(v('episode', '生徒が少しずつ質問できるようになった場面が印象に残っています。')), 'こうした小さな変化が、教室の中ではとても大切なサインになります。'] },
+        { heading: '室長から見た安心感', paragraphs: [firstSentence(v('message', '生徒が前向きになれる関わり方をしてくれる先生です。'))], managerNote: v('message') }
+      ];
+      article.closing = ['先生との相性は、実際に話してみると見えてくることがあります。', '気になることがあれば、ぜひ教室で雰囲気を感じてみてください。'];
+      return { article };
+    }
+
+    const mainTheme = v('serviceName') || v('testName') || v('theme') || '教室での取り組み';
+    article.title = clipText(mainTheme + 'を一緒に整理', 32);
+    article.greeting = [greetingBase + '今日は、' + mainTheme + 'についてお話しします。'];
+    article.lead = ['勉強の悩みは、何から手をつけるかが見えない時ほど大きく感じるものです。', 'だからこそ、まずは現状を一緒に整理することを大切にしています。'];
+    article.sections = [
+      { heading: 'よくあるお悩み', paragraphs: [firstSentence(v('target') || v('scoreList') || v('before', 'ご家庭だけでは判断しづらいお悩みも、教室で整理すると見え方が変わります。'))], bulletTitle: '相談で整理できること', bullets: pointItems(v('target') || v('scoreList'), ['今の学習状況', '苦手の原因', '次に取り組むこと']) },
+      { heading: '教室で行うこと', paragraphs: [firstSentence(v('flow') || v('actions') || v('reason', '教室では、学習状況を見ながら必要な取り組みを一つずつ決めていきます。'))], bulletTitle: '具体的な取り組み', bullets: pointItems(v('flow') || v('actions') || v('reason'), ['学習状況の確認', '苦手単元の整理', '確認テスト']) },
+      { heading: '次の一歩につなげるために', paragraphs: [firstSentence(v('scene') || v('episode') || v('comment') || v('goal', '小さな一歩を決めるだけでも、お子さまの表情が変わることがあります。')), '一人で抱え込まず、今の状況からできることを一緒に考えていきましょう。'], managerNote: v('comment') || v('episode') || v('goal') }
+    ];
+    article.closing = ['今のお悩みがはっきりしていなくても大丈夫です。', 'お話を聞きながら、お子さまに合う進め方を一緒に探していきます。'];
+    return { article };
+  }
+
+  function buildLocalArticleHtml(context) {
+    const data = buildLocalArticleData(context);
+    return data ? renderBlogJsonHtml(data) : '';
+  }
+
   const defaultCtaData = {
     '説明文1': 'テストや勉強のお悩みを一緒に整理します。',
     '説明文2': 'お子さまに合った一歩目を一緒に見つけていきましょう。',
@@ -1546,6 +1749,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         let innerHtmlRaw = '';
         let innerTextRaw = '';
         let decoded = '';
+        let localFallbackUsed = false;
         try {
           const innerMarkdown = latest.matches('.markdown-main-panel') ? latest : latest.querySelector('.markdown-main-panel');
           if (innerMarkdown) {
@@ -1598,10 +1802,25 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
             }
           }
 
-          const articleText = decoded
+          let articleText = decoded
             .replace(/<[^>]*>/g, '')
             .replace(/\s+/g, '')
             .trim();
+
+          if ((!hasRequiredHtml || articleText.length < 300) && lastArticleContext) {
+            const localHtml = buildLocalArticleHtml(lastArticleContext);
+            if (localHtml) {
+              decoded = localHtml;
+              hasRequiredHtml = /<h1[\s>]/i.test(decoded) && /<p[\s>]/i.test(decoded);
+              articleText = decoded
+                .replace(/<[^>]*>/g, '')
+                .replace(/\s+/g, '')
+                .trim();
+              localFallbackUsed = true;
+              console.warn('[Eisai] Geminiが本文HTMLを返さなかったため、フォーム入力からローカル記事HTMLを生成しました');
+            }
+          }
+
           if (!hasRequiredHtml || articleText.length < 300) {
             if (lastSentBlogPrompt && blogAutoRetryCount < 1) {
               blogAutoRetryCount++;
@@ -1661,7 +1880,9 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           return;
         }
 
-        showReady(isStableShortResponse
+        showReady(localFallbackUsed
+          ? '✅ Geminiが短い素材だけを返したため、入力内容からブログHTMLを作成しました。下の赤いボタンからコピーできます。'
+          : isStableShortResponse
           ? '✅ 短めの応答として生成完了を検出しました。内容を確認してから赤いボタンでコピーしてください。'
           : '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。');
       }
@@ -2548,6 +2769,13 @@ ${personThumbnailRules}
       const typeInstruction = TYPE_INSTRUCTIONS[currentBlogType] || TYPE_INSTRUCTIONS[BLOG_TYPES.OTHER];
 
       const localCtaData = buildLocalCtaData(currentBlogType, typeData);
+      const articleContext = {
+        blogType: currentBlogType,
+        kosha,
+        shichou,
+        area,
+        typeData: Object.fromEntries(Object.entries(typeData).filter(([, value]) => typeof value === 'string'))
+      };
       const prompt = buildFullBlogPrompt({ kosha, shichou, area, typeInstruction, formContent });
 
       formStatusDiv.textContent = isNormalGeminiNewChatPage()
@@ -2562,10 +2790,11 @@ ${personThumbnailRules}
       lastBlogHtml = '';
       lastSentBlogPrompt = prompt;
       lastLocalCtaData = localCtaData;
+      lastArticleContext = articleContext;
       blogAutoRetryCount = 0;
 
       if (!isNormalGeminiNewChatPage()) {
-        savePendingBlogPrompt(prompt, currentBlogType, localCtaData);
+        savePendingBlogPrompt(prompt, currentBlogType, localCtaData, articleContext);
         localStorage.setItem('eisai_collapsed', 'false');
         location.href = normalGeminiUrlForBlog();
         return;
@@ -2666,6 +2895,7 @@ ${personThumbnailRules}
       lastBlogHtml = '';
       lastSentBlogPrompt = pending.prompt;
       lastLocalCtaData = pending.ctaData || null;
+      lastArticleContext = pending.articleContext || null;
       blogAutoRetryCount = 0;
 
       const sent = await insertPromptAndSend(pending.prompt);
