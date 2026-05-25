@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator
 // @namespace    http://tampermonkey.net/
-// @version      0.60.05
+// @version      0.60.06
 // @description  英才ブログ生成ツール
 // @author       Yuan
 // @match        https://gemini.google.com/*
@@ -14,11 +14,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-tool-v0-60-05';
-  const BTN_ID = 'eisai-btn-v0-60-05';
-  const STORAGE_KEY = 'eisai_blog_info_v06005';
+  const TOOL_ID = 'eisai-tool-v0-60-06';
+  const BTN_ID = 'eisai-btn-v0-60-06';
+  const STORAGE_KEY = 'eisai_blog_info_v06006';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.60.05';
+  const CURRENT_VERSION = '0.60.06';
   const UPDATE_URL = 'https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator.user.js';
   const BLOG_GEM_URL = 'https://gemini.google.com/gem/1IcERsiUCgrBSktbOY6SjAxIcc7-ry7rf?usp=sharing';
   const THUMBNAIL_GEM_URL = 'https://gemini.google.com/gem/1CghC28sQu1ViOe9E4TgfC5LGGj23pPTQ?usp=sharing';
@@ -40,7 +40,7 @@
 
   let currentBlogType = BLOG_TYPES.GROWTH;
 
-  console.log('🚀 英才ブログ生成ツール v0.60.05 起動');
+  console.log('🚀 英才ブログ生成ツール v0.60.06 起動');
 
   let lastBlogHtml = '';
   let lastSentBlogPrompt = '';
@@ -505,20 +505,49 @@
 
   function buildBlogRetryPrompt(originalPrompt) {
     return `直前の回答は失敗です。
-CTA素材だけ、または相談ポイントだけが出力されており、ブログ本文HTMLがありませんでした。
+CTA素材だけ、相談ポイントだけ、または要約だけが出力されており、ブログ本文HTMLがありませんでした。
+この再送ではGemのカスタム指示や過去の流れに依存せず、下記の条件だけを最優先してください。
 
-必ず次の条件を守って、元の入力情報からブログ本文を作り直してください。
-
-【絶対条件】
+【最優先の出力形式】
 - 最終回答の1文字目は必ず「<」です。
 - 1行目は必ず <h1>...</h1> です。
-- <h1> の前に、説明、挨拶、謝罪、確認文、CTA素材を一切書かないでください。
-- JSON、Markdown、コードブロックは禁止です。
-- まず本文HTMLを書いてください。<h2>を3〜4個、<p>を8個以上入れてください。
-- CTA_DATAは本文HTMLをすべて書き終えた後、最後にだけ付けてください。
+- JSON、Markdown、コードブロック、前置き、解説は禁止です。
 - 「説明文1：」「相談ポイント1：」「体験ポイント1：」から始める回答は禁止です。
+- 最初にブログ本文HTMLを完成させ、CTA_DATAは一番最後にだけ付けてください。
 
-【元の入力と指示】
+【本文の必須構成】
+- <h1>を1個
+- <h2>を3〜4個
+- <p>を8個以上
+- 必要な場面だけ<ul><li>...</li></ul>
+- 900〜1400字程度
+- 写真挿入マークを3〜5個。形式は <p><strong>■■■■■■■■ 写真挿入（ノートの写真） ■■■■■■■■</strong></p>
+
+【文章ルール】
+- 保護者の不安に寄り添うところから始めてください。
+- いきなり宣伝やCTA素材から入らないでください。
+- 入力された学校名、学年、教科、点数、生徒の様子、教室で行ったことを本文に反映してください。
+- 「何をしたか」だけでなく、「生徒がどう変わったか」「室長がどう感じたか」を書いてください。
+- 架空の実績、入力にない点数、合格校、キャンペーンは作らないでください。
+- 硬すぎる業務文ではなく、保護者に近い距離の自然な敬体で書いてください。
+
+【CTA_DATA】
+本文HTMLをすべて書き終えた後、最後にだけ以下を付けてください。
+<!--CTA_DATA_START-->
+説明文1：[記事内容に合わせた、不安を解消する一言]
+説明文2：[教室見学や相談へのハードルを下げる優しい一言]
+相談ポイント1：[記事関連の相談内容1]
+相談ポイント2：[記事関連の相談内容2]
+相談ポイント3：[記事関連の相談内容3]
+相談ポイント4：[記事関連の相談内容4]
+体験ポイント1：[体験で得られるメリット1]
+体験ポイント2：[体験で得られるメリット2]
+体験ポイント3：[体験で得られるメリット3]
+体験ポイント4：[体験で得られるメリット4]
+締めの言葉：[記事内容に合わせた具体的な一文。定型句しか書けない場合は空欄]
+<!--CTA_DATA_END-->
+
+【元の入力情報】
 ${originalPrompt}`;
   }
 
