@@ -1,5 +1,13 @@
 # 変更履歴 (CHANGELOG)
 
+## [Userscript ChatGPT 0.1.32] - 2026-05-26
+
+### 修正
+- ChatGPT版で `chatgpt.com/ja-JP/` などロケール付きURLを開いた時に起動ボタンが出ない問題を修正
+- `/ja-JP/c/...` や `/ja-JP/g/...` のようなロケール付きチャット/GPTページも起動対象に追加
+
+---
+
 ## [Userscript ChatGPT 0.1.31] - 2026-05-26
 
 ### 変更

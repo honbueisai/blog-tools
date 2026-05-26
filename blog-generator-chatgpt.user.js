@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.31
+// @version      0.1.32
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,11 +15,11 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-31';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-31';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0131';
+  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-32';
+  const BTN_ID = 'eisai-chatgpt-btn-v0-1-32';
+  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0132';
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.31';
+  const CURRENT_VERSION = '0.1.32';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
   const PANEL_WIDTH = 420;
@@ -2517,8 +2517,14 @@ ${formContent}`;
   // =========================================================
   // 10. ChatGPT画面での起動判定
   // =========================================================
+  function getChatRoutePath() {
+    const path = location.pathname || '/';
+    const localeMatch = path.match(/^\/[a-z]{2}(?:-[a-z]{2})?(\/.*)?$/i);
+    return localeMatch ? (localeMatch[1] || '/') : path;
+  }
+
   function isNewChatPage() {
-    const path = location.pathname;
+    const path = getChatRoutePath();
     return path === '/' || path.startsWith('/c/') || path.startsWith('/g/');
   }
 
