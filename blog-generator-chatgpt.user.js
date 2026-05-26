@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.36
+// @version      0.1.37
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,13 +15,17 @@
 (function () {
   'use strict';
 
-  const TOOL_ID = 'eisai-chatgpt-tool-v0-1-36';
-  const BTN_ID = 'eisai-chatgpt-btn-v0-1-36';
-  const STORAGE_KEY = 'eisai_chatgpt_blog_info_v0136';
+  const CURRENT_VERSION = '0.1.37';
+  const VERSION_ID = CURRENT_VERSION.replace(/\./g, '-');
+  const VERSION_KEY = CURRENT_VERSION.replace(/\./g, '');
+  const TOOL_ID = `eisai-chatgpt-tool-v${VERSION_ID}`;
+  const BTN_ID = `eisai-chatgpt-btn-v${VERSION_ID}`;
+  const STORAGE_KEY = `eisai_chatgpt_blog_info_v${VERSION_KEY}`;
   const CLASSROOM_STORAGE_KEY = 'eisai_classroom_settings_persistent';
-  const CURRENT_VERSION = '0.1.36';
   const UPDATE_URL = 'https://raw.githubusercontent.com/honbueisai/blog-tools/feature/chatgpt-blog-generator/blog-generator-chatgpt.user.js';
   const TEST_MODE_STORAGE_KEY = 'eisai_chatgpt_test_mode_enabled';
+  const GENERATED_CONTEXT_STORAGE_KEY = 'eisai_chatgpt_last_generated_context';
+  const GENERATED_CONTEXT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
   const PANEL_WIDTH = 420;
   const PANEL_TAB_WIDTH_FALLBACK = 42;
   const PANEL_OPEN_LAYOUT_CLASS = 'eisai-chatgpt-panel-open';
@@ -51,6 +55,9 @@
   }
 
   let lastBlogHtml = '';
+  let lastArticleFacts = '';
+  let lastBlogTitle = '';
+  let lastImagePromptText = '';
 
   // =========================================================
   // 1. サムネイルスタイル / 画像スタイル定義
@@ -399,22 +406,15 @@
     },
 
     getResponseNodes() {
-      const selectors = [
-        '[data-message-author-role="assistant"] .markdown',
-        '[data-message-author-role="assistant"]',
-        'article[data-testid^="conversation-turn-"] .markdown',
-        'main article .markdown'
-      ];
       const seen = new Set();
       const nodes = [];
 
-      selectors.forEach(selector => {
-        document.querySelectorAll(selector).forEach(node => {
-          if (seen.has(node)) return;
-          seen.add(node);
-          const text = node.textContent || '';
-          if (text.trim().length > 0) nodes.push(node);
-        });
+      document.querySelectorAll('[data-message-author-role="assistant"]').forEach(turn => {
+        const node = turn.querySelector('.markdown') || turn;
+        if (seen.has(node)) return;
+        seen.add(node);
+        const text = node.textContent || '';
+        if (text.trim().length > 0) nodes.push(node);
       });
 
       return nodes;
@@ -459,6 +459,32 @@
     await CHATGPT_ADAPTER.send(input);
   }
 
+  function getComposerText(input) {
+    if (!input) return '';
+    if (input instanceof HTMLTextAreaElement || input instanceof HTMLInputElement) return input.value || '';
+    return input.textContent || '';
+  }
+
+  async function setComposerAndSend(text) {
+    const input = getChatInput();
+    if (!input) {
+      alert('ChatGPTの入力欄が見つかりませんでした');
+      return false;
+    }
+
+    CHATGPT_ADAPTER.setComposerText(input, text);
+    await sleep(450);
+
+    const expectedMin = Math.min(20, String(text || '').trim().length);
+    if (expectedMin > 0 && getComposerText(input).trim().length < expectedMin) {
+      CHATGPT_ADAPTER.setComposerText(input, text);
+      await sleep(450);
+    }
+
+    await sendMessage(input);
+    return true;
+  }
+
   function decodeHtmlText(raw) {
     return String(raw || '')
       .replace(/&lt;/g, '<')
@@ -475,6 +501,72 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function escapeAttr(raw) {
+    return escapeHtml(raw).replace(/`/g, '&#96;');
+  }
+
+  function sanitizeTel(raw) {
+    return String(raw || '').replace(/[^\d+]/g, '');
+  }
+
+  function extractH1Text(html) {
+    const match = String(html || '').match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    return match ? decodeHtmlText(match[1].replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim() : '';
+  }
+
+  function getGeneratedContextRecord() {
+    try {
+      const record = JSON.parse(localStorage.getItem(GENERATED_CONTEXT_STORAGE_KEY) || 'null');
+      if (!record || typeof record !== 'object') return {};
+      if (Date.now() - Number(record.updatedAt || 0) > GENERATED_CONTEXT_MAX_AGE_MS) {
+        localStorage.removeItem(GENERATED_CONTEXT_STORAGE_KEY);
+        return {};
+      }
+      return record;
+    } catch (e) {
+      localStorage.removeItem(GENERATED_CONTEXT_STORAGE_KEY);
+      return {};
+    }
+  }
+
+  function setGeneratedContext(patch = {}) {
+    const next = {
+      ...getGeneratedContextRecord(),
+      ...patch,
+      updatedAt: Date.now()
+    };
+    lastBlogHtml = next.blogHtml || '';
+    lastArticleFacts = next.articleFacts || '';
+    lastBlogTitle = next.blogTitle || extractH1Text(next.blogHtml || '');
+    try {
+      localStorage.setItem(GENERATED_CONTEXT_STORAGE_KEY, JSON.stringify(next));
+    } catch (e) {
+      console.warn('[Eisai] 生成コンテキストの保存に失敗しました:', e);
+    }
+    return next;
+  }
+
+  function restoreGeneratedContext() {
+    const record = getGeneratedContextRecord();
+    if (!record || !Object.keys(record).length) return record;
+    lastBlogHtml = record.blogHtml || lastBlogHtml || '';
+    lastArticleFacts = record.articleFacts || lastArticleFacts || '';
+    lastBlogTitle = record.blogTitle || lastBlogTitle || extractH1Text(lastBlogHtml);
+    return record;
+  }
+
+  function extractImagePromptText(raw) {
+    const text = String(raw || '').trim();
+    const markerMatch = text.match(/\[\[EISAI_IMG_PROMPT\]\]([\s\S]*?)\[\[\/EISAI_IMG_PROMPT\]\]/);
+    if (markerMatch) return markerMatch[1].trim();
+    return text
+      .replace(/^---\s*/i, '')
+      .replace(/以下のプロンプトで画像を生成してください\s*/g, '')
+      .replace(/このプロンプトで画像を生成してください。?\s*/g, '')
+      .replace(/\s*---$/i, '')
+      .trim();
   }
 
   function stripJsonCodeFence(raw) {
@@ -856,36 +948,39 @@
 
   function buildCtaHtml(url, tel, ctaData = null) {
     const d = ctaData || defaultCtaData;
+    const safeUrl = escapeAttr(String(url || '').replace(/"/g, ''));
+    const safeTel = sanitizeTel(tel);
+    const text = (key) => escapeHtml(d[key] || defaultCtaData[key] || '');
     return (
       '<div data-cta-protected="true" style="background: #f8f8f8; padding: 40px 20px; margin: 40px 0;">' +
       '<div style="text-align: center; font-size: 26px; font-weight: bold; color: #333; margin: 0 0 12px 0;">まずはお気軽にご相談ください</div>' +
       '<div style="text-align: center; color: #888; margin: 0 0 16px 0; font-size: 13px;">入会する・しないにかかわらず、お子さまの学習についてお力になります。</div>' +
-      '<div style="text-align: center; color: #555; margin: 0 0 10px 0; font-size: 15px;">' + (d['説明文1'] || defaultCtaData['説明文1']) + '</div>' +
-      '<div style="text-align: center; color: #555; margin: 0 0 30px 0; font-size: 15px;">' + (d['説明文2'] || defaultCtaData['説明文2']) + '</div>' +
+      '<div style="text-align: center; color: #555; margin: 0 0 10px 0; font-size: 15px;">' + text('説明文1') + '</div>' +
+      '<div style="text-align: center; color: #555; margin: 0 0 30px 0; font-size: 15px;">' + text('説明文2') + '</div>' +
       '<div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; max-width: 800px; margin-left: auto; margin-right: auto;">' +
       '<div style="flex: 1; min-width: 300px; max-width: 380px; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">' +
       '<div style="color: #e67e22; font-size: 18px; font-weight: bold; margin: 0 0 16px 0;">📒 無料学習相談でできること</div>' +
       '<div style="color: #444; line-height: 2.0; font-size: 15px; padding-left: 8px;">' +
-      '<div style="margin-bottom: 4px;">・' + (d['相談ポイント1'] || defaultCtaData['相談ポイント1']) + '</div>' +
-      '<div style="margin-bottom: 4px;">・' + (d['相談ポイント2'] || defaultCtaData['相談ポイント2']) + '</div>' +
-      '<div style="margin-bottom: 4px;">・' + (d['相談ポイント3'] || defaultCtaData['相談ポイント3']) + '</div>' +
-      '<div style="margin-bottom: 4px;">・' + (d['相談ポイント4'] || defaultCtaData['相談ポイント4']) + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + text('相談ポイント1') + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + text('相談ポイント2') + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + text('相談ポイント3') + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + text('相談ポイント4') + '</div>' +
       '</div>' +
       '</div>' +
       '<div style="flex: 1; min-width: 300px; max-width: 380px; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">' +
       '<div style="color: #e67e22; font-size: 18px; font-weight: bold; margin: 0 0 16px 0;">✏️ 無料体験授業でできること</div>' +
       '<div style="color: #444; line-height: 2.0; font-size: 15px; padding-left: 8px;">' +
-      '<div style="margin-bottom: 4px;">・' + (d['体験ポイント1'] || defaultCtaData['体験ポイント1']) + '</div>' +
-      '<div style="margin-bottom: 4px;">・' + (d['体験ポイント2'] || defaultCtaData['体験ポイント2']) + '</div>' +
-      '<div style="margin-bottom: 4px;">・' + (d['体験ポイント3'] || defaultCtaData['体験ポイント3']) + '</div>' +
-      '<div style="margin-bottom: 4px;">・' + (d['体験ポイント4'] || defaultCtaData['体験ポイント4']) + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + text('体験ポイント1') + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + text('体験ポイント2') + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + text('体験ポイント3') + '</div>' +
+      '<div style="margin-bottom: 4px;">・' + text('体験ポイント4') + '</div>' +
       '</div>' +
       '</div>' +
       '</div>' +
-      '<div style="text-align: center; color: #555; margin: 0 0 28px 0; font-size: 15px;">' + (d['締めの言葉'] || defaultCtaData['締めの言葉']) + '</div>' +
+      '<div style="text-align: center; color: #555; margin: 0 0 28px 0; font-size: 15px;">' + text('締めの言葉') + '</div>' +
       '<div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">' +
-      '<a href="' + url + '" style="display: inline-block; background: #e67e22; color: #fff; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">無料学習相談・体験授業に申し込む</a>' +
-      '<a href="tel:' + tel.replace(/-/g, '') + '" style="display: inline-block; background: #fff; color: #e67e22; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; border: 2px solid #e67e22;">電話で直接申し込む</a>' +
+      '<a href="' + safeUrl + '" style="display: inline-block; background: #e67e22; color: #fff; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">無料学習相談・体験授業に申し込む</a>' +
+      '<a href="tel:' + safeTel + '" style="display: inline-block; background: #fff; color: #e67e22; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; border: 2px solid #e67e22;">電話で直接申し込む</a>' +
       '</div>' +
       '</div>'
     );
@@ -1033,6 +1128,9 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
   // =========================================================
   // 6. ウォッチャー：ブログ生成完了
   // =========================================================
+  let blogWatchTimer = null;
+  let thumbnailWatchTimer = null;
+
   function getLatestResponseNodeAfterBaseline(baselineCount = 0) {
     const nodes = CHATGPT_ADAPTER.getResponseNodes();
     if (!nodes.length) return null;
@@ -1065,16 +1163,28 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
   }
 
   function watchBlogResponseAndEnableCopy(statusDiv, copyBtn, baselineCount = 0) {
+    if (blogWatchTimer) {
+      clearInterval(blogWatchTimer);
+      blogWatchTimer = null;
+    }
+
     let last = '';
     let stableCount = 0;
     let pollCount = 0;
+    const maxPollCount = 300;
 
-    const timer = setInterval(() => {
+    blogWatchTimer = setInterval(() => {
       pollCount++;
       const latest = getLatestResponseNodeAfterBaseline(baselineCount);
       if (!latest) {
         if (pollCount === 20) {
           statusDiv.textContent = '⚠️ ChatGPTの回答欄をまだ検出できません。生成が終わっているのにボタンが出ない場合は、少し待つか再生成してください。';
+          statusDiv.classList.add('show');
+        }
+        if (pollCount >= maxPollCount) {
+          clearInterval(blogWatchTimer);
+          blogWatchTimer = null;
+          statusDiv.textContent = '⚠️ 生成完了を検出できませんでした。ChatGPTの生成が止まっているか確認し、もう一度お試しください。';
           statusDiv.classList.add('show');
         }
         return;
@@ -1093,8 +1203,18 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const isGenerationStopped = !CHATGPT_ADAPTER.isGenerating();
       const isReadyToFinalize = isCompleteHtml && isGenerationStopped && stableCount >= 5;
 
+      if (pollCount >= maxPollCount && !isReadyToFinalize) {
+        clearInterval(blogWatchTimer);
+        blogWatchTimer = null;
+        statusDiv.textContent = '⚠️ 生成完了を検出できませんでした。ChatGPTの生成が止まっているか確認し、もう一度お試しください。';
+        statusDiv.classList.add('show');
+        copyBtn.style.display = 'none';
+        return;
+      }
+
       if (isReadyToFinalize) {
-        clearInterval(timer);
+        clearInterval(blogWatchTimer);
+        blogWatchTimer = null;
 
         try {
           let raw = '';
@@ -1126,6 +1246,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
           if (!hasEnoughArticleHtml(decoded)) {
             lastBlogHtml = '';
+            setGeneratedContext({ blogHtml: '', blogTitle: '' });
             statusDiv.textContent = '⚠️ ブログ本文が途中までしか取得できませんでした。赤いコピーは出さずに止めています。ChatGPTの生成完了後、もう一度「ChatGPTへ送信して記事生成」を押してください。';
             statusDiv.classList.add('show');
             copyBtn.style.display = 'none';
@@ -1137,12 +1258,21 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           const ctaTel = (info.tel || '').trim();
           if (!ctaUrl) {
             console.warn('CTA URLが設定されていません');
+            statusDiv.textContent = '⚠️ CTAリンク先URLが未設定です。教室情報設定でURLを保存してから、もう一度生成してください。';
+            statusDiv.classList.add('show');
+            copyBtn.style.display = 'none';
             return;
           }
           if (!/^https?:\/\//i.test(ctaUrl)) ctaUrl = 'https://' + ctaUrl;
 
           const ctaHtml = buildCtaHtml(ctaUrl, ctaTel, ctaData);
+          lastBlogTitle = extractH1Text(decoded);
           lastBlogHtml = decoded + '\n\n' + ctaHtml;
+          setGeneratedContext({
+            blogHtml: lastBlogHtml,
+            articleFacts: lastArticleFacts,
+            blogTitle: lastBlogTitle
+          });
 
         } catch (e) {
           console.error('ブログHTML処理エラー:', e);
@@ -1169,22 +1299,42 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
   let isGeneratingPrompt = false;
 
   function watchThumbnailPrompt(statusDiv, imgExecBtn, baselineCount = 0) {
+    if (thumbnailWatchTimer) {
+      clearInterval(thumbnailWatchTimer);
+      thumbnailWatchTimer = null;
+    }
+
     let last = '';
     let stableCount = 0;
+    let pollCount = 0;
+    const maxPollCount = 300;
 
-    const timer = setInterval(() => {
+    thumbnailWatchTimer = setInterval(() => {
       if (!isGeneratingPrompt) {
-        clearInterval(timer);
+        clearInterval(thumbnailWatchTimer);
+        thumbnailWatchTimer = null;
         return;
       }
 
+      pollCount++;
       const nodes = CHATGPT_ADAPTER.getResponseNodes().slice(baselineCount);
-      if (!nodes.length) return;
+      if (!nodes.length) {
+        if (pollCount >= maxPollCount) {
+          clearInterval(thumbnailWatchTimer);
+          thumbnailWatchTimer = null;
+          isGeneratingPrompt = false;
+          statusDiv.textContent = '⚠️ サムネイル指示の生成完了を検出できませんでした。ChatGPTの生成が止まっているか確認し、もう一度お試しください。';
+          statusDiv.classList.add('show');
+        }
+        return;
+      }
 
       const latest = nodes[nodes.length - 1];
       const txt = CHATGPT_ADAPTER.getResponseText(latest);
+      const promptText = extractImagePromptText(txt);
+      const hasPromptMarker = /\[\[EISAI_IMG_PROMPT\]\][\s\S]*?\[\[\/EISAI_IMG_PROMPT\]\]/.test(txt);
 
-      if (txt.includes('このプロンプトで画像を生成してください')) {
+      if (hasPromptMarker) {
         if (txt === last) {
           stableCount++;
         } else {
@@ -1192,9 +1342,11 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           stableCount = 0;
         }
 
-        if (stableCount >= 3 && txt.length > 100) {
-          clearInterval(timer);
+        if (!CHATGPT_ADAPTER.isGenerating() && stableCount >= 3 && promptText.length > 80) {
+          clearInterval(thumbnailWatchTimer);
+          thumbnailWatchTimer = null;
           lastPromptNode = latest;
+          lastImagePromptText = promptText;
           isGeneratingPrompt = false;
           imgExecBtn.style.display = 'block';
           if (imgExecBtn.parentElement) imgExecBtn.parentElement.style.display = 'block';
@@ -1204,6 +1356,14 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           statusDiv.textContent = '✅ サムネイル指示の生成が完了しました。内容を確認して「このプロンプトで画像を生成する」ボタンを押してください。';
           statusDiv.classList.add('show');
         }
+      }
+
+      if (pollCount >= maxPollCount) {
+        clearInterval(thumbnailWatchTimer);
+        thumbnailWatchTimer = null;
+        isGeneratingPrompt = false;
+        statusDiv.textContent = '⚠️ サムネイル指示の生成完了を検出できませんでした。ChatGPTの生成が止まっているか確認し、もう一度お試しください。';
+        statusDiv.classList.add('show');
       }
     }, 1000);
   }
@@ -1990,7 +2150,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       syncFooterButtons();
     }
 
-    imgGenBtn.onclick = () => {
+    imgGenBtn.onclick = async () => {
       const thumbnailType = thumbnailTypeSelect.value;
       const style = visualExpressionSelect.value;
       const textImpact = textImpactSelect.value;
@@ -2001,6 +2161,15 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const mainCatch = isOmakase ? 'おまかせ' : (mainCatchInput.value.trim() || 'おまかせ');
       const subCatch = isOmakase ? 'おまかせ' : (subCatchInput.value.trim() || 'おまかせ');
       const points = isOmakase ? 'おまかせ' : (pointsInput.value.trim() || 'おまかせ');
+      restoreGeneratedContext();
+      const sourceBlogHtml = lastBlogHtml || '';
+      const sourceBlogTitle = lastBlogTitle || extractH1Text(sourceBlogHtml);
+      const sourceArticleFacts = lastArticleFacts || '';
+
+      if (!sourceBlogHtml) {
+        alert('サムネイル作成に使うブログ本文が見つかりませんでした。\n先にブログ生成を完了してから、もう一度お試しください。');
+        return;
+      }
 
       const isPersonType = currentBlogType === BLOG_TYPES.PERSON;
       const personThumbnailRules = isPersonType ? `
@@ -2026,6 +2195,8 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const thumbnailTypeInstruction = THUMBNAIL_TYPE_OPTIONS[thumbnailType] || THUMBNAIL_TYPE_OPTIONS['おまかせ'];
       const visualExpressionInstruction = VISUAL_EXPRESSION_OPTIONS[style] || VISUAL_EXPRESSION_OPTIONS['おまかせ'];
       const textImpactInstruction = TEXT_IMPACT_OPTIONS[textImpact] || TEXT_IMPACT_OPTIONS['強め'];
+      const artDirectionHints = THUMBNAIL_ART_DIRECTIONS.map((item, index) => `${index + 1}. ${item}`).join('\n');
+      const layoutVariantHints = THUMBNAIL_LAYOUT_VARIANTS.map((item, index) => `${index + 1}. ${item}`).join('\n');
 
       const input = getChatInput();
       if (!input) {
@@ -2038,7 +2209,19 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 以下のブログ記事の内容に基づき、定義されたスタイルで最高品質のサムネイル画像を生成するためのプロンプトを作成してください。
 
 ■ ブログ記事内容
-${lastBlogHtml || 'ブログ記事が生成されていません。先にブログを生成してください。'}
+${sourceBlogHtml}
+
+■ ブログのタイトル（このトーンと事実を引き継ぐ。作り直して別の場面を作らない）
+${sourceBlogTitle || '(未取得：本文から推定してよいが、下の確定ファクトの範囲を超えない)'}
+
+■ 記事の確定ファクト（メイン・サブ・数字・場面はこの中の事実だけで作る）
+${sourceArticleFacts || '(未取得。本文HTMLに書かれている事実だけを使う)'}
+
+■ 創作の禁止（最重要）
+- 上の確定ファクトと本文タイトルに無い「行動・数字・場面・セリフ」を作らないでください。
+- 例：入力や本文に「答案を見せに来た」が無ければ、サムネにも書かないでください。
+- 数字は確定ファクトまたは本文にあるもの（前回点／今回点／＋◯点など）だけを使ってください。
+- サムネは強くしてよいですが、事実を盛って強くするのは禁止です。
 
 ■ サムネイル設計の選択
 - サムネイル型: ${thumbnailType}
@@ -2091,6 +2274,18 @@ ${personThumbnailRules}
 - 弱いまとめ言葉は避けてください。例: 「成長の理由」「学習習慣について」「点数アップ事例」「取り組み紹介」「変化のきっかけ」。
 - ビジュアルも情報を並べるのではなく、感情が動く一瞬を切り取ってください。例: ペンが止まった手元、少し顔が上がった表情、親が悩む場面、先生がそっと指すノート、赤丸の答案を見つめる瞬間。
 
+■ 画像内テキストの短さ
+- 画像生成では長い日本語ほど崩れやすいです。メインは全角8〜12字、サブは各6〜10字を目安にしてください。
+- 長い説明文を画像に入れないでください。言い切り・体言止め・数字を優先します。
+- 点数アップ系なら、サブ1に学年＋教科（例: 中2数学）、サブ2に理由または点数推移（例: 途中式 / 48→76点）を入れると伝わりやすいです。
+- 学校名が確定ファクトにある場合だけ、小さなバッジやサブ要素として使ってOKです。
+
+■ 文字設計フォーミュラ
+- メイン = 感情の変化 or 数字（どちらか1つを主役）
+- サブ1 = 学年＋教科（点数アップ系では必須）
+- サブ2 = 理由 or 点数推移（記事にある事実だけ）
+- バッジ = 任意で1つ（学校名・矢印・赤丸など、意味がある場合だけ）
+
 ■ 訴求力のベンチマーク
 - 文字は控えめな見出しではなく、ブログ一覧で真っ先に目に入る広告サムネイルの主役として扱ってください。
 - 画面の40〜55%くらいを大きな日本語コピーが占めてもOKです。人物や教室写真より先に、メインキャッチが読める強さを優先してください。
@@ -2103,6 +2298,14 @@ ${personThumbnailRules}
 
 そのうえで、内部で3案ほど方向性を考え、最も「読みたくなる」1案だけを最終プロンプトにしてください。
 3案の比較や理由は出力しないでください。
+
+■ マンネリ防止の方向性候補
+毎回同じ構図にしないため、内部で以下から2〜3方向を検討し、記事に一番合う1つを選んでください。この一覧は出力しないでください。
+${artDirectionHints}
+
+■ レイアウト候補
+内部検討用です。記事に合うものだけ選び、無理に全部入れないでください。
+${layoutVariantHints}
 
 ■ キャッチの考え方
 - おまかせモードの場合は、ブログ記事からメインキャッチとサブキャッチを自分で考えてください。ブログタイトルをそのまま使うだけは禁止です。
@@ -2135,13 +2338,9 @@ ${personThumbnailRules}
 - メイン文字は読みやすく、サムネイルとして目立つ
 
 ■ 出力形式
----
-以下のプロンプトで画像を生成してください
-
+[[EISAI_IMG_PROMPT]]
 [ここに、IMAGE2.0へそのまま渡せる短めの画像生成プロンプト]
-
-このプロンプトで画像を生成してください。
----
+[[/EISAI_IMG_PROMPT]]
 
 【重要】プロンプトを出力のみで、画像は生成しないでください。`;
 
@@ -2153,11 +2352,15 @@ ${personThumbnailRules}
 
       isGeneratingPrompt = true;
       lastPromptNode = null;
+      lastImagePromptText = '';
 
       const responseBaseline = CHATGPT_ADAPTER.getResponseNodes().length;
-      CHATGPT_ADAPTER.setComposerText(input, promptRequest);
-      sendMessage(input);
-      watchThumbnailPrompt(statusDiv, imgExecBtn, responseBaseline);
+      const sent = await setComposerAndSend(promptRequest);
+      if (sent) {
+        watchThumbnailPrompt(statusDiv, imgExecBtn, responseBaseline);
+      } else {
+        isGeneratingPrompt = false;
+      }
     };
 
     genBtn.onclick = async () => {
@@ -2190,6 +2393,14 @@ ${personThumbnailRules}
         if (val.trim()) {
           formContent += `${field.label}: ${val}\n\n`;
         }
+      });
+      lastArticleFacts = formContent;
+      lastBlogTitle = '';
+      lastBlogHtml = '';
+      setGeneratedContext({
+        articleFacts: formContent,
+        blogTitle: '',
+        blogHtml: ''
       });
 
       const TYPE_INSTRUCTIONS = {
@@ -2300,6 +2511,16 @@ ${personThumbnailRules}
 - タイトルは最初に5案を内側で考え、その中で最も「読みたくなる」1案だけを <h1> にしてください。5案は出力しないでください。
 - タイトルは18〜32文字を目安にしてください。短すぎる標語、長すぎる説明文、抽象的なまとめは禁止です。
 - タイトルには、次のうち2つ以上を必ず入れてください: 具体的な悩み / 数字 / 教科 / 学年 / 生徒の行動 / 印象的な場面 / 読者が気になる変化。
+- タイトルは、できるだけ「感情の出発点 or 学年＋教科」→「数字の変化」→「理由・きっかけ」の順にしてください。
+- 良い型の例:
+  - 「数学は無理」から76点へ。中2数学が変わった途中式の話
+  - 「数学は無理」から自習席へ。28点アップした中2数学の変化
+  - 48→76点。変えたのは「途中式」でした
+- 弱い型の例（禁止）:
+  - 自習席に向かった中2数学の28点アップ（係り受けがねじれやすい）
+  - 48点の数学、答案を自分から見せに来た76点の日（重い／入力に無い場面を作りやすい）
+- 数字（前回→今回 or ＋◯点）が入力にある場合は必ず1つ入れ、できるだけ前方に置いてください。
+- 「自習席に向かった数学」のように、人がする行動を教科や物に係らせないでください。
 - 「一歩」「変化」「成長」「きっかけ」「前向き」「頑張った」だけで終わる抽象タイトルは禁止です。使う場合も、必ず具体的な場面や数字と組み合わせてください。
 - 記事本文の一番印象的な場面をタイトルに反映してください。例: 「声が少し大きくなった日」「机に向かう時間が増えた夜」「質問が具体的になった中2数学」。
 - 大げさな広告表現は禁止です。「絶対」「必ず」「奇跡」「たったこれだけで」「誰でも」は使わないでください。
@@ -2458,12 +2679,10 @@ ${formContent}`;
       lastBlogHtml = '';
 
       const responseBaseline = CHATGPT_ADAPTER.getResponseNodes().length;
-      CHATGPT_ADAPTER.setComposerText(input, prompt);
-
-      await sleep(500);
-      await sendMessage(input);
-
-      watchBlogResponseAndEnableCopy(statusDiv, copyBtn, responseBaseline);
+      const sent = await setComposerAndSend(prompt);
+      if (sent) {
+        watchBlogResponseAndEnableCopy(statusDiv, copyBtn, responseBaseline);
+      }
     };
 
     copyBtn.onclick = async () => {
@@ -2510,7 +2729,7 @@ ${formContent}`;
       }
 
       const latest = lastPromptNode || nodes[nodes.length - 1];
-      const prompt = CHATGPT_ADAPTER.getResponseText(latest);
+      const prompt = lastImagePromptText || extractImagePromptText(CHATGPT_ADAPTER.getResponseText(latest));
 
       try {
         await navigator.clipboard.writeText(prompt);
@@ -2529,8 +2748,7 @@ ${formContent}`;
       imgExecBtn.style.display = 'none';
       syncFooterButtons();
 
-      CHATGPT_ADAPTER.setComposerText(input, prompt);
-      sendMessage(input);
+      await setComposerAndSend(prompt);
     };
   }
 

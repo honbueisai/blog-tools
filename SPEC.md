@@ -136,6 +136,9 @@ const BLOG_TYPES = {
 - `強め` ではメイン文字を横幅50〜70%程度、`最大インパクト` では横幅60〜82%程度の主役として扱う
 - IMAGE2.0向けには、厳密な座標や比率で縛らず、ラフなアートディレクションとして短めに出力する
 - 内部で複数案を検討し、最終的に1つの画像生成プロンプトだけを出力する
+- ChatGPT版は本文生成時の入力ファクトと実際の本文タイトルを保存し、サムネイル生成時も同じ情報源を参照する
+- サムネイルは本文にない数字・行動・場面・セリフを作らず、本文タイトルのトーンを短い訴求コピーへ圧縮する
+- サムネイル生成完了は `[[EISAI_IMG_PROMPT]]...[[/EISAI_IMG_PROMPT]]` の機械可読マーカーで検出する
 - 古い広告風の赤オレンジ3D文字、巨大な青帯、同じ数字の重複強調は避ける
 - 文字要素は原則2つまでに抑え、答案・ノート・手元など現場感のある素材を主役にする
 - 記事内容に応じてサブキャッチは最大2本まで許可し、点数バッジ・答案・チェック・矢印など意味のある小アイコンは最大2個まで使える
@@ -155,8 +158,9 @@ const BLOG_TYPES = {
 
 ### ストレージキー
 - `STORAGE_KEY`: `eisai_blog_info_v05663`（バージョン依存）
-- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0136`（バージョン依存）
+- ChatGPT版 `STORAGE_KEY`: `eisai_chatgpt_blog_info_v0137`（バージョン依存）
 - ChatGPT版テストモード: `eisai_chatgpt_test_mode_enabled`（ローカル解除式）
+- ChatGPT版 生成コンテキスト: `eisai_chatgpt_last_generated_context`（本文HTML・確定ファクト・本文タイトルを24時間保持）
 - `CLASSROOM_STORAGE_KEY`: `eisai_classroom_settings_persistent`（永続）
 
 ### 保存される情報
