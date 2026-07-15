@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.3.0
+// @version      0.3.1
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '0.3.0';
+  const CURRENT_VERSION = '0.3.1';
   const VERSION_ID = CURRENT_VERSION.replace(/\./g, '-');
   const VERSION_KEY = CURRENT_VERSION.replace(/\./g, '');
   const TOOL_ID = `eisai-chatgpt-tool-v${VERSION_ID}`;
@@ -507,6 +507,14 @@
     }
     lastBlogTitle = title;
     setGeneratedContext({ blogHtml: lastBlogHtml, articleFacts: lastArticleFacts, blogTitle: lastBlogTitle });
+  }
+
+  // エディタ側で3タイトルを選べるよう、コピーHTMLの末尾に埋め込むコメントを作る
+  // （2案未満なら埋め込まない。HTMLコメントなのでWordPress等では不可視）
+  function buildTitlesComment(titles) {
+    if (!Array.isArray(titles) || titles.length < 2) return '';
+    const json = JSON.stringify(titles.map(t => String(t || '').slice(0, 33)));
+    return '\n<!--EISAI_TITLES: ' + json + '-->';
   }
 
   // 生成完了後、タイトル選択セクションに3案のボタンを描画する
@@ -1307,7 +1315,8 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
           const ctaHtml = buildCtaHtml(ctaUrl, ctaTel, ctaData);
           lastBlogTitle = extractH1Text(decoded);
-          lastBlogHtml = decoded + '\n\n' + ctaHtml;
+          // エディタで3タイトルを選べるよう、末尾にEISAI_TITLESコメントを残す（不可視）
+          lastBlogHtml = decoded + '\n\n' + ctaHtml + buildTitlesComment(lastTitleCandidates);
           setGeneratedContext({
             blogHtml: lastBlogHtml,
             articleFacts: lastArticleFacts,
@@ -2253,7 +2262,8 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const subCatch = isOmakase ? 'おまかせ' : (subCatchInput.value.trim() || 'おまかせ');
       const points = isOmakase ? 'おまかせ' : (pointsInput.value.trim() || 'おまかせ');
       restoreGeneratedContext();
-      const sourceBlogHtml = lastBlogHtml || '';
+      // 画像プロンプトへ渡す本文からは EISAI_TITLES コメントを除去（不可視だが混入回避）
+      const sourceBlogHtml = (lastBlogHtml || '').replace(/<!--\s*EISAI_TITLES[\s\S]*?-->/gi, '').trim();
       // ユーザーが選んだ「サムネイルのメインにするタイトル」を優先（未選択時はh1/本文タイトル）
       const chosenThumbTitle = (thumbTitleSelect && thumbTitleSelect.value) ? thumbTitleSelect.value.trim() : '';
       const sourceBlogTitle = chosenThumbTitle || lastBlogTitle || extractH1Text(sourceBlogHtml);
