@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.2.0
+// @version      0.3.0
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '0.2.0';
+  const CURRENT_VERSION = '0.3.0';
   const VERSION_ID = CURRENT_VERSION.replace(/\./g, '-');
   const VERSION_KEY = CURRENT_VERSION.replace(/\./g, '');
   const TOOL_ID = `eisai-chatgpt-tool-v${VERSION_ID}`;
@@ -1616,6 +1616,39 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
     const step2 = createEl('div', { id: 'eisai-step2', style: { display: 'none' } }, content);
 
+    // 生成後に入力欄(step2)を畳んで、下の進捗（状態・タイトル・画像生成）を見せるアコーディオン見出し
+    const inputAccordion = createEl('div', {
+      id: 'eisai-input-accordion',
+      style: {
+        display: 'none',
+        cursor: 'pointer',
+        padding: '10px 12px',
+        marginBottom: '10px',
+        background: '#eef2ff',
+        border: '1px solid #c7d2fe',
+        borderRadius: '8px',
+        fontSize: '13px',
+        fontWeight: '600',
+        color: '#3730a3',
+        userSelect: 'none'
+      }
+    }, content, '📝 入力内容を表示 ▼');
+    content.insertBefore(inputAccordion, step2);
+    inputAccordion.onclick = () => {
+      const willOpen = step2.style.display === 'none';
+      step2.style.display = willOpen ? 'block' : 'none';
+      inputAccordion.textContent = willOpen ? '📝 入力内容を閉じる ▲' : '📝 入力内容を表示 ▼';
+    };
+    function collapseInputForResult() {
+      step2.style.display = 'none';
+      inputAccordion.style.display = 'block';
+      inputAccordion.textContent = '📝 入力内容を表示 ▼';
+    }
+    function resetInputAccordion() {
+      inputAccordion.style.display = 'none';
+      inputAccordion.textContent = '📝 入力内容を表示 ▼';
+    }
+
     const selectedTypeLabel = createEl('div', {
       style: {
         display: 'flex',
@@ -1943,10 +1976,12 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     nextBtn.onclick = function () {
       step1.style.display = 'none';
       step2.style.display = 'block';
+      resetInputAccordion();
     };
     backBtn.onclick = () => {
       step2.style.display = 'none';
       step1.style.display = 'block';
+      resetInputAccordion();
     };
     const statusDiv = createEl('div', { className: 'eisai-status' }, content);
 
@@ -2043,6 +2078,37 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         lineHeight: '1.6'
       }
     }, imgSection, '🖼 画像は実写スタイルで生成されます。サムネイルの構図や訴求の方向性はブログ記事の内容から自動で判断されます。');
+
+    // サムネイルのメインにするタイトルを3案から選択（生成完了後にlastTitleCandidatesから充填）
+    createEl('label', { className: 'eisai-label' }, imgSection, 'サムネイルのメインにするタイトル');
+    const thumbTitleSelect = createEl('select', {
+      className: 'eisai-input',
+      style: { width: '100%', marginBottom: '8px' }
+    }, imgSection);
+    function populateThumbnailTitleOptions() {
+      while (thumbTitleSelect.firstChild) thumbTitleSelect.removeChild(thumbTitleSelect.firstChild);
+      const cands = (lastTitleCandidates && lastTitleCandidates.length)
+        ? lastTitleCandidates
+        : (lastBlogTitle ? [lastBlogTitle] : []);
+      const labels = ['① SEO重視', '② 共感重視', '③ CV重視'];
+      if (!cands.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '(タイトル未取得：本文から自動判断)';
+        thumbTitleSelect.appendChild(opt);
+        return;
+      }
+      cands.forEach((t, i) => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = (labels[i] || ('案' + (i + 1))) + '：' + t;
+        thumbTitleSelect.appendChild(opt);
+      });
+      // 本文で選んだタイトル（現在のh1）があれば初期選択を合わせる
+      if (lastBlogTitle && cands.indexOf(lastBlogTitle) >= 0) {
+        thumbTitleSelect.value = lastBlogTitle;
+      }
+    }
 
     createEl('label', { className: 'eisai-label' }, imgSection, '文字の強さを選択');
     const textImpactSelect = createEl('select', {
@@ -2188,7 +2254,9 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       const points = isOmakase ? 'おまかせ' : (pointsInput.value.trim() || 'おまかせ');
       restoreGeneratedContext();
       const sourceBlogHtml = lastBlogHtml || '';
-      const sourceBlogTitle = lastBlogTitle || extractH1Text(sourceBlogHtml);
+      // ユーザーが選んだ「サムネイルのメインにするタイトル」を優先（未選択時はh1/本文タイトル）
+      const chosenThumbTitle = (thumbTitleSelect && thumbTitleSelect.value) ? thumbTitleSelect.value.trim() : '';
+      const sourceBlogTitle = chosenThumbTitle || lastBlogTitle || extractH1Text(sourceBlogHtml);
       const sourceArticleFacts = lastArticleFacts || '';
 
       if (!sourceBlogHtml) {
@@ -2342,7 +2410,20 @@ ${layoutVariantHints}
 - 画面に入れる要素は少なくしてください。メインとなる感情フック、強い文字、伝わるビジュアル、この3つがあれば十分です。
 - 文字はサムネイルとして読める強さにしてください。小さく上品すぎて読めないより、少し大胆な方を優先します。
 - アイコンやバッジは使っても使わなくてもOKです。使う場合は、内容理解に役立つものだけにしてください。
-- 紙やノートが出る場合は、カメラ・人物・手元の向きが自然になるように、短く一文だけ添えてください。細かい物理指定を長々と書く必要はありません。
+
+■ ノート・答案の物理的な正しさ（最重要・破綻防止）
+- 生徒が紙面を「読んでいる／勉強している」姿と、紙面を読者（カメラ）に正面から見せる構図は、同時には成立しません（生徒から見ると紙が逆さ・裏向きになります）。どちらか一方に決めてください。
+- 生徒が机で読んでいる場面にする場合は、必ず次のどれかにしてください。
+  A. 肩越し（over-the-shoulder）または斜め後ろ・横からのカメラで、読者が生徒とほぼ同じ視点を共有する。→ ノートは生徒にも読者にも自然な向きになる（推奨）。
+  B. 生徒の表情・感情を主役にし、ノートや答案は生徒が今まさに読んでいる紙ではなく、手前に別に置かれた"見せ物"として配置する（生徒はその紙を読んでいる動作にしない）。
+  C. 記事に「見せた／持ってきた」場面がある時だけ、生徒がノートや答案をカメラの方へ掲げて見せているポーズにする。
+- 禁止：生徒が机に向かって勉強しているのに、その同じ紙の文字だけが読者側に正面を向いている構図（物理的にあり得ず、最も破綻して見えます）。
+- 紙の向きは必ず「その紙を使っている人」を基準に自然にしてください。読者に見せたいだけの理由で、人物基準の向きを反転させないでください。
+
+■ 紙面の細かい文字を描き込みすぎない（崩れ防止）
+- ノート・答案・単語帳などの文字は、判読できるほど大きく鮮明に写さないでください。浅い被写界深度（手前や周辺をぼかす）、見切れ、角度で"雰囲気"として見せてください。
+- 具体的な英単語リストや問題文の行を細かく描かせないでください（画像生成では小さな文字が必ず崩れ、でたらめな文字列になります）。
+- 点数を見せる場合は「100」のような大きな数字を1つだけ見せ、答案の問題行・単語行までは描写しないでください。
 
 ■ 最終プロンプトの書き方
 - 最終的な画像生成プロンプトは、短めの日本語で書いてください。長い仕様書にしないでください。
@@ -2700,6 +2781,12 @@ ${formContent}`;
       const titleSectionReset = document.getElementById('eisai-title-section');
       if (titleSectionReset) titleSectionReset.style.display = 'none';
 
+      // 入力欄をアコーディオンで畳み、状態・タイトル・画像生成が見えるようにする
+      collapseInputForResult();
+      setTimeout(() => {
+        if (statusDiv.scrollIntoView) statusDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+
       const responseBaseline = CHATGPT_ADAPTER.getResponseNodes().length;
       const sent = await setComposerAndSend(prompt);
       if (sent) {
@@ -2729,6 +2816,7 @@ ${formContent}`;
       }
 
       imgSection.style.display = 'block';
+      populateThumbnailTitleOptions();
       setTimeout(() => {
         const thumbSection = document.getElementById('eisai-image-section');
         if (thumbSection) {
