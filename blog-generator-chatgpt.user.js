@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.1.37
+// @version      0.2.0
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '0.1.37';
+  const CURRENT_VERSION = '0.2.0';
   const VERSION_ID = CURRENT_VERSION.replace(/\./g, '-');
   const VERSION_KEY = CURRENT_VERSION.replace(/\./g, '');
   const TOOL_ID = `eisai-chatgpt-tool-v${VERSION_ID}`;
@@ -40,9 +40,8 @@
   const BLOG_TYPES = {
     GROWTH: 'growth_story',
     EVENT: 'event',
-    PERSON: 'person',
-    SERVICE: 'service',
-    SCORE: 'score_summary',
+    TRIAL: 'trial_lesson',
+    CONSULTATION: 'learning_consultation',
     OTHER: 'other'
   };
 
@@ -58,6 +57,7 @@
   let lastArticleFacts = '';
   let lastBlogTitle = '';
   let lastImagePromptText = '';
+  let lastTitleCandidates = [];
 
   // =========================================================
   // 1. サムネイルスタイル / 画像スタイル定義
@@ -83,7 +83,7 @@
     'Student Change Moment: the visual hook is a changed behavior or emotion, with a short quote or result badge as support',
     'Answer Sheet Hero: paper texture, score marks, red pen, test result, and correction details as the main visual; no generic classroom stock feel',
     'Teacher Support Documentary: natural teacher/student guidance only when it supports the article; candid, close, realistic, not staged advertising',
-    'Infographic Magazine: clean diagram, timeline, arrows, score transition, checklist, and modern magazine layout with generous spacing',
+    'Editorial Magazine Photo: photorealistic magazine-style cover with a real photo hero, clean type blocks, score transition or short checklist as compact text (no illustrated diagrams), generous spacing',
     'Event Poster Modern: date/target/benefit arranged like a school event poster, strong hierarchy, clean blocks, not a flyer overloaded with text',
     'Character Spotlight Cover: person introduction layout with portrait/photo as hero, name typography, personality cue, and graphic background'
   ];
@@ -101,23 +101,14 @@
     'cropped hands-and-paper documentary composition with text on a clean panel'
   ];
 
+  // サムネイル型はブログ内容から自動判断（v0.2.0以降 'おまかせ' 固定）。UIの型選択は廃止済み。
   const THUMBNAIL_TYPE_OPTIONS = {
-    'おまかせ': 'Auto-select the strongest thumbnail objective from the article. Choose based on the main visual hook, not on a fixed template.',
-    '点数アップ強調': 'Score/result focused thumbnail. Make the score, point increase, or visible result the strongest visual and text element.',
-    'ノート・答案主役': 'Evidence-object thumbnail. Use notebook, answer sheet, red pen marks, worksheet, or study materials as the hero visual.',
-    'Before / After': 'Before-after thumbnail. Clearly contrast the previous struggle and the later improvement in a split or paired composition.',
-    '保護者の悩み共感': 'Parent pain-point thumbnail. Lead with the parent concern or question, using a calmer but still readable design.',
-    '生徒の変化ストーリー': 'Student change-story thumbnail. Show the moment of behavioral or emotional change as the hook.',
-    '先生・人物紹介': 'Person spotlight thumbnail. Use the teacher/student/person as the hero with name and personality cue.',
-    'イベント告知': 'Event/campaign thumbnail. Prioritize who it is for, when it happens, and why it matters.'
+    'おまかせ': 'Auto-select the strongest thumbnail objective from the article (score/result, evidence object like notebook or answer sheet, before/after, parent pain-point, student change moment, person spotlight when a photo is uploaded, or event). Choose based on the main visual hook, not on a fixed template.'
   };
 
+  // 見た目は実写固定（v0.2.0以降）。UIの見た目選択は廃止済み。
   const VISUAL_EXPRESSION_OPTIONS = {
-    'おまかせ': 'Auto-select the visual expression that best fits the selected thumbnail objective and article content.',
-    '実写': VISUAL_STYLES['実写スタイル'],
-    'アニメ': VISUAL_STYLES['アニメスタイル'],
-    '漫画': VISUAL_STYLES['漫画スタイル'],
-    'インフォグラフィック': VISUAL_STYLES['インフォグラフィック']
+    '実写': VISUAL_STYLES['実写スタイル']
   };
 
   const TEXT_IMPACT_OPTIONS = {
@@ -137,61 +128,6 @@
     'パープル': { main: 'Purple', sub: 'Deep Purple', hex: '#9370DB', gradient: 'Purple to Deep Purple' },
     '白黒': { main: 'Black', sub: 'White', hex: '#000000', gradient: 'Black to White' }
   };
-
-  // =========================================================
-  // 2. ブログ用 MASTER_YAML
-  // =========================================================
-  const MASTER_YAML = [
-    "あなたは英才個別学院の教室ブログを書く専門ライターです。",
-    "保護者向けに、現場感のある自然な日本語で、ブログ記事をHTMLで書いてください。",
-    "",
-    "------------------------------",
-    "教室情報",
-    "------------------------------",
-    "校舎: __KOSHA__",
-    "室長: __SHICHOU__",
-    "",
-    "------------------------------",
-    "入力された現場情報",
-    "------------------------------",
-    "__INPUT_BLOCK__",
-    "",
-    "------------------------------",
-    "出力フォーマット（このHTML構造をそのまま埋めて出力してください）",
-    "------------------------------",
-    "<h1>記事タイトル（32文字以内）</h1>",
-    "<p>導入文。保護者の不安に寄り添う書き出し。</p>",
-    "<h2>1つ目の見出し（例: 生徒の状況や課題）</h2>",
-    "<p>具体的な状況や場面の描写。</p>",
-    "<h2>2つ目の見出し（例: 教室で行った取り組み）</h2>",
-    "<p>教室で実施した取り組みと、結果や変化につながった理由。</p>",
-    "<h2>まとめ</h2>",
-    "<p>同じ悩みを持つ保護者への前向きなメッセージで締める。</p>",
-    "<!--CTA_DATA_START-->",
-    "説明文1：記事内容に合わせた、不安を解消する一言（1行）",
-    "説明文2：教室見学や相談へのハードルを下げる優しい一言（1行）",
-    "相談ポイント1：記事関連の相談内容1（1行）",
-    "相談ポイント2：記事関連の相談内容2（1行）",
-    "体験ポイント1：体験で得られるメリット1（1行）",
-    "体験ポイント2：体験で得られるメリット2（1行）",
-    "締めの言葉：__KOSHA__室長 __SHICHOU__より、心を込めた最後のメッセージ（1行）",
-    "<!--CTA_DATA_END-->",
-    "",
-    "------------------------------",
-    "絶対ルール（守れない応答は失敗扱いになります）",
-    "------------------------------",
-    "1. あなたの応答の【最初の文字】は必ず `<h1>` にしてください。前置き・解説・コードブロックは禁止です。",
-    "2. 「説明文1：…」「相談ポイント1：…」のような CTA素材だけを返してはいけません。本文HTML（<h1>〜<h2>まとめのパラグラフまで）が無い応答は失敗扱いです。",
-    "3. 本文HTMLは合計800〜1200字程度に収め、`<h2>` は3個、`<p>` は4〜7個を目安にしてください。冗長に書かないでください。",
-    "4. 本文HTMLの末尾に必ず <!--CTA_DATA_START--> と <!--CTA_DATA_END--> で囲んだCTA素材ブロックを1回だけ付けてください。",
-    "5. ```html などのコードブロック、Markdown見出し（#, ##）、絵文字、英語の分析文、思考プロセスは出力しないでください。",
-    "6. 「もちろんです」「以下に作成します」「こちらがHTMLです」などの前置き・後置きは禁止です。",
-    "7. 申し込みボタンHTML、電話リンク、CTAリンクのHTMLは出力しないでください（CTAの見た目は別ツール側で生成します）。",
-    "8. 入力されていない点数・学校名・合格校・生徒発言・キャンペーン・実績は作らないでください。",
-    "9. 「必ず伸びる」「絶対合格」などの断定的な広告表現は禁止です。",
-    "",
-    "それでは、上の【入力された現場情報】を使って、【出力フォーマット】の構造どおりに記事をHTMLで書いてください。応答は `<h1>` から始めてください。"
-  ].join("\n");
 
   // =========================================================
   // 4. 共通ヘルパー
@@ -514,6 +450,105 @@
   function extractH1Text(html) {
     const match = String(html || '').match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
     return match ? decodeHtmlText(match[1].replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim() : '';
+  }
+
+  // <!--EISAI_TITLES: ["...","...","..."]--> をHTMLから抽出・除去する。
+  // 候補が取れない場合でも <h1> を1案目として必ず返し、タイトル選択UIを成立させる。
+  function extractTitleCandidates(html) {
+    let titles = [];
+    let cleaned = html || '';
+    const m = cleaned.match(/<!--\s*EISAI_TITLES\s*:\s*(\[[\s\S]*?\])\s*-->/i)
+      || cleaned.match(/&lt;!--\s*EISAI_TITLES\s*:\s*(\[[\s\S]*?\])\s*--&gt;/i)
+      || cleaned.match(/EISAI_TITLES\s*:\s*(\[[\s\S]*?\])/i);
+    if (m) {
+      try {
+        const parsed = JSON.parse(decodeHtmlText(m[1]));
+        if (Array.isArray(parsed)) {
+          titles = parsed
+            .map(t => String(t || '').trim())
+            .filter(Boolean)
+            .map(t => t.slice(0, 33));
+        }
+      } catch (e) {
+        console.warn('[Eisai] タイトル候補のJSON解析に失敗しました:', e);
+      }
+    }
+    // EISAI_TITLESマーカーは配列有無に関わらず本文から必ず除去する（コピーHTMLへの残留防止）
+    cleaned = cleaned.replace(/<p[^>]*>\s*(?:<!--|&lt;!--)?\s*EISAI_TITLES[\s\S]*?(?:-->|--&gt;)\s*<\/p>/gi, '');
+    cleaned = cleaned.replace(/(?:<!--|&lt;!--)\s*EISAI_TITLES[\s\S]*?(?:-->|--&gt;)/gi, '');
+    cleaned = cleaned.replace(/EISAI_TITLES\s*:\s*\[[\s\S]*?\]/gi, '');
+    cleaned = cleaned.trim();
+
+    // 実際の <h1> を1案目（SEO重視）として扱う。
+    // ・3案が取れている場合：プロンプトで1案目=h1と一致させているため、
+    //   微差（末尾句点・全角半角など）があっても1案目を実h1に揃える。取りこぼし・ラベルずれを防ぐ。
+    // ・候補が取れない場合：h1のみを唯一の候補にする。
+    const h1Title = extractH1Text(cleaned);
+    if (h1Title) {
+      const capped = h1Title.slice(0, 33);
+      if (titles.length === 0) {
+        titles = [capped];
+      } else if (titles[0] !== capped) {
+        titles[0] = capped;
+      }
+    }
+    return { html: cleaned, titles: titles.slice(0, 3) };
+  }
+
+  // lastBlogHtml の <h1> を選択されたタイトルに差し替える
+  function applyTitleToBlogHtml(title) {
+    if (!lastBlogHtml || !title) return;
+    const safe = escapeHtml(title);
+    // 置換文字列内の $ 特殊解釈を避けるため、関数リプレーサで挿入する
+    if (/<h1[^>]*>[\s\S]*?<\/h1>/i.test(lastBlogHtml)) {
+      lastBlogHtml = lastBlogHtml.replace(/(<h1[^>]*>)[\s\S]*?(<\/h1>)/i, (_m, open, close) => open + safe + close);
+    } else {
+      lastBlogHtml = `<h1>${safe}</h1>\n` + lastBlogHtml;
+    }
+    lastBlogTitle = title;
+    setGeneratedContext({ blogHtml: lastBlogHtml, articleFacts: lastArticleFacts, blogTitle: lastBlogTitle });
+  }
+
+  // 生成完了後、タイトル選択セクションに3案のボタンを描画する
+  const TITLE_CANDIDATE_LABELS = ['① SEO重視', '② 共感重視', '③ CV重視'];
+  function renderTitleCandidates() {
+    const section = document.getElementById('eisai-title-section');
+    const wrap = document.getElementById('eisai-title-buttons');
+    if (!section || !wrap) return;
+    while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+    if (!lastTitleCandidates || lastTitleCandidates.length < 2) {
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = 'block';
+    lastTitleCandidates.forEach((title, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.style.cssText = 'width:100%;text-align:left;padding:8px 10px;border:2px solid #cbd5e1;border-radius:6px;background:#ffffff;font-size:12px;line-height:1.5;cursor:pointer;color:#111827;';
+      btn.innerHTML = `<span style="display:block;font-size:10px;color:#64748b;margin-bottom:2px;">${TITLE_CANDIDATE_LABELS[idx] || ('案' + (idx + 1))}（${title.length}文字）</span>${escapeHtml(title)}`;
+      btn.onclick = () => {
+        applyTitleToBlogHtml(title);
+        wrap.querySelectorAll('button').forEach(b => {
+          b.style.borderColor = '#cbd5e1';
+          b.style.background = '#ffffff';
+        });
+        btn.style.borderColor = '#2563eb';
+        btn.style.background = '#dbeafe';
+        const toast = document.getElementById('eisai-copy-toast');
+        if (toast) {
+          toast.style.display = 'block';
+          toast.textContent = `📰 タイトルを反映しました：${title}`;
+          setTimeout(() => { toast.style.display = 'none'; }, 2000);
+        }
+      };
+      wrap.appendChild(btn);
+    });
+    // 初期状態は1案目（h1と同一）を選択済み表示
+    const first = wrap.querySelector('button');
+    if (first) {
+      first.style.borderColor = '#2563eb';
+      first.style.background = '#dbeafe';
+    }
   }
 
   function getGeneratedContextRecord() {
@@ -1244,6 +1279,11 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           decoded = decoded.replace(/<p[^>]*style=['"][^'"]*color:\s*red[^'"]*['"][^>]*>\s*■+CTAセクション■+\s*<\/p>/gi, '');
           decoded = decoded.replace(/<table[^>]*>[\s\S]*<\/table>\s*$/i, '');
 
+          // タイトル候補を抽出し、本文からEISAI_TITLESコメントを除去する
+          const titleResult = extractTitleCandidates(decoded);
+          decoded = titleResult.html;
+          lastTitleCandidates = titleResult.titles;
+
           if (!hasEnoughArticleHtml(decoded)) {
             lastBlogHtml = '';
             setGeneratedContext({ blogHtml: '', blogTitle: '' });
@@ -1281,6 +1321,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
         statusDiv.textContent = '✅ ブログ記事の生成が完了しました。下の赤いボタンからHTMLをコピーできます。';
         statusDiv.classList.add('show');
+        renderTitleCandidates();
         copyBtn.style.display = 'block';
         if (copyBtn.parentElement) copyBtn.parentElement.style.display = 'block';
         setTimeout(() => {
@@ -1559,12 +1600,11 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       typeButtons.push(btn);
       return btn;
     }
-    const btnGrowth = addTypeButton(BLOG_TYPES.GROWTH, '結果アップ・成長');
+    const btnGrowth = addTypeButton(BLOG_TYPES.GROWTH, '個人成長');
     addTypeButton(BLOG_TYPES.EVENT, '対策・イベント');
-    addTypeButton(BLOG_TYPES.PERSON, '講師・室長・生徒');
-    addTypeButton(BLOG_TYPES.SERVICE, 'サービス・相談');
-    addTypeButton(BLOG_TYPES.SCORE, '点数アップ速報');
-    addTypeButton(BLOG_TYPES.OTHER, 'その他');
+    addTypeButton(BLOG_TYPES.TRIAL, '無料体験授業');
+    addTypeButton(BLOG_TYPES.CONSULTATION, '無料学習相談');
+    addTypeButton(BLOG_TYPES.OTHER, 'その他・学習情報');
     btnGrowth.classList.add('eisai-type-btn-active');
 
     const nextBtn = document.createElement('button');
@@ -1591,7 +1631,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         color: '#3730a3'
       }
     }, step2);
-    const selectedTypeText = createEl('span', { style: { minWidth: '0' } }, selectedTypeLabel, '📝 結果アップ・成長ストーリー');
+    const selectedTypeText = createEl('span', { style: { minWidth: '0' } }, selectedTypeLabel, '📝 個人成長（Before／After）');
     const sampleButtonWrap = createEl('div', {
       style: {
         display: 'none',
@@ -1607,68 +1647,61 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
 
     const TYPE_FORMS = {
       [BLOG_TYPES.GROWTH]: {
-        label: '📝 結果アップ・成長ストーリー',
-        hint: '短くてもOKです。実際に見た場面、生徒の変化、先生の一言が入ると記事が現場っぽくなります。',
+        label: '📝 個人成長（Before／After）',
+        hint: '点数アップだけでなく、ノートの取り方・質問の仕方・学習姿勢など「一人の生徒の変化」を書きます。速報ではなく、一人の成長を深く描く場所です。',
         fields: [
           { key: 'student', label: '主役の生徒情報', placeholder: '例：中2・篠崎第二中・Aさん・数学', isArea: false },
-          { key: 'before', label: 'ビフォー（課題・前回の状況）', placeholder: '例：前回45点。計算ミスが多く、途中式を書かないことが多かった', isArea: false },
-          { key: 'after', label: 'アフター（成果・今回の結果）', placeholder: '例：今回84点。39点アップ。本人も「初めて数学が楽しい」と話していた', isArea: false },
-          { key: 'actions', label: '教室で行った具体的なこと（3つ以上）', placeholder: '例：\n・毎回の授業冒頭で計算練習を10分\n・途中式をノートに残すルールを作った\n・テスト2週間前から学校ワークを2周\n・間違えた問題だけを解き直しリスト化', isArea: true },
-          { key: 'reality', label: '現場で見えた変化・リアルな場面', placeholder: '例：最初は「どうせ無理」と言っていたが、2週間ほどで自習に来る回数が増えた。点数を見た時に少し照れながら笑っていた', isArea: true },
+          { key: 'before', label: 'Before（悩み・課題・以前の様子）', placeholder: '例：計算ミスが多く、途中式を書かないことが多かった。本人も数学に苦手意識があった', isArea: true },
+          { key: 'after', label: 'After（結果・変化・今の様子）', placeholder: '例：途中式を残すようになり、確認テストで安定して正解できるようになった。今回84点、39点アップ', isArea: true },
+          { key: 'actions', label: '教室で行った具体的なこと（3つ以上）', placeholder: '例：\n・授業冒頭で計算練習を10分\n・途中式をノートに残すルールを作った\n・間違えた問題だけを解き直しリスト化', isArea: true },
+          { key: 'reality', label: '現場で見えた変化・リアルな場面', placeholder: '例：最初は「どうせ無理」と言っていたが、自分から質問できる回数が増えた。点数を見た時に少し照れながら笑っていた', isArea: true },
           { key: 'episode', label: '印象に残ったエピソード・室長コメント', placeholder: '例：結果だけでなく、途中式を書く習慣がついたことが一番大きな成長だと感じています', isArea: true }
         ]
       },
       [BLOG_TYPES.EVENT]: {
         label: '📅 対策・イベント紹介',
-        hint: '日程や内容だけでなく、当日の雰囲気・参加した生徒の様子・現場で感じた課題を書いてください。',
+        hint: 'テスト対策・英検対策・講習など。地域の学校名・対象・悩み・参加後のメリットまで入れるとSEOとCVに強くなります。',
         fields: [
-          { key: 'eventName', label: 'イベント名・対象', placeholder: '例：冬期講習・中1〜中3対象', isArea: false },
-          { key: 'flow', label: 'イベントの流れ・内容', placeholder: '例：\n・12/25〜1/7の14日間\n・1日2コマ×週3回\n・学校ワーク確認→苦手単元演習→確認テスト', isArea: true },
-          { key: 'scene', label: '当日の雰囲気・生徒の様子', placeholder: '例：最初は眠そうな生徒もいたが、確認テストで点が取れると表情が明るくなった', isArea: true },
-          { key: 'benefit', label: '生徒・保護者にとってのメリット', placeholder: '例：\n・冬休み明けテストに向けて苦手を整理できる\n・家では進みにくい学校ワークを教室で進められる', isArea: true },
-          { key: 'example', label: '過去の実例・室長コメント（任意）', placeholder: '例：去年は講習後に英語が20点以上伸びた生徒もいました。早めに苦手を見つけることが大切です', isArea: true }
+          { key: 'eventName', label: '対策・イベント名／対象', placeholder: '例：大鳥居校 定期テスト対策会・中1〜中3対象', isArea: false },
+          { key: 'target', label: '対象の学校・学年・検定など', placeholder: '例：出雲中・糀谷中・羽田中の定期テスト／英検3級対策', isArea: false },
+          { key: 'worries', label: '保護者・生徒によくある悩み', placeholder: '例：\n・学校ワークが終わらない\n・英検の単語が覚えられない\n・テスト範囲が広くて何から手をつけるか迷う', isArea: true },
+          { key: 'flow', label: '当日の内容・流れ', placeholder: '例：\n・学校別にテスト範囲を確認\n・苦手単元を演習\n・確認テストで定着度をチェック', isArea: true },
+          { key: 'scene', label: '当日の雰囲気・教室で見えた場面', placeholder: '例：最初は不安そうだった生徒も、確認テストで正解が増えると表情が明るくなった', isArea: true },
+          { key: 'benefit', label: '参加後にどうなってほしいか', placeholder: '例：やるべきことが整理され、家庭でもテスト前の動き方が見えやすくなる', isArea: true }
         ]
       },
-      [BLOG_TYPES.PERSON]: {
-        label: '👤 講師・室長・生徒紹介',
-        hint: '経歴よりも「どんな声かけをする人か」「生徒とどう関わるか」を入れると温度感が出ます。',
+      [BLOG_TYPES.TRIAL]: {
+        label: '✏️ 無料体験授業',
+        hint: '体験授業を受ける前と後で、保護者・生徒の不安や表情がどう変わったかを描きます。申し込みCVにつなげる場所です。',
         fields: [
-          { key: 'personInfo', label: '紹介する人の基本情報', placeholder: '例：講師・田中先生・理系科目担当・3年目', isArea: false },
-          { key: 'points', label: 'その人の「らしさ」ポイント（3つ以上）', placeholder: '例：\n・説明前に必ず生徒の考えを聞く\n・できたところを具体的にほめる\n・テスト前は自習にも声をかける', isArea: true },
-          { key: 'episode', label: '印象的なエピソード', placeholder: '例：苦手だった生徒が「先生の授業だけは質問しやすい」と言ってくれた', isArea: true },
-          { key: 'message', label: '室長として伝えたい一言', placeholder: '例：ただ教えるだけでなく、生徒が前向きになれる関わり方をしてくれる先生です', isArea: true }
+          { key: 'student', label: '体験した生徒・保護者の情報', placeholder: '例：中1・羽田中・Bくん・英語／お母さまから相談', isArea: false },
+          { key: 'trialBefore', label: '体験前の悩み・不安', placeholder: '例：英語が苦手で、家では単語練習を嫌がっていた。塾が合うか保護者も不安だった', isArea: true },
+          { key: 'trialContent', label: '体験授業で行ったこと', placeholder: '例：\n・単語の覚え方を一緒に確認\n・教科書本文を1文ずつ読む\n・間違えた問題をその場で解き直す', isArea: true },
+          { key: 'after', label: '体験後の変化・反応', placeholder: '例：本人が「思ったよりわかった」と話し、お母さまも表情が少し安心された', isArea: true },
+          { key: 'nextStep', label: '次に提案した一歩・室長コメント', placeholder: '例：まずは単語チェックを短時間で続け、学校ワークの進め方も一緒に整えていきたいです', isArea: true }
         ]
       },
-      [BLOG_TYPES.SERVICE]: {
-        label: '💼 サービス・相談メニュー紹介',
-        hint: 'サービス説明だけでなく、実際によくある相談内容や、面談で保護者が安心する場面を書いてください。',
+      [BLOG_TYPES.CONSULTATION]: {
+        label: '📒 無料学習相談',
+        hint: '無料学習相談で、保護者の悩みがどう整理され、次の一歩がどう見えたかを書きます。相談CVにつなげる場所です。',
         fields: [
-          { key: 'serviceName', label: 'サービス名', placeholder: '例：無料学習相談会・無料体験授業', isArea: false },
-          { key: 'target', label: 'よくある相談・悩み（3つ以上）', placeholder: '例：\n・家で勉強しているのに点数が上がらない\n・学校ワークの進め方がわからない\n・塾選びに迷っている', isArea: true },
-          { key: 'flow', label: '相談・体験の流れ', placeholder: '例：\n・①お電話で予約\n・②ヒアリング30分\n・③体験授業\n・④ご報告', isArea: true },
-          { key: 'scene', label: '実際の面談・体験でよくある場面', placeholder: '例：保護者の方が「何から始めればいいかわからなくて」と話され、学習状況を整理すると少し安心された様子だった', isArea: true },
-          { key: 'goal', label: '利用後にどうなってほしいか', placeholder: '例：お子さまに合った勉強法が見つかり、親子で次の一歩を話しやすくなる状態', isArea: true }
-        ]
-      },
-      [BLOG_TYPES.SCORE]: {
-        label: '🎯 点数アップ速報',
-        hint: '点数一覧だけでなく、代表ケースの「何を変えたか」を入れると説得力が出ます。',
-        fields: [
-          { key: 'testName', label: '対象テスト', placeholder: '例：2学期期末テスト・中1〜中3', isArea: false },
-          { key: 'scoreList', label: '高得点・点数アップ一覧（1行1件）', placeholder: '例：中2 Aさん 数学 45→78点（+33点）\n中1 Bくん 英語 52→71点（+19点）\n中3 Cさん 理科 88点', isArea: true },
-          { key: 'reason', label: '点数アップにつながった取り組み', placeholder: '例：\n・学校ワークを早めに終わらせた\n・間違えた問題を授業で解き直した\n・テスト前は自習に週3回来た', isArea: true },
-          { key: 'comment', label: '速報から伝えたいこと', placeholder: '例：点数だけでなく、準備の仕方が変わってきたことが大きな成長です', isArea: true },
-          { key: 'pickup', label: '代表ケース深掘りメモ（任意）', placeholder: '例：Aさんは毎回の小テストで間違えた単元を残し、テスト前にそこだけを重点的に復習した結果です', isArea: true }
+          { key: 'student', label: '相談した保護者・生徒の情報', placeholder: '例：中2・糀谷中・お母さま／数学と家庭学習の相談', isArea: false },
+          { key: 'concernBefore', label: '相談前の悩み・不安・不満', placeholder: '例：家で勉強しているのに点数が伸びず、親子で声かけがきつくなっていた', isArea: true },
+          { key: 'diagnosis', label: '相談で見えてきた原因・整理したこと', placeholder: '例：学校ワークの進め方が遅く、テスト直前に解き直し時間が残っていなかった', isArea: true },
+          { key: 'advice', label: '提案した具体策（3つ以上）', placeholder: '例：\n・テスト2週間前までに学校ワーク1周\n・間違えた問題を色分け\n・週2回の自習で進捗確認', isArea: true },
+          { key: 'afterFeeling', label: '相談後の変化・保護者の反応', placeholder: '例：「何をすればいいか見えました」と少し安心された様子だった', isArea: true },
+          { key: 'managerComment', label: '室長として伝えたい一言', placeholder: '例：不安を抱えたままにせず、まず状況を一緒に整理することが大切です', isArea: true }
         ]
       },
       [BLOG_TYPES.OTHER]: {
-        label: '📄 その他',
-        hint: '自由テーマでも、誰に・何を・なぜ伝えたいのかと、教室で実際に見えた場面を入れてください。',
+        label: '📄 その他・学習情報',
+        hint: '学習情報・地域の学校情報・勉強法など。SEOを意識して、地域名・学校名・保護者の検索意図を入れてください。',
         fields: [
-          { key: 'theme', label: '今回のブログで伝えたいテーマ・主役', placeholder: '例：西中原中の定期テストで結果を出すには？', isArea: false },
-          { key: 'target', label: '誰に向けて書きたいか', placeholder: '例：定期テスト前に何をすればいいか迷っている中学生の保護者', isArea: false },
-          { key: 'actions', label: '教室や先生が行ったこと（箇条書き）', placeholder: '例：\n・テスト範囲の確認\n・苦手単元の洗い出し\n・類題演習', isArea: true },
-          { key: 'episode', label: '現場エピソード・メッセージ', placeholder: '例：生徒たちが自習に来る回数が増え、質問の内容も具体的になってきました', isArea: true }
+          { key: 'theme', label: 'テーマ・検索されそうな悩み', placeholder: '例：大鳥居エリアの中学生が定期テスト前にやるべき勉強法', isArea: false },
+          { key: 'target', label: '誰に向けて書きたいか', placeholder: '例：テスト前に何をすればいいか迷っている中学生の保護者', isArea: false },
+          { key: 'localSeo', label: '入れたい地域名・学校名・キーワード', placeholder: '例：大鳥居・糀谷・穴守稲荷／出雲中・糀谷中／定期テスト対策', isArea: true },
+          { key: 'actions', label: '本文で伝えたいポイント（3つ以上）', placeholder: '例：\n・学校ワークは早めに1周\n・間違えた問題を解き直す\n・自習室を使って進捗確認', isArea: true },
+          { key: 'episode', label: '教室で見えた場面・室長メッセージ', placeholder: '例：テスト前になると自習に来る生徒が増え、質問の内容も具体的になってきます', isArea: true }
         ]
       }
     };
@@ -1703,84 +1736,47 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           label: '定期テスト対策',
           values: {
             eventName: '架空中学校 定期テスト対策会・中1〜中3対象',
+            target: '架空中・出雲中・糀谷中の定期テスト',
+            worries: '・学校ワークが終わらない\n・テスト範囲が広くて何から手をつけるか迷う\n・提出物と勉強を両立できない',
             flow: '・テスト範囲表をもとに学習計画を作成\n・学校ワークの進み具合を確認\n・英数の苦手単元を個別に演習\n・最後に確認テストで定着度をチェック',
             scene: '最初は何から始めるか迷っていた生徒も、確認テストで正解が増えると表情が明るくなりました。',
-            benefit: '・何から始めればよいかが明確になる\n・提出物と点数対策を同時に進められる\n・苦手単元をテスト前に発見できる',
-            example: '前回は「ワークを終わらせるだけ」で止まっていた生徒が、解き直しまで進められるようになりました。'
+            benefit: 'やるべきことが整理され、家庭でもテスト前の動き方が見えやすくなります。'
           }
         },
         {
           label: '春期講習',
           values: {
             eventName: '春期講習・新学年準備コース',
+            target: '新中1〜新中3・架空中学校',
+            worries: '・新学年でついていけるか不安\n・前学年の苦手を持ち越している\n・春休みの過ごし方が決まらない',
             flow: '・現学年の苦手単元を診断\n・新学年でつまずきやすい単元を先取り\n・1人ひとりに合わせた授業回数を提案\n・最終日に学習状況を保護者へ報告',
             scene: '新学年への不安を口にしていた生徒が、先取り内容を一つ解けたことで少し安心した様子でした。',
-            benefit: '・新学年のスタートで不安を減らせる\n・前学年の苦手を持ち越しにくくなる\n・春休みの学習リズムを作れる',
-            example: '短い春休みでも、やる内容を絞ることで「新学期が少し安心」と話す生徒が増えました。'
+            benefit: '新学年のスタートで不安を減らし、春休みの学習リズムを作れます。'
           }
         }
       ],
-      [BLOG_TYPES.PERSON]: [
+      [BLOG_TYPES.TRIAL]: [
         {
-          label: '理系講師紹介',
+          label: '英語の体験授業',
           values: {
-            personInfo: '講師・佐藤先生・理系科目担当・大学2年生',
-            points: '・途中式を丁寧に見てくれる\n・生徒が質問しやすい雰囲気を作る\n・テスト前はミスの原因まで一緒に確認する',
-            episode: '計算が苦手な生徒に対して、答えではなく「どこでズレたか」を一緒に探したことで自信につながりました。',
-            message: 'わからないところをそのままにしない、頼れる先生です。'
-          }
-        },
-        {
-          label: '室長紹介',
-          values: {
-            personInfo: '室長・山田・学習相談担当・架空テスト校',
-            points: '・保護者の不安を丁寧に聞く\n・生徒の性格に合わせて声かけを変える\n・学習計画を現実的に組み立てる',
-            episode: '部活で忙しい生徒に、無理な計画ではなく「平日15分だけ」の復習から始めてもらいました。',
-            message: '勉強の悩みを一緒に整理し、最初の一歩を見つけます。'
+            student: '中1・架空中学校・Bくん・英語／お母さまから相談',
+            trialBefore: '英語が苦手で、家では単語練習を嫌がっていた。塾が合うか保護者も不安だった。',
+            trialContent: '・単語の覚え方を一緒に確認\n・教科書本文を1文ずつ読む\n・間違えた問題をその場で解き直す',
+            after: '本人が「思ったよりわかった」と話し、お母さまも表情が少し安心された様子でした。',
+            nextStep: 'まずは単語チェックを短時間で続け、学校ワークの進め方も一緒に整えていきたいです。'
           }
         }
       ],
-      [BLOG_TYPES.SERVICE]: [
+      [BLOG_TYPES.CONSULTATION]: [
         {
-          label: '無料学習相談',
+          label: '数学と家庭学習の相談',
           values: {
-            serviceName: '無料学習相談',
-            target: '・何から勉強すればよいかわからない\n・テスト前だけ頑張っても点数が伸びない\n・家庭学習の習慣がつかない',
-            flow: '・現在の成績や学習状況をヒアリング\n・学校ワークや答案を確認\n・つまずきの原因を整理\n・必要な学習方法を提案',
-            scene: '保護者の方が「何から始めればいいかわからなくて」と話され、学習状況を整理すると少し安心された様子でした。',
-            goal: '保護者と生徒が「まず何をするか」を具体的に持ち帰れる状態を目指します。'
-          }
-        },
-        {
-          label: '無料体験授業',
-          values: {
-            serviceName: '無料体験授業',
-            target: '・塾の雰囲気を見てから決めたい\n・先生との相性を確認したい\n・個別指導が合うか試したい',
-            flow: '・事前に苦手単元を確認\n・実際の個別授業を体験\n・授業後に理解度をフィードバック\n・必要に応じて今後の学習プランを提案',
-            scene: '最初は緊張していた生徒も、先生と一緒に問題を解くうちに質問できるようになりました。',
-            goal: 'お子さまが安心して通えるかを、授業を通して確認していただくことを大切にしています。'
-          }
-        }
-      ],
-      [BLOG_TYPES.SCORE]: [
-        {
-          label: '期末速報',
-          values: {
-            testName: '架空中学校 2学期期末テスト',
-            scoreList: '中2 Aさん 数学 48点→76点（+28点）\n中1 Bさん 英語 61点→82点（+21点）\n中3 Cさん 理科 88点',
-            reason: '・学校ワークを早めに終わらせた\n・間違えた問題を授業で解き直した\n・テスト前は自習に週3回来た',
-            comment: '今回も一人ひとりが自分の課題に向き合い、最後までよく頑張りました。',
-            pickup: 'Aさんは途中式を書く習慣を徹底したことで、計算ミスが大きく減りました。'
-          }
-        },
-        {
-          label: '英語アップ',
-          values: {
-            testName: '架空中学校 英語単元テスト',
-            scoreList: '中1 Dさん 英語 54点→79点（+25点）\n中2 Eさん 英語 70点→86点（+16点）\n中3 Fさん 英語 92点',
-            reason: '・本文音読を毎日続けた\n・単語テストを授業ごとに実施した\n・間違えた英文を声に出して確認した',
-            comment: '単語暗記と本文音読を続けた成果が、点数にも表れました。',
-            pickup: 'Dさんは毎日5分の音読を続け、長文への抵抗感が少しずつ減っていきました。'
+            student: '中2・架空中学校・お母さま／数学と家庭学習の相談',
+            concernBefore: '家で勉強しているのに点数が伸びず、親子で声かけがきつくなっていた。',
+            diagnosis: '学校ワークの進め方が遅く、テスト直前に解き直し時間が残っていなかった。',
+            advice: '・テスト2週間前までに学校ワーク1周\n・間違えた問題を色分け\n・週2回の自習で進捗確認',
+            afterFeeling: '「何をすればいいか見えました」と少し安心された様子だった。',
+            managerComment: '不安を抱えたままにせず、まず状況を一緒に整理することが大切です。'
           }
         }
       ],
@@ -1790,6 +1786,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           values: {
             theme: '勉強習慣を作るために最初に見直したいこと',
             target: '家で勉強を始めるまでに時間がかかる中学生の保護者',
+            localSeo: '架空エリア・架空中学校／家庭学習・勉強習慣',
             actions: '・勉強する時間を固定する\n・最初の5分だけ取りかかるルールを作る\n・学校ワークを小さく区切る\n・できたことを毎回確認する',
             episode: '最初から長時間頑張るのではなく、短い時間でも続けることで自信がついた生徒がいました。'
           }
@@ -1799,6 +1796,7 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
           values: {
             theme: 'テスト後の見直しで次の点数につなげる方法',
             target: 'テストが返ってきた後に何をすればいいか迷う中学生の保護者',
+            localSeo: '架空エリア・架空中学校／定期テスト・見直し',
             actions: '・答案を科目ごとに確認\n・ミスを「知識不足」「計算ミス」「時間不足」に分ける\n・次回までに直す単元を3つに絞る\n・解き直し日を決める',
             episode: '点数だけを見るのではなく、ミスの種類を分けたことで次にやることがはっきりしました。'
           }
@@ -1966,6 +1964,29 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
       }
     }, content);
 
+    // ブログタイトル選択セクション（SEO / 共感 / CV の3案から選択）
+    const titleSection = createEl('div', {
+      id: 'eisai-title-section',
+      style: {
+        display: 'none',
+        marginTop: '12px',
+        padding: '10px',
+        background: '#eff6ff',
+        border: '1px solid #bfdbfe',
+        borderRadius: '8px'
+      }
+    }, content);
+    createEl('div', {
+      style: { fontWeight: '700', fontSize: '13px', color: '#1e40af', marginBottom: '6px' }
+    }, titleSection, '📰 ブログタイトルを選択（記事に反映されます）');
+    createEl('div', {
+      style: { fontSize: '11px', color: '#475569', marginBottom: '8px', lineHeight: '1.5' }
+    }, titleSection, '① SEO重視 ② 共感・ベネフィット重視 ③ CV（行動）重視 の3案です。クリックで <h1> が差し替わります。');
+    createEl('div', {
+      id: 'eisai-title-buttons',
+      style: { display: 'flex', flexDirection: 'column', gap: '6px' }
+    }, titleSection);
+
     const copyBtn = createEl('button', {
       style: {
         width: '100%',
@@ -1994,31 +2015,34 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     createEl('p', { style: { fontWeight: 'bold', marginBottom: '6px' } }, imgSection,
       '🖼 サムネイル画像生成（ブログ用）');
 
-    createEl('label', { className: 'eisai-label' }, imgSection, 'サムネイル型を選択');
-    const thumbnailTypeSelect = createEl('select', {
-      className: 'eisai-input',
-      style: { width: '100%', marginBottom: '8px' }
-    }, imgSection);
-    Object.keys(THUMBNAIL_TYPE_OPTIONS).forEach(label => {
-      const opt = document.createElement('option');
-      opt.value = label;
-      opt.textContent = label;
-      thumbnailTypeSelect.appendChild(opt);
-    });
-    thumbnailTypeSelect.value = 'おまかせ';
+    // 参照画像アップロードの案内（全記事タイプ共通で常時表示）
+    createEl('div', {
+      style: {
+        fontSize: '12px',
+        color: '#92400e',
+        backgroundColor: '#fffbeb',
+        padding: '8px',
+        borderRadius: '6px',
+        marginBottom: '8px',
+        border: '1px solid #fde68a',
+        lineHeight: '1.6',
+        fontWeight: 'bold'
+      }
+    }, imgSection, '📎 参照してほしい写真（生徒のノート・答案・教室の様子・講師や室長の人物写真など）があれば、画像生成前にこのチャットへアップロード（添付）してください。アップロードされた写真は画像のベースとして優先的に使われます。');
 
-    createEl('label', { className: 'eisai-label' }, imgSection, '見た目の表現を選択');
-    const visualExpressionSelect = createEl('select', {
-      className: 'eisai-input',
-      style: { width: '100%', marginBottom: '8px' }
-    }, imgSection);
-    Object.keys(VISUAL_EXPRESSION_OPTIONS).forEach(label => {
-      const opt = document.createElement('option');
-      opt.value = label;
-      opt.textContent = label;
-      visualExpressionSelect.appendChild(opt);
-    });
-    visualExpressionSelect.value = 'おまかせ';
+    // サムネイル型はブログ内容から自動判断・見た目は実写固定のため、選択UIは廃止
+    createEl('div', {
+      style: {
+        fontSize: '12px',
+        color: '#374151',
+        backgroundColor: '#f8fafc',
+        padding: '8px',
+        borderRadius: '6px',
+        marginBottom: '8px',
+        border: '1px solid #e5e7eb',
+        lineHeight: '1.6'
+      }
+    }, imgSection, '🖼 画像は実写スタイルで生成されます。サムネイルの構図や訴求の方向性はブログ記事の内容から自動で判断されます。');
 
     createEl('label', { className: 'eisai-label' }, imgSection, '文字の強さを選択');
     const textImpactSelect = createEl('select', {
@@ -2151,8 +2175,9 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
     }
 
     imgGenBtn.onclick = async () => {
-      const thumbnailType = thumbnailTypeSelect.value;
-      const style = visualExpressionSelect.value;
+      // サムネイル型はブログ内容から自動判断（おまかせ固定）、見た目は実写固定
+      const thumbnailType = 'おまかせ';
+      const style = '実写';
       const textImpact = textImpactSelect.value;
       const mainColor = mainColorSelect.value;
       const subColor = subColorSelect.value;
@@ -2171,29 +2196,24 @@ details.eisai-details summary { padding: 8px; background: #fafafa; cursor: point
         return;
       }
 
-      const isPersonType = currentBlogType === BLOG_TYPES.PERSON;
-      const personThumbnailRules = isPersonType ? `
-■ 人物紹介サムネイル専用ルール
-  - このチャットにユーザーがアップロードした先生・講師・室長の写真を必ずベースにしてください
-  - アップロードされた人物写真から人物のみを丁寧に切り抜き、元の背景は一切使用しないでください
-  - 背景は透過前提で、メインカラーとサブカラーを生かしたグラデーションや図形を使ったおしゃれなグラフィック背景を新しくデザインしてください
-  - 構図は記事内容に合わせて選んでください。人物を右側に置く構図だけでなく、中央ポートレート、雑誌表紙風、斜め帯、名前プレート型なども候補にしてください
-  - 先生の表情は自然な笑顔で、清潔感のある服装にしてください
-  - 顔や髪型など、人物の特徴はアップロードされた写真にできるだけ忠実に再現してください
-  - 日本語フルネームとローマ字表記の2行構成で名前を表示してください
-  - 名前とキャッチコピーは人物と重ならないように配置し、読みやすさを最優先してください
-        ` : '';
+      // 参照画像（アップロード写真）の扱いルール。記事タイプに関係なく常に適用する。
+      const referenceImageRules = `
+■ 参照画像（アップロード写真）の扱い（最優先ルール）
+  - ユーザーがこのチャットに写真をアップロードしている場合は、必ずその写真を最優先の参照素材にしてください。
+  - 人物写真がある場合：人物のみを丁寧に切り抜き、元の背景は使わず、顔・髪型・雰囲気をできるだけ忠実に再現してください。人物は画面右側1/3にバストアップで配置し、左2/3をテキストエリアにしてください。日本語フルネームとローマ字表記の2行で名前を入れてもよいです。
+  - ノート・答案・教室などの写真がある場合：その実物の雰囲気（ノートの書き込み、答案の点数、教室の明るさなど）をプロンプトの描写に反映してください。
+  - 写真がアップロードされていない場合は、下記のClassroom Setting / Tutoring Styleの描写を使ってください。`;
 
       const mainColorData = COLOR_STYLES[mainColor] || {};
       const subColorData = COLOR_STYLES[subColor] || {};
       const brandRules = mainColor === 'お任せ' || subColor === 'お任せ'
-        ? 'Color scheme optimized for the selected thumbnail objective and visual expression'
+        ? 'Color scheme optimized for the article content and auto-selected thumbnail objective'
         : ((mainColorData.sub || mainColor) + ' and ' + (subColorData.main || subColor) + ' color scheme');
       const colorScheme = mainColor === 'お任せ' || subColor === 'お任せ'
-        ? 'Colors automatically selected based on the selected thumbnail objective and visual expression'
+        ? 'Colors automatically selected based on the article content and auto-selected thumbnail objective'
         : ('Main color ' + (mainColorData.main || mainColor) + ' (' + (mainColorData.hex || '') + '), Sub color ' + (subColorData.main || subColor) + ' (' + (subColorData.hex || '') + ')');
       const thumbnailTypeInstruction = THUMBNAIL_TYPE_OPTIONS[thumbnailType] || THUMBNAIL_TYPE_OPTIONS['おまかせ'];
-      const visualExpressionInstruction = VISUAL_EXPRESSION_OPTIONS[style] || VISUAL_EXPRESSION_OPTIONS['おまかせ'];
+      const visualExpressionInstruction = VISUAL_EXPRESSION_OPTIONS[style] || VISUAL_EXPRESSION_OPTIONS['実写'];
       const textImpactInstruction = TEXT_IMPACT_OPTIONS[textImpact] || TEXT_IMPACT_OPTIONS['強め'];
       const artDirectionHints = THUMBNAIL_ART_DIRECTIONS.map((item, index) => `${index + 1}. ${item}`).join('\n');
       const layoutVariantHints = THUMBNAIL_LAYOUT_VARIANTS.map((item, index) => `${index + 1}. ${item}`).join('\n');
@@ -2224,10 +2244,11 @@ ${sourceArticleFacts || '(未取得。本文HTMLに書かれている事実だ�
 - サムネは強くしてよいですが、事実を盛って強くするのは禁止です。
 
 ■ サムネイル設計の選択
-- サムネイル型: ${thumbnailType}
+- サムネイル型（ブログ内容から自動判断）: ${thumbnailType}
   ${thumbnailTypeInstruction}
-- 見た目の表現: ${style}
+- 見た目の表現（実写固定）: ${style}
   ${visualExpressionInstruction}
+  必ず実写（photorealistic）で生成してください。アニメ・イラスト・漫画調・3Dクレイ調は使わないでください。
 - 文字の強さ: ${textImpact}
   ${textImpactInstruction}
 - 色: ${colorScheme}
@@ -2243,21 +2264,21 @@ ${sourceArticleFacts || '(未取得。本文HTMLに書かれている事実だ�
 「ちょっと読んでみたい」
 と感じるサムネイルにすることです。
 
-ユーザーが選んだスタイル、色、文字の強さは方向性のヒントです。
-記事の内容や見る人の気持ちに合わない場合は、記事が伝わる方を優先してください。
+見た目は実写（写真）で固定です。色、文字の強さは方向性のヒントです。
+構図や寄り方は、記事の内容や見る人の気持ちに合わせて、実写の範囲で自由に選んでください。
 
 ■ ユーザー入力情報
 メインキャッチ：${mainCatch}
 サブキャッチ：${subCatch}
 ポイント：${points}
-${personThumbnailRules}
+${referenceImageRules}
 
 ■ 見る人起点のサムネイル設計
 まず内部で、次の5つを考えてください。この検討は出力しないでください。
 1. このブログを一番見てほしい保護者は、どんな不安や願いを持っているか
 2. その保護者が一瞬で「自分ごとだ」と感じる言葉は何か
 3. 記事の中で、いちばん心に残る場面・変化・証拠は何か
-4. その場面を写真・イラスト・漫画・図解のどれで見せると最も伝わるか
+4. その場面を実写写真で見せるとき、どの寄り方・構図が最も伝わるか（イラスト・漫画・図解は使わない）
 5. 文字を先に見せるべきか、表情や手元を先に見せるべきか
 
 ■ 感情フックの作り方
@@ -2317,7 +2338,7 @@ ${layoutVariantHints}
 
 ■ ビジュアルの考え方
 - 記事の内容が伝わるなら、答案・ノート・手元・生徒の表情・保護者の不安・先生の声かけ・教室の空気・イベント風景など、モチーフは自由に選んでください。
-- 毎回同じ「答案を大きく見せる」構図にしないでください。記事によって、手元寄り、表情寄り、親目線、漫画的な悩みの可視化、図解、雑誌見出し風などを選んでください。
+- 毎回同じ「答案を大きく見せる」構図にしないでください。記事によって、手元寄り、表情寄り、親目線、雑誌見出し風（いずれも実写ベース）などを選んでください。イラスト・漫画・図解調にはしないでください。
 - 画面に入れる要素は少なくしてください。メインとなる感情フック、強い文字、伝わるビジュアル、この3つがあれば十分です。
 - 文字はサムネイルとして読める強さにしてください。小さく上品すぎて読めないより、少し大胆な方を優先します。
 - アイコンやバッジは使っても使わなくてもOKです。使う場合は、内容理解に役立つものだけにしてください。
@@ -2427,51 +2448,42 @@ ${layoutVariantHints}
 - 室長コメントは、参加した生徒を見て感じた課題や成長に触れる
 - 見出し例：「この時期に多いお悩み」「当日はこんな流れで進めました」「参加後に見えた変化」
 - 締め：参加を迷っている保護者が気軽に聞ける雰囲気で終える`,
-        [BLOG_TYPES.PERSON]: `【記事タイプ】人物紹介型
+        [BLOG_TYPES.TRIAL]: `【記事タイプ】無料体験授業 Before／After型
 【このタイプで必ず作る読後感】
-- 経歴紹介ではなく、「この先生なら子どもを任せてもよさそう」と感じられる人物像を描いてください。
-- 先生の魅力は、すごさよりも「子どもをどう見ているか」「どんな思いで声をかけているか」で伝えてください。
+- 「まず一度、体験して確かめてみたい」と保護者が自然に思える記事にしてください。
+- 入会案内ではなく、体験前の不安が、体験後にどう軽くなったかを具体的な場面で伝えてください。
 【構成指示】
-- 導入：肩書きや経歴だけで始めず、教室での印象的な関わり方から入る
-- 本文：性格説明ではなく、生徒への声かけ、質問対応、授業中の見守り方を具体的な場面で書く
-- 先生を過度に持ち上げず、自然な人柄と安心感が伝わる温度にする
-- 室長コメントは「なぜその先生を信頼しているか」を具体的な行動に基づいて書く
-- 見出し例：「〇〇先生が大切にしていること」「質問しやすい空気の作り方」「室長から見た〇〇先生」
-- 締め：保護者が実際の授業を見てみたくなるよう、安心感で終える`,
-        [BLOG_TYPES.SERVICE]: `【記事タイプ】サービス紹介型
+- 導入：体験授業の説明から入らず、体験前に保護者・生徒が抱えていた不安や迷いから入る
+- 本文：体験前の悩み→体験授業で行ったこと→先生の関わり方→生徒・保護者の反応→次の一歩、の順で描く
+- 講師の魅力は、すごさよりも「説明の仕方」「声かけ」「質問しやすさ」として具体化する
+- 「入会しないと申し訳ない」という圧を出さず、まず試せる安心感を大切にする
+- 室長コメントは、体験を通して見えた生徒の様子や、次に一緒にやりたいことに触れる
+- 見出し例：「体験前に不安だったこと」「授業中に表情が変わった瞬間」「体験後に見えた次の一歩」
+- 締め：まず気軽に試してみたい保護者の背中をそっと押す言葉で終える`,
+        [BLOG_TYPES.CONSULTATION]: `【記事タイプ】無料学習相談 Before／After型
 【このタイプで必ず作る読後感】
-- 宣伝ではなく、「相談したら頭の中が整理されそう」と感じられる記事にしてください。
-- 保護者が「こんな状態で相談してもいいんだ」と思えるよう、相談前の迷いや遠慮に寄り添ってください。
+- 「一人で抱え込まず、まず相談してみよう」と保護者が思える記事にしてください。
+- 相談で悩みが整理され、次にやることが見えて、気持ちが少し軽くなる過程を描いてください。
 【構成指示】
-- 導入：サービス名から入らず、保護者が抱えがちな迷い、焦り、塾選びの不安から入る
-- 本文：サービス内容を箇条書きで済ませず、相談前→相談中→相談後の気持ちの変化を描く
-- 面談や体験で実際によくある会話、持参物、確認するポイントを自然に入れる
-- 売り込み感を避け、「入会前提ではなく現状整理から」という安心感を出す
-- 見出し例：「こんなお悩みから始まることが多いです」「相談では何を確認するのか」「体験後に見えること」
-- 締め：問い合わせへの心理的ハードルを下げる言葉で終える`,
-        [BLOG_TYPES.SCORE]: `【記事タイプ】点数アップ速報型
-【このタイプで必ず作る読後感】
-- 数字の自慢ではなく、「伸びた理由がある」「次はうちの子も準備を変えられるかも」と感じられる記事にしてください。
-- 点数の背景にある、生徒の不安、踏ん張り、保護者の見守り、教室の関わりが伝わる記事にしてください。
-【構成指示】
-- 導入：点数一覧から始めず、テスト後に保護者が感じる喜び・悔しさ・次への不安に触れる
-- 本文：入力された「高得点・点数アップ一覧」は、省略せずに全てリスト形式で記載する
-- 代表ケースを1つ以上深掘りし、点数が伸びた背景、準備の仕方、授業で変えたことを具体化する
-- 点数だけを強調せず、提出物、解き直し、自習、質問量などの行動変化を本文の中心にする
-- 室長コメントは、数字よりも「準備の変化」「やり切った過程」に触れる
-- 見出し例：「今回の結果速報」「点数アップの裏側にあった行動」「学校ワークの進め方が変わった生徒たち」「質問が増えたテスト前」「次のテストへ向けて」
-- 代表ケースは毎回「答案を見せに来た」で締めず、入力に合わせて自習量、質問、ノート、提出物、解き直し、家庭での様子、次回目標など別の切り口を選ぶ
-- 締め：結果が出た子だけでなく、悔しかった子にも届く前向きな言葉で終える`,
-        [BLOG_TYPES.OTHER]: `【記事タイプ】自由テーマ型
+- 導入：サービス名や相談の説明から入らず、相談前に保護者が抱えていた不安・不満・迷いから入る
+- 本文：相談前の不安→面談で整理したこと→原因の見立て→提案した具体策→保護者の反応、の順で描く
+- 「勧誘されそう」「こんな状態で相談していいのか」という遠慮に、やさしく寄り添う
+- 室長の魅力は、聞き方・整理の仕方・現実的な提案として具体的な場面で伝える
+- 入会前提ではなく「まず現状を一緒に整理する」という安心感を出す
+- 見出し例：「相談前に抱えていた不安」「話して見えてきた本当の原因」「次にやることが見えた瞬間」
+- 締め：同じ悩みを抱える保護者へ、気軽に相談してよいことを伝えて終える`,
+        [BLOG_TYPES.OTHER]: `【記事タイプ】その他・学習情報型（SEO重視）
 【このタイプで必ず作る読後感】
 - 汎用コラムではなく、教室で実際に見えたことから保護者の役に立つ視点を届ける記事にしてください。
 - 読者が「自分の家庭でも今日から少し見方を変えられそう」と感じる余韻を大切にしてください。
+- 地域の保護者が検索して読みに来る記事です。検索意図（例: 「〇〇中 定期テスト 勉強法」）に自然に応える内容にしてください。
 【構成指示】
 - 導入：テーマの説明から入らず、読み手が日常で感じる困りごとや迷いから入る
 - 本文：一般論→結論ではなく、現場で見えた場面→そこから言えること→家庭で考えられる一歩の順で書く
+- 入力された地域名・学校名・キーワードを、見出しと本文に不自然にならない範囲で自然に入れる（キーワードの詰め込みは禁止）
 - 入力された教室での取り組みやメッセージを中心にし、教育論だけで終わらせない
 - 室長コメントは、教室で見ている子どもたちの変化や保護者への願いを入れる
-- 見出し例：「ご家庭でよく聞くお悩み」「教室で見えていること」「今日からできる小さな一歩」
+- 見出し例：「〇〇中の定期テストでよく聞くお悩み」「大鳥居エリアの教室で見えていること」「今日からできる小さな一歩」
 - 締め：保護者が自分ごととして受け止められる余韻を残す`
       };
 
@@ -2507,9 +2519,15 @@ ${layoutVariantHints}
 - 室長・先生の思いは、熱い宣伝ではなく、日々そばで見ている人の静かな実感として書いてください。例: ほっとした、嬉しかった、焦らず待とうと思った、ここを一緒に越えたいと感じた。
 - AIとして、入力内容をもとに最も心が動く切り口を選んでください。型に合わせるより、読者が読み終えたあとに残る感情を優先してください。
 
-【タイトルの作り方：弱いタイトル禁止】
-- タイトルは最初に5案を内側で考え、その中で最も「読みたくなる」1案だけを <h1> にしてください。5案は出力しないでください。
-- タイトルは18〜32文字を目安にしてください。短すぎる標語、長すぎる説明文、抽象的なまとめは禁止です。
+【タイトルの作り方：弱いタイトル禁止。3案を出す】
+- タイトルは3案作り、次の3つの方向性で1案ずつ作ってください（各案33文字以内を厳守）。
+  1案目（SEO重視）：地域名・学校名・学年・教科・数字など検索されやすい言葉を前方に入れる
+  2案目（共感・ベネフィット重視）：保護者の悩みが解消されるイメージや「うちの子も」と思える言葉を入れる
+  3案目（CV重視）：無料体験・学習相談・行動につながる言葉や、続きが気になる言葉を入れる
+- <h1> には必ず1案目（SEO重視）と同じ文言を入れてください。
+- 3案は本文の一番最後（<!--CTA_DATA_END--> の後）に、次の形式の1行コメントで必ず出力してください。
+  <!--EISAI_TITLES: ["1案目","2案目","3案目"]-->
+- 3案とも18〜33文字を目安にし、記事の内容から離れないこと。誇張・釣りタイトルは禁止です。
 - タイトルには、次のうち2つ以上を必ず入れてください: 具体的な悩み / 数字 / 教科 / 学年 / 生徒の行動 / 印象的な場面 / 読者が気になる変化。
 - タイトルは、できるだけ「感情の出発点 or 学年＋教科」→「数字の変化」→「理由・きっかけ」の順にしてください。
 - 良い型の例:
@@ -2524,11 +2542,11 @@ ${layoutVariantHints}
 - 「一歩」「変化」「成長」「きっかけ」「前向き」「頑張った」だけで終わる抽象タイトルは禁止です。使う場合も、必ず具体的な場面や数字と組み合わせてください。
 - 記事本文の一番印象的な場面をタイトルに反映してください。例: 「声が少し大きくなった日」「机に向かう時間が増えた夜」「質問が具体的になった中2数学」。
 - 大げさな広告表現は禁止です。「絶対」「必ず」「奇跡」「たったこれだけで」「誰でも」は使わないでください。
-- 成長ストーリー型は、Beforeの悩みとAfterの場面をつなぐタイトルにしてください。例: 「途中式を嫌がったAさんの28点アップ」「自習席に向かった中2数学の2週間」「質問が増えた日から変わった英語」。
-- イベント紹介型は、イベント名だけでなく参加後に見える変化を入れてください。例: 「冬期講習で見えた、質問が増えた瞬間」。
-- 人物紹介型は、名前と人柄が伝わる場面を入れてください。例: 「田中先生が質問前に必ず聞くこと」。
-- サービス紹介型は、保護者の悩みと相談後の安心を入れてください。例: 「塾選びの不安を整理する無料相談」。
-- 点数アップ速報型は、数字だけでなく伸びた理由を示してください。例: 「33点アップの裏側にあった解き直し習慣」。
+- 個人成長型は、Beforeの悩みとAfterの場面をつなぐタイトルにしてください。例: 「途中式を嫌がったAさんの28点アップ」「自習席に向かった中2数学の2週間」「質問が増えた日から変わった英語」。
+- 対策・イベント型は、イベント名だけでなく参加後に見える変化を入れてください。例: 「冬期講習で見えた、質問が増えた瞬間」。
+- 無料体験授業型は、体験前の不安と体験後の変化を入れてください。例: 「英語を嫌がっていたBくんが、体験後に単語練習を始めた話」。
+- 無料学習相談型は、保護者の悩みと相談後の安心を入れてください。例: 「点数が伸びない不安を整理した無料学習相談」。
+- その他・学習情報型は、地域名・学校名や検索されそうな悩みを入れてください。例: 「〇〇中の定期テスト前にやるべき3つのこと」。
 
 【点数アップ・成長記事のバリエーションルール】
 - 点数アップ記事の結末を毎回「答案を見せに来た」にしないでください。この表現は、入力情報に「答案を見せた」「答案を持ってきた」と明記されている場合だけ使ってください。
@@ -2545,7 +2563,6 @@ ${layoutVariantHints}
   10. 授業中の声、目線、手の動き、表情が変わった
 - 入力が薄い場合でも、上記のどれかを勝手に実績として断定しないでください。入力に近い行動だけを使い、足りない場合は「教室では、まず取り組み方を一緒に整えました」のように現場の取り組み中心で書いてください。
 - タイトルも同じパターンに寄せないでください。「答案」「見せた日」「持ってきた日」は、入力にその場面がある時だけ使ってください。
-- 点数アップ速報型では、代表ケースの深掘りを毎回1人の感動話にしすぎず、点数一覧、共通した準備、教室で見えた傾向、次回への課題のどれを主役にするか記事ごとに変えてください。
 
 【本文の書き方ルール】
 - 冒頭は、保護者の不安や悩みに寄り添うところから始めてください。いきなり成果や宣伝から入らないでください。
@@ -2609,7 +2626,7 @@ ${layoutVariantHints}
 - 締めの言葉は記事内容に合わせた具体的な一文にしてください。定型句しか書けない場合は空欄にしてください。
 
 【HTML出力形式】
-<h1>18〜32文字程度。悩み・数字・場面・変化のうち2つ以上を含む強いブログタイトル</h1>
+<h1>18〜33文字程度。タイトル1案目（SEO重視）と同じ文言。悩み・数字・場面・変化のうち2つ以上を含む</h1>
 <p>冒頭のあいさつ段落</p>
 <p>保護者の不安に寄り添う導入段落</p>
 <p>入力内容につながる導入段落</p>
@@ -2644,6 +2661,7 @@ ${layoutVariantHints}
 体験ポイント4：体験で得られるメリット4
 締めの言葉：記事内容に合わせた具体的な一文
 <!--CTA_DATA_END-->
+<!--EISAI_TITLES: ["SEO重視の33文字以内タイトル（h1と同じ）","共感・ベネフィット重視の33文字以内タイトル","CV重視の33文字以内タイトル"]-->
 
 【禁止】
 - JSONで出力しないでください。
@@ -2652,6 +2670,7 @@ ${layoutVariantHints}
 - 「以下にHTMLを作成します」などの前置き・後置きは禁止です。
 - CTA素材だけの出力は禁止です。
 - CTA_DATA_START / CTA_DATA_END を省略しないでください。
+- <!--EISAI_TITLES: [...]--> の1行を省略しないでください（本文の一番最後に必ず付けます）。
 - 申し込みボタンHTML、電話リンクHTML、完成CTAボックスHTMLは出力しないでください。
 
 【教室情報】
@@ -2677,6 +2696,9 @@ ${formContent}`;
       imgExecBtn.style.display = 'none';
       syncFooterButtons();
       lastBlogHtml = '';
+      lastTitleCandidates = [];
+      const titleSectionReset = document.getElementById('eisai-title-section');
+      if (titleSectionReset) titleSectionReset.style.display = 'none';
 
       const responseBaseline = CHATGPT_ADAPTER.getResponseNodes().length;
       const sent = await setComposerAndSend(prompt);
