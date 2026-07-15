@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- 英才ブログエディタ Ver.0.9.2 -->
+<!-- 英才ブログエディタ Ver.0.10.0 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>英才ブログエディタ - アイコン版 Ver.0.9.2</title>
+  <title>英才ブログエディタ - アイコン版 Ver.0.10.0</title>
   <style>
     body {
       margin: 0;
@@ -107,6 +107,38 @@
       font-weight: 400;
       color: #9ca3af;
       font-size: 13px;
+    }
+    /* タイトル候補（3案）選択行 */
+    .article-title-candidates {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 18px 12px;
+      background: linear-gradient(180deg, #fffdf5 0%, #ffffff 100%);
+      border-bottom: 1px solid #fde68a;
+    }
+    .article-title-cand {
+      flex: 1 1 30%;
+      min-width: 180px;
+      text-align: left;
+      padding: 7px 10px;
+      border: 2px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #111827;
+      font-size: 12px;
+      line-height: 1.45;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .article-title-cand:hover { border-color: #f59e0b; background: #fffbeb; }
+    .article-title-cand.active { border-color: #2563eb; background: #dbeafe; }
+    .article-title-cand .cand-label {
+      display: block;
+      font-size: 10px;
+      color: #64748b;
+      margin-bottom: 2px;
+      font-weight: 600;
     }
     .article-title-copy {
       padding: 10px 14px;
@@ -4393,6 +4425,61 @@
       if (articleEl) articleEl.value = v;
     }
 
+    // 拡張機能が埋め込んだ <!--EISAI_TITLES:[...]--> の3タイトル候補
+    let editorTitleCandidates = [];
+
+    // 貼り付けHTML文字列から EISAI_TITLES を抽出し、コメントを除去した文字列を返す
+    function parseEisaiTitlesFromHtml(html) {
+      let titles = [];
+      let cleaned = html || '';
+      const m = cleaned.match(/<!--\s*EISAI_TITLES\s*:\s*(\[[\s\S]*?\])\s*-->/i)
+        || cleaned.match(/&lt;!--\s*EISAI_TITLES\s*:\s*(\[[\s\S]*?\])\s*--&gt;/i)
+        || cleaned.match(/EISAI_TITLES\s*:\s*(\[[\s\S]*?\])/i);
+      if (m) {
+        try {
+          const decoded = m[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+          const parsed = JSON.parse(decoded);
+          if (Array.isArray(parsed)) {
+            titles = parsed.map(t => String(t || '').trim()).filter(Boolean).map(t => t.slice(0, 33));
+          }
+        } catch (e) {
+          console.warn('[Eisai] EISAI_TITLESの解析に失敗:', e);
+        }
+      }
+      // コメントは本文へ残さない（<p>で包まれたケースも含めて除去）
+      cleaned = cleaned.replace(/<p[^>]*>\s*(?:<!--|&lt;!--)?\s*EISAI_TITLES[\s\S]*?(?:-->|--&gt;)\s*<\/p>/gi, '');
+      cleaned = cleaned.replace(/(?:<!--|&lt;!--)\s*EISAI_TITLES[\s\S]*?(?:-->|--&gt;)/gi, '');
+      cleaned = cleaned.replace(/EISAI_TITLES\s*:\s*\[[\s\S]*?\]/gi, '');
+      return { titles: titles.slice(0, 3), html: cleaned };
+    }
+
+    // 表題バー内のタイトル候補ボタンを描画（クリックで表題フォームに反映）
+    const EDITOR_TITLE_LABELS = ['① SEO重視', '② 共感重視', '③ CV重視'];
+    function renderEditorTitleCandidates() {
+      const wrap = document.getElementById('article-title-candidates');
+      if (!wrap) return;
+      while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+      if (!editorTitleCandidates || editorTitleCandidates.length < 2) {
+        wrap.style.display = 'none';
+        return;
+      }
+      wrap.style.display = 'flex';
+      const current = getDraftTitle();
+      editorTitleCandidates.forEach((title, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'article-title-cand' + (title === current ? ' active' : '');
+        btn.innerHTML = '<span class="cand-label">' + (EDITOR_TITLE_LABELS[idx] || ('案' + (idx + 1))) + '（' + title.length + '字）</span>' + title.replace(/</g, '&lt;');
+        btn.onclick = () => {
+          setDraftTitle(title);
+          if (typeof onTitleInput === 'function') onTitleInput();
+          wrap.querySelectorAll('.article-title-cand').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        };
+        wrap.appendChild(btn);
+      });
+    }
+
     function flashTitleError() {
       const el = document.getElementById('draft-title-input');
       if (!el) return;
@@ -4775,6 +4862,16 @@
           <button id="btn-copy-body" class="article-body-copy" title="本文HTMLをコピー">📋 本文</button>
         `;
         panel.insertBefore(titleBar, editorArea);
+      }
+
+      // タイトル候補（拡張機能が埋め込んだ3案）を選ぶ行
+      if (!document.getElementById('article-title-candidates')) {
+        const cand = document.createElement('div');
+        cand.id = 'article-title-candidates';
+        cand.className = 'article-title-candidates';
+        cand.style.display = 'none';
+        const bar = document.getElementById('article-title-bar');
+        if (bar && bar.parentNode) bar.parentNode.insertBefore(cand, bar.nextSibling);
       }
 
       bindTitleAndBodyCopy();
@@ -5503,6 +5600,26 @@
       }
       console.log('デコード後のHTML:', geminiHtml.substring(0, 100) + '...');
 
+      // タイトル候補（拡張機能が埋め込んだ EISAI_TITLES）を抽出し、コメントを本文から除去
+      try {
+        const titleParse = parseEisaiTitlesFromHtml(geminiHtml);
+        geminiHtml = titleParse.html;
+        editorTitleCandidates = titleParse.titles;
+      } catch (e) {
+        console.warn('[Eisai] タイトル候補抽出に失敗:', e);
+        editorTitleCandidates = [];
+      }
+
+      // 生CTA素材（未処理のCTA_DATAコメント）を検知したら警告。拡張機能のコピーボタン経由を促す
+      if (/<!--\s*CTA_DATA_START\s*-->/i.test(geminiHtml) && !/data-cta-protected/i.test(geminiHtml)) {
+        if (typeof setDraftStatus === 'function') {
+          setDraftStatus('⚠️ CTAが未処理（生のCTA_DATA）です。拡張機能の「▶ ブログHTMLをコピー」ボタン経由で貼り付けてください', 'error');
+        }
+        alert('このHTMLはCTAが未処理（生のCTA_DATA素材）のため、ボタン付きCTAになりません。\n\nChatGPTのチャットから直接コピーせず、拡張機能パネルの「▶ ブログHTMLをコピーする」ボタンでコピーして貼り付けてください。\n\nこのまま続行するとCTAは表示されません。');
+        // 生CTA_DATAコメントは本文に残さない（不可視だが除去）
+        geminiHtml = geminiHtml.replace(/<!--\s*CTA_DATA_START\s*-->[\s\S]*?<!--\s*CTA_DATA_END\s*-->/gi, '');
+      }
+
       // HTMLを解析
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = geminiHtml;
@@ -5551,6 +5668,9 @@
       } catch (e) {
         console.warn('表題自動抽出に失敗:', e);
       }
+
+      // タイトル候補（3案）ボタンを表題バーに描画（クリックで表題フォームへ反映）
+      if (typeof renderEditorTitleCandidates === 'function') renderEditorTitleCandidates();
 
       // CTAセクション（data-cta-protected）を事前に退避しておく
       const ctaNodes = Array.from(tempDiv.querySelectorAll('[data-cta-protected]'));
