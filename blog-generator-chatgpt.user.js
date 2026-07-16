@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.3.3
+// @version      0.3.4
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '0.3.3';
+  const CURRENT_VERSION = '0.3.4';
   const VERSION_ID = CURRENT_VERSION.replace(/\./g, '-');
   const VERSION_KEY = CURRENT_VERSION.replace(/\./g, '');
   const TOOL_ID = `eisai-chatgpt-tool-v${VERSION_ID}`;
@@ -2867,6 +2867,15 @@ ${formContent}`;
         return;
       }
 
+      // ★ ChatGPTが直前の応答を生成中だと送信が空振りしやすいので、アイドルになるまで待つ（最大20秒）
+      if (CHATGPT_ADAPTER.isGenerating && CHATGPT_ADAPTER.isGenerating()) {
+        statusDiv.textContent = '🖼 ChatGPTの応答が終わるのを待っています...';
+        statusDiv.classList.add('show');
+        for (let i = 0; i < 40 && CHATGPT_ADAPTER.isGenerating(); i++) {
+          await sleep(500);
+        }
+      }
+
       // ★ ChatGPTに「説明文」だけを送ると生成されず復唱されてしまうため、
       //   画像生成の明確な指示を必ず前置きして送る（画像ツールを起動させる）
       const generateMessage =
@@ -2875,12 +2884,18 @@ ${formContent}`;
         'アスペクト比は3:2、実写（photorealistic）で生成してください。\n\n' +
         imgPrompt;
 
-      statusDiv.textContent = '🖼 画像生成を依頼しました。ChatGPTが画像を生成します。';
-      statusDiv.classList.add('show');
-      imgExecBtn.style.display = 'none';
-      syncFooterButtons();
+      const sent = await setComposerAndSend(generateMessage);
+      if (!sent) {
+        statusDiv.textContent = '⚠️ 画像生成の依頼を送信できませんでした。ChatGPTの入力欄を確認して、もう一度「このプロンプトで画像を生成する」を押してください。';
+        statusDiv.classList.add('show');
+        return; // ボタンは隠さず、再試行できるようにする
+      }
 
-      await setComposerAndSend(generateMessage);
+      // ★ 画像生成はChatGPT側の混雑で数分かかったり、まれに失敗することがある。
+      //   失敗時にすぐ押し直せるよう、ボタンは隠さず表示したままにする。
+      statusDiv.textContent = '🖼 画像生成を依頼しました。ChatGPTが画像を生成します（数分かかることがあります）。\n進まない・「生成できませんでした」と出た場合は、もう一度このボタンを押すと生成されることが多いです。';
+      statusDiv.classList.add('show');
+      syncFooterButtons();
     };
   }
 
