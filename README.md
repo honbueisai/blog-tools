@@ -65,6 +65,15 @@ Tampermonkey は、Chrome に機能を追加するための拡張機能です。
 - Tampermonkey がインストールされていない可能性があります → ステップ2に戻る
 - ページが真っ白になる場合 → ページを再読み込み（⌘R または Ctrl+R）
 
+#### （オプション）ChatGPT版を使う場合
+
+Gemini版とは別に、**ChatGPT（chatgpt.com）で動く版**もあります。Gemini版と併用でき、上と同じ手順で下のリンクからインストールします（別ファイルなので両方入れてもOK）。
+
+👉 <a href="https://github.com/honbueisai/blog-tools/raw/refs/heads/main/blog-generator-chatgpt.user.js" target="_blank">ブログ生成ツール（ChatGPT版）をインストール</a>
+
+- 対応ページ：`chatgpt.com` / `chat.openai.com`
+- 記事タイプ5種・タイトル3案・サムネイル実写生成に対応（詳細は CHANGELOG 参照）
+
 ---
 
 ### ステップ4：装飾ツールをブックマーク
