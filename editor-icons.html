@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- 英才ブログエディタ Ver.0.10.0 -->
+<!-- 英才ブログエディタ Ver.0.11.0 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>英才ブログエディタ - アイコン版 Ver.0.10.0</title>
+  <title>英才ブログエディタ - アイコン版 Ver.0.11.0</title>
   <style>
     body {
       margin: 0;
@@ -1012,6 +1012,21 @@
         <textarea id="gemini-html-input" placeholder="ここにGEMINIからコピーしたHTMLを貼り付け..." style="width: 100%; height: 280px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; font-family: monospace; resize: vertical; margin-bottom: 8px; box-sizing: border-box;"></textarea>
         <button id="btn-apply-theme" class="test-btn" style="background:#10b981;color:#fff; width: 100%;">🎨 テーマを適用</button>
       </div>
+
+      <!-- CTA設定（生CTA_DATAからCTAを組み立てる際に使用） -->
+      <details id="cta-settings" style="margin-bottom: 16px; border: 1px solid #fde68a; border-radius: 8px; background: #fffbeb; padding: 4px 12px 8px;">
+        <summary style="font-size:13px; font-weight:600; color:#92400e; cursor:pointer; padding:8px 0;">📣 CTA設定（申し込みボタンのリンク先）</summary>
+        <div style="font-size:11px; color:#78350f; line-height:1.6; margin-bottom:8px;">生のCTA_DATA付きHTMLを貼った時に、ここの情報でCTAボタンを組み立てます。1回入力すれば保存されます。</div>
+        <label style="display:block; font-size:11px; font-weight:600; color:#92400e; margin-bottom:2px;">校舎名（任意）</label>
+        <input type="text" id="cta-school-input" placeholder="例：武蔵新城校" style="width:100%; padding:6px 8px; font-size:12px; border:1px solid #fcd34d; border-radius:4px; margin-bottom:6px; box-sizing:border-box;">
+        <label style="display:block; font-size:11px; font-weight:600; color:#92400e; margin-bottom:2px;">リンク先URL（必須）</label>
+        <input type="text" id="cta-url-input" placeholder="例：https://eisai.org/free_trial/?school=3" style="width:100%; padding:6px 8px; font-size:12px; border:1px solid #fcd34d; border-radius:4px; margin-bottom:6px; box-sizing:border-box;">
+        <label style="display:block; font-size:11px; font-weight:600; color:#92400e; margin-bottom:2px;">電話番号（任意・ハイフンなし）</label>
+        <input type="text" id="cta-tel-input" placeholder="例：08043457243" style="width:100%; padding:6px 8px; font-size:12px; border:1px solid #fcd34d; border-radius:4px; margin-bottom:8px; box-sizing:border-box;">
+        <button id="btn-save-cta-settings" class="test-btn" style="background:#f59e0b;color:#fff; width:100%;">💾 CTA設定を保存</button>
+        <div id="cta-settings-status" style="font-size:11px; color:#059669; margin-top:6px; min-height:14px;"></div>
+      </details>
+
       <div id="sidebar-html-export" style="margin-bottom: 16px;"></div>
 
       <!-- アイコン版ツール（下） -->
@@ -4488,6 +4503,96 @@
       setTimeout(() => el.classList.remove('error'), 1500);
     }
 
+    // ===== CTA設定 + 生CTA_DATAからのCTA組み立て（拡張機能のコピーボタンを使わず生出力を貼った場合の救済） =====
+    const CTA_SETTINGS_KEY = 'eisai_editor_cta_settings_v1';
+    function getEditorCtaSettings() {
+      try {
+        const s = JSON.parse(localStorage.getItem(CTA_SETTINGS_KEY) || '{}');
+        return { school: s.school || '', url: s.url || '', tel: s.tel || '' };
+      } catch (e) { return { school: '', url: '', tel: '' }; }
+    }
+    function setEditorCtaSettings(patch) {
+      const next = { ...getEditorCtaSettings(), ...patch };
+      try { localStorage.setItem(CTA_SETTINGS_KEY, JSON.stringify(next)); } catch (e) {}
+      return next;
+    }
+    function ctaEsc(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function ctaSanitizeTel(tel) {
+      return String(tel || '').replace(/[^0-9+]/g, '');
+    }
+    const EDITOR_DEFAULT_CTA = {
+      '説明文1': 'テストや勉強のお悩みを一緒に整理します。',
+      '説明文2': 'お子さまに合った一歩目を一緒に見つけていきましょう。',
+      '相談ポイント1': '今のつまずきの原因を一緒に見つけます',
+      '相談ポイント2': '学校のワークの進め方を確認します',
+      '相談ポイント3': '家庭学習のやり方を整理します',
+      '相談ポイント4': 'テストに向けた学習計画を立てます',
+      '体験ポイント1': '実際の授業の雰囲気を体験できます',
+      '体験ポイント2': '先生との相性を確かめられます',
+      '体験ポイント3': 'つまずいている単元を確認できます',
+      '体験ポイント4': '今後の学習の進め方が分かります',
+      '締めの言葉': 'まずはお気軽にご相談ください。'
+    };
+    // 貼り付けHTML文字列から CTA_DATA ブロックを解析して {key:value} を返す（無ければnull）
+    function parseCtaDataFromHtml(html) {
+      const m = String(html || '').match(/<!--\s*CTA_DATA_START\s*-->([\s\S]*?)<!--\s*CTA_DATA_END\s*-->/i);
+      if (!m) return null;
+      const data = {};
+      m[1].trim().split('\n').forEach(line => {
+        const idx = line.search(/[:：]/);
+        if (idx > 0) {
+          const key = line.substring(0, idx).trim();
+          const val = line.substring(idx + 1).trim();
+          if (key && val) data[key] = val;
+        }
+      });
+      return Object.keys(data).length ? data : {};
+    }
+    // 拡張機能と同じ見た目の完成CTA（data-cta-protected付き）を組み立てる
+    function buildEditorCtaHtml(ctaData, settings) {
+      const d = ctaData || {};
+      const t = (key) => ctaEsc(d[key] || EDITOR_DEFAULT_CTA[key] || '');
+      let url = String((settings && settings.url) || '').trim();
+      if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+      const safeUrl = ctaEsc(url);
+      const safeTel = ctaSanitizeTel(settings && settings.tel);
+      const telLink = safeTel
+        ? '<a href="tel:' + safeTel + '" style="display: inline-block; background: #fff; color: #e67e22; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; border: 2px solid #e67e22;">電話で直接申し込む</a>'
+        : '';
+      return (
+        '<div data-cta-protected="true" style="background: #f8f8f8; padding: 40px 20px; margin: 40px 0;">' +
+        '<div style="text-align: center; font-size: 26px; font-weight: bold; color: #333; margin: 0 0 12px 0;">まずはお気軽にご相談ください</div>' +
+        '<div style="text-align: center; color: #888; margin: 0 0 16px 0; font-size: 13px;">入会する・しないにかかわらず、お子さまの学習についてお力になります。</div>' +
+        '<div style="text-align: center; color: #555; margin: 0 0 10px 0; font-size: 15px;">' + t('説明文1') + '</div>' +
+        '<div style="text-align: center; color: #555; margin: 0 0 30px 0; font-size: 15px;">' + t('説明文2') + '</div>' +
+        '<div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; max-width: 800px; margin-left: auto; margin-right: auto;">' +
+        '<div style="flex: 1; min-width: 300px; max-width: 380px; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">' +
+        '<div style="color: #e67e22; font-size: 18px; font-weight: bold; margin: 0 0 16px 0;">📒 無料学習相談でできること</div>' +
+        '<div style="color: #444; line-height: 2.0; font-size: 15px; padding-left: 8px;">' +
+        '<div style="margin-bottom: 4px;">・' + t('相談ポイント1') + '</div>' +
+        '<div style="margin-bottom: 4px;">・' + t('相談ポイント2') + '</div>' +
+        '<div style="margin-bottom: 4px;">・' + t('相談ポイント3') + '</div>' +
+        '<div style="margin-bottom: 4px;">・' + t('相談ポイント4') + '</div>' +
+        '</div></div>' +
+        '<div style="flex: 1; min-width: 300px; max-width: 380px; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">' +
+        '<div style="color: #e67e22; font-size: 18px; font-weight: bold; margin: 0 0 16px 0;">✏️ 無料体験授業でできること</div>' +
+        '<div style="color: #444; line-height: 2.0; font-size: 15px; padding-left: 8px;">' +
+        '<div style="margin-bottom: 4px;">・' + t('体験ポイント1') + '</div>' +
+        '<div style="margin-bottom: 4px;">・' + t('体験ポイント2') + '</div>' +
+        '<div style="margin-bottom: 4px;">・' + t('体験ポイント3') + '</div>' +
+        '<div style="margin-bottom: 4px;">・' + t('体験ポイント4') + '</div>' +
+        '</div></div>' +
+        '</div>' +
+        '<div style="text-align: center; color: #555; margin: 0 0 28px 0; font-size: 15px;">' + t('締めの言葉') + '</div>' +
+        '<div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">' +
+        '<a href="' + safeUrl + '" style="display: inline-block; background: #e67e22; color: #fff; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">無料学習相談・体験授業に申し込む</a>' +
+        telLink +
+        '</div></div>'
+      );
+    }
+
     // 本文の取得／反映は `.eisai-editor`（contentEditable）に対して行う。
     // `#playground` 全体を書き換えるとエディタ枠（ツールバー・表題バー含む）が消滅するため厳禁。
     function getPlaygroundHtml() {
@@ -5154,6 +5259,34 @@
       
       // イベントリスナー設定（エディタ初期化後に設定）
       document.getElementById('btn-apply-theme').onclick = applyThemeToGeminiHtml;
+      bindCtaSettingsUI();
+    }
+
+    // CTA設定UIの読み込み・保存
+    function bindCtaSettingsUI() {
+      const schoolEl = document.getElementById('cta-school-input');
+      const urlEl = document.getElementById('cta-url-input');
+      const telEl = document.getElementById('cta-tel-input');
+      const saveBtn = document.getElementById('btn-save-cta-settings');
+      const statusEl = document.getElementById('cta-settings-status');
+      if (!schoolEl || !urlEl || !telEl || !saveBtn) return;
+      const s = getEditorCtaSettings();
+      schoolEl.value = s.school || '';
+      urlEl.value = s.url || '';
+      telEl.value = s.tel || '';
+      saveBtn.onclick = () => {
+        setEditorCtaSettings({
+          school: schoolEl.value.trim(),
+          url: urlEl.value.trim(),
+          tel: telEl.value.trim()
+        });
+        if (statusEl) {
+          statusEl.textContent = urlEl.value.trim()
+            ? '✅ CTA設定を保存しました'
+            : '⚠️ 保存しましたが、リンク先URLが未入力です';
+          setTimeout(() => { statusEl.textContent = ''; }, 2500);
+        }
+      };
     }
 
     function generateDummyArticle() {
@@ -5610,15 +5743,29 @@
         editorTitleCandidates = [];
       }
 
-      // 生CTA素材（未処理のCTA_DATAコメント）を検知したら警告。拡張機能のコピーボタン経由を促す
-      if (/<!--\s*CTA_DATA_START\s*-->/i.test(geminiHtml) && !/data-cta-protected/i.test(geminiHtml)) {
-        if (typeof setDraftStatus === 'function') {
-          setDraftStatus('⚠️ CTAが未処理（生のCTA_DATA）です。拡張機能の「▶ ブログHTMLをコピー」ボタン経由で貼り付けてください', 'error');
+      // 生CTA素材（未処理のCTA_DATAコメント）を検知したら、CTA設定を使って完成CTAを組み立てる
+      // ・完成CTA（data-cta-protected）が既にある場合はそのまま保持（後段で退避）
+      // ・生CTA_DATAしか無い場合は、ここで解析して後段で completedCtaFromData を末尾に付与
+      let completedCtaFromData = '';
+      const hasFinishedCta = /data-cta-protected/i.test(geminiHtml);
+      const hasRawCtaData = /<!--\s*CTA_DATA_START\s*-->/i.test(geminiHtml);
+      if (hasRawCtaData && !hasFinishedCta) {
+        const pastedCtaData = parseCtaDataFromHtml(geminiHtml) || {};
+        const ctaSettings = getEditorCtaSettings();
+        if (ctaSettings.url) {
+          completedCtaFromData = buildEditorCtaHtml(pastedCtaData, ctaSettings);
+          if (typeof setDraftStatus === 'function') {
+            setDraftStatus('CTAを組み立てました（CTA設定のリンク先を使用）', 'saved');
+          }
+        } else {
+          if (typeof setDraftStatus === 'function') {
+            setDraftStatus('⚠️ CTA設定のリンク先URLが未入力です。下部の「CTA設定」でURLを入力して再適用してください', 'error');
+          }
+          alert('CTAを組み立てるには、リンク先URLが必要です。\n\n画面下部の「CTA設定」に校舎名・リンク先URL・電話番号を入力して保存し、もう一度「テーマを適用」してください。\n\n（URL未入力のため、今回はCTAなしで適用します）');
         }
-        alert('このHTMLはCTAが未処理（生のCTA_DATA素材）のため、ボタン付きCTAになりません。\n\nChatGPTのチャットから直接コピーせず、拡張機能パネルの「▶ ブログHTMLをコピーする」ボタンでコピーして貼り付けてください。\n\nこのまま続行するとCTAは表示されません。');
-        // 生CTA_DATAコメントは本文に残さない（不可視だが除去）
-        geminiHtml = geminiHtml.replace(/<!--\s*CTA_DATA_START\s*-->[\s\S]*?<!--\s*CTA_DATA_END\s*-->/gi, '');
       }
+      // 生CTA_DATAコメントは本文に残さない（完成CTAへ変換済み or CTAなし）
+      geminiHtml = geminiHtml.replace(/<!--\s*CTA_DATA_START\s*-->[\s\S]*?<!--\s*CTA_DATA_END\s*-->/gi, '');
 
       // HTMLを解析
       const tempDiv = document.createElement('div');
@@ -5674,8 +5821,10 @@
 
       // CTAセクション（data-cta-protected）を事前に退避しておく
       const ctaNodes = Array.from(tempDiv.querySelectorAll('[data-cta-protected]'));
-      const ctaHtml = ctaNodes.map(node => node.outerHTML).join('\n');
+      let ctaHtml = ctaNodes.map(node => node.outerHTML).join('\n');
       ctaNodes.forEach(node => node.remove());
+      // 完成CTAが無く、生CTA_DATAから組み立てたCTAがある場合はそれを使う
+      if (!ctaHtml && completedCtaFromData) ctaHtml = completedCtaFromData;
 
       // 結果を格納
       let themedHtml = '';
