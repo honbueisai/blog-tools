@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.3.1
+// @version      0.3.2
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  const CURRENT_VERSION = '0.3.1';
+  const CURRENT_VERSION = '0.3.2';
   const VERSION_ID = CURRENT_VERSION.replace(/\./g, '-');
   const VERSION_KEY = CURRENT_VERSION.replace(/\./g, '');
   const TOOL_ID = `eisai-chatgpt-tool-v${VERSION_ID}`;
@@ -2849,10 +2849,10 @@ ${formContent}`;
       }
 
       const latest = lastPromptNode || nodes[nodes.length - 1];
-      const prompt = lastImagePromptText || extractImagePromptText(CHATGPT_ADAPTER.getResponseText(latest));
+      const imgPrompt = lastImagePromptText || extractImagePromptText(CHATGPT_ADAPTER.getResponseText(latest));
 
       try {
-        await navigator.clipboard.writeText(prompt);
+        await navigator.clipboard.writeText(imgPrompt);
       } catch (e) {
         console.warn('プロンプトコピーに失敗しましたが、送信は続行します:', e);
       }
@@ -2863,12 +2863,20 @@ ${formContent}`;
         return;
       }
 
-      statusDiv.textContent = '🖼 画像生成プロンプトを送信しました。画像が生成されます。';
+      // ★ ChatGPTに「説明文」だけを送ると生成されず復唱されてしまうため、
+      //   画像生成の明確な指示を必ず前置きして送る（画像ツールを起動させる）
+      const generateMessage =
+        '次の内容で画像を1枚生成してください。\n' +
+        '説明やプロンプトの復唱はせず、必ず画像そのものを出力してください。\n' +
+        'アスペクト比は3:2、実写（photorealistic）で生成してください。\n\n' +
+        imgPrompt;
+
+      statusDiv.textContent = '🖼 画像生成を依頼しました。ChatGPTが画像を生成します。';
       statusDiv.classList.add('show');
       imgExecBtn.style.display = 'none';
       syncFooterButtons();
 
-      await setComposerAndSend(prompt);
+      await setComposerAndSend(generateMessage);
     };
   }
 
