@@ -1,39 +1,67 @@
 <!DOCTYPE html>
-<!-- 英才ブログエディタ Ver.0.10.0 -->
+<!-- 英才ブログエディタ Ver.0.11.0 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>英才ブログエディタ - アイコン版 Ver.0.10.0</title>
+  <title>英才ブログエディタ - アイコン版 Ver.0.11.0</title>
   <style>
+    /* === デザイントークン（v0.11.0 P1 D1-1: ツールChrome用） === */
+    :root {
+      --navy: #12294D;
+      --orange: #F5811F;
+      --orange-hover: #DD6F12;
+      --cream: #FBF7EF;
+      --surface: #FFFFFF;
+      --ink: #1F2937;
+      --muted: #5B6472;
+      --line: #E3E0D8;
+      --success: #1E8E5A;
+      --danger: #C0392B;
+      --fs-xs: 12px;
+      --fs-sm: 13px;
+      --fs-md: 14px;
+      --fs-lg: 16px;
+      --fs-xl: 20px;
+      --sp-1: 4px;
+      --sp-2: 8px;
+      --sp-3: 12px;
+      --sp-4: 16px;
+      --sp-5: 20px;
+      --sp-6: 24px;
+      --r-sm: 6px;
+      --r-md: 10px;
+      --shadow-soft: 0 2px 10px rgba(18, 41, 77, 0.08);
+    }
     body {
       margin: 0;
       padding: 20px;
-      background: #f3f4f6;
+      background: var(--cream);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.4;
     }
     #app {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 24px;
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 8px 28px rgba(0,0,0,0.08);
+      padding: 0;
       display: flex;
-      gap: 24px;
+      gap: var(--sp-5);
       align-items: flex-start; /* sidebar の sticky を有効化 */
       min-height: calc(100vh - 40px);
     }
     #sidebar {
       width: 280px;
       flex-shrink: 0;
-      border-right: 1px solid #e5e7eb;
-      padding-right: 16px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      padding: var(--sp-4);
       /* Geminiライク：サイドバーを画面に固定し、内部だけスクロール */
       position: sticky;
       top: 24px;
       max-height: calc(100vh - 88px);
       overflow-y: auto;
       overflow-x: hidden;
+      box-sizing: border-box;
     }
     #playground {
       flex: 1;
@@ -43,7 +71,7 @@
     }
     pre#html-output {
       white-space: pre-wrap;
-      font-size: 11px;
+      font-size: var(--fs-xs);
       background:#111827;
       color:#e5e7eb;
       padding:12px;
@@ -59,7 +87,7 @@
       background: #ffffff;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 12px;
+      font-size: var(--fs-xs);
       transition: all 0.15s ease;
     }
     .test-btn:hover {
@@ -67,14 +95,164 @@
       border-color: #9ca3af;
     }
 
+    /* === ボタン階層（v0.11.0 P1 D1-2） === */
+    .btn-primary, .btn-secondary, .btn-tertiary, .btn-danger-ghost {
+      height: 36px;
+      padding: 0 var(--sp-4);
+      border-radius: var(--r-sm);
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      line-height: 1.4;
+      cursor: pointer;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-2);
+      white-space: nowrap;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .btn-primary {
+      background: var(--orange);
+      border: 1px solid var(--orange);
+      color: #ffffff;
+    }
+    .btn-primary:hover { background: var(--orange-hover); border-color: var(--orange-hover); }
+    .btn-primary:active { background: var(--orange-hover); }
+    .btn-primary:disabled { background: #f3ceac; border-color: #f3ceac; color: #ffffff; cursor: not-allowed; }
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--navy);
+      color: var(--navy);
+      font-weight: 600;
+    }
+    .btn-secondary:hover { background: rgba(18, 41, 77, 0.06); }
+    .btn-secondary:active { background: rgba(18, 41, 77, 0.12); }
+    .btn-secondary:disabled { border-color: var(--line); color: var(--muted); background: var(--surface); cursor: not-allowed; }
+    .btn-tertiary {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .btn-tertiary:hover { background: var(--cream); color: var(--ink); }
+    .btn-tertiary:active { background: var(--line); }
+    .btn-tertiary:disabled { color: #b9bec7; background: transparent; cursor: not-allowed; }
+    .btn-danger-ghost {
+      background: var(--surface);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+    .btn-danger-ghost:hover { background: #fbeae7; }
+    .btn-danger-ghost:active { background: #f6d9d3; }
+    .btn-danger-ghost:disabled { border-color: var(--line); color: var(--muted); background: var(--surface); cursor: not-allowed; }
+    .btn-primary:focus-visible,
+    .btn-secondary:focus-visible,
+    .btn-tertiary:focus-visible,
+    .btn-danger-ghost:focus-visible {
+      outline: 2px solid var(--orange);
+      outline-offset: 2px;
+    }
+    .btn-primary svg, .btn-secondary svg, .btn-tertiary svg, .btn-danger-ghost svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2;
+      flex-shrink: 0;
+    }
+    /* コピー成功時の一時的なフィードバック（元のクラスに関わらず適用） */
+    .copy-ok {
+      background: var(--success) !important;
+      border-color: var(--success) !important;
+      color: #ffffff !important;
+    }
+
+    /* === サイドバー共通セクションカード（v0.11.0 P1 D1-3） === */
+    .sb-section {
+      padding: var(--sp-4);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      margin-bottom: var(--sp-4);
+      box-sizing: border-box;
+    }
+    /* === サイドバー共通見出し（v0.11.0 P1） === */
+    .sb-title {
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      margin: 0 0 var(--sp-2) 0;
+      color: var(--muted);
+    }
+
+    /* === 開発用サンプル（折りたたみ・控えめな見た目） === */
+    .sb-dev {
+      margin-top: var(--sp-4);
+      padding-top: var(--sp-3);
+      border-top: 1px solid var(--line);
+    }
+    .sb-dev summary {
+      font-size: var(--fs-xs);
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px 0;
+      user-select: none;
+    }
+    .sb-dev summary:hover {
+      color: var(--ink);
+    }
+    .sb-dev .test-btn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      font-size: var(--fs-xs);
+      border-radius: var(--r-sm);
+    }
+    .sb-dev .test-btn:hover {
+      background: var(--cream);
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    /* === トースト通知（v0.11.0 P1: alert()の非モーダル化） === */
+    .eisai-toast-container {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 8px;
+      max-width: 320px;
+    }
+    .eisai-toast {
+      padding: 10px 14px;
+      border-radius: var(--r-sm);
+      font-size: var(--fs-sm);
+      line-height: 1.5;
+      color: #fff;
+      background: var(--ink);
+      box-shadow: var(--shadow-soft);
+      white-space: pre-wrap;
+      opacity: 1;
+      transform: translateX(0);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .eisai-toast-success { background: var(--success); }
+    .eisai-toast-error { background: var(--danger); }
+    .eisai-toast-info { background: var(--ink); }
+    .eisai-toast-hide {
+      opacity: 0;
+      transform: translateX(12px);
+    }
+
     /* === 表題バー（playground 内・toolbar直下、ページスクロール時も上部固定） === */
     .article-title-bar {
       display: flex;
       gap: 10px;
       align-items: center;
-      padding: 14px 18px;
-      background: linear-gradient(180deg, #fffbeb 0%, #fffdf5 100%);
-      border-bottom: 2px solid #fde68a;
+      padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3);
+      background: var(--cream);
+      border-left: 4px solid var(--orange);
+      border-bottom: 1px solid var(--line);
       flex-shrink: 0;
       position: sticky;
       top: 0;
@@ -88,25 +266,25 @@
     .article-title-display {
       flex: 1;
       padding: 10px 14px;
-      font-size: 16px;
+      font-size: var(--fs-lg);
       font-weight: 700;
       line-height: 1.4;
-      border: 2px solid #fde68a;
-      border-radius: 6px;
-      background: #fff;
-      color: #111827;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      color: var(--ink);
       min-width: 0;
       box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
       transition: border-color 0.15s ease;
     }
     .article-title-display:focus {
       outline: none;
-      border-color: #f59e0b;
+      border-color: var(--orange);
     }
     .article-title-display::placeholder {
       font-weight: 400;
-      color: #9ca3af;
-      font-size: 13px;
+      color: var(--muted);
+      font-size: var(--fs-sm);
     }
     /* タイトル候補（3案）選択行 */
     .article-title-candidates {
@@ -114,88 +292,41 @@
       flex-wrap: wrap;
       gap: 6px;
       padding: 8px 18px 12px;
-      background: linear-gradient(180deg, #fffdf5 0%, #ffffff 100%);
-      border-bottom: 1px solid #fde68a;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
     }
     .article-title-cand {
       flex: 1 1 30%;
       min-width: 180px;
       text-align: left;
-      padding: 7px 10px;
-      border: 2px solid #cbd5e1;
-      border-radius: 6px;
-      background: #ffffff;
-      color: #111827;
-      font-size: 12px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: var(--fs-xs);
       line-height: 1.45;
       cursor: pointer;
       transition: all 0.12s ease;
     }
-    .article-title-cand:hover { border-color: #f59e0b; background: #fffbeb; }
-    .article-title-cand.active { border-color: #2563eb; background: #dbeafe; }
+    .article-title-cand:hover { border-color: var(--orange); background: var(--cream); }
+    .article-title-cand.active { border-color: var(--navy); background: rgba(18, 41, 77, 0.08); color: var(--navy); }
     .article-title-cand .cand-label {
       display: block;
-      font-size: 10px;
-      color: #64748b;
+      font-size: var(--fs-xs);
+      color: var(--muted);
       margin-bottom: 2px;
       font-weight: 600;
-    }
-    .article-title-copy {
-      padding: 10px 14px;
-      background: #f59e0b;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
-      transition: all 0.15s ease;
-      box-shadow: 0 1px 3px rgba(245,158,11,0.3);
-    }
-    .article-title-copy:hover {
-      background: #d97706;
-      transform: translateY(-1px);
-      box-shadow: 0 3px 8px rgba(245,158,11,0.4);
-    }
-    .article-title-copy.copy-ok {
-      background: #10b981;
-      box-shadow: 0 1px 3px rgba(16,185,129,0.3);
-    }
-
-    /* === 本文コピーボタン（表題バー内 / タイトルコピーの隣） === */
-    .article-body-copy {
-      padding: 10px 14px;
-      background: #dc2626;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
-      transition: all 0.15s ease;
-      box-shadow: 0 1px 3px rgba(220,38,38,0.3);
-    }
-    .article-body-copy:hover {
-      background: #b91c1c;
-      transform: translateY(-1px);
-      box-shadow: 0 3px 8px rgba(220,38,38,0.4);
-    }
-    .article-body-copy.copy-ok {
-      background: #10b981;
-      box-shadow: 0 1px 3px rgba(16,185,129,0.3);
     }
 
     /* === 履歴パネル（Geminiライク） === */
     .history-panel {
-      margin-bottom: 16px;
-      background: #fafafa;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 12px;
+      margin-bottom: var(--sp-4);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      padding: var(--sp-3);
+      box-sizing: border-box;
     }
     .history-header {
       display: flex;
@@ -204,57 +335,38 @@
       gap: 8px;
       margin-bottom: 8px;
     }
-    .history-new-btn {
+    .history-header .btn-secondary {
       flex: 1;
-      padding: 8px 12px;
-      background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-    }
-    .history-new-btn:hover {
-      background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
-      transform: translateY(-1px);
-      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
     }
     .history-actions {
       display: flex;
       gap: 6px;
       margin-bottom: 10px;
     }
-    .history-actions .draft-btn.primary {
+    .history-actions .btn-secondary {
       flex: 1;
     }
-    .history-actions .draft-btn:not(.primary) {
-      width: 36px;
-      padding: 6px;
+    .history-actions .btn-tertiary {
+      padding: 0 var(--sp-2);
       flex-shrink: 0;
+      white-space: nowrap;
     }
     .history-divider {
-      font-size: 10px;
+      font-size: var(--fs-xs);
       font-weight: 600;
       color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
       padding: 8px 4px 4px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid var(--line);
       margin-top: 4px;
     }
     .history-group-header {
-      font-size: 10px;
+      font-size: var(--fs-xs);
       font-weight: 700;
       color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
       padding: 10px 4px 4px;
     }
     .draft-status {
-      font-size: 10px;
+      font-size: var(--fs-xs);
       color: #6b7280;
       font-weight: 500;
       flex-shrink: 0;
@@ -263,45 +375,22 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .draft-status.saved { color: #059669; }
+    .draft-status.saved { color: var(--success); }
     .draft-status.saving { color: #d97706; }
-    .draft-status.error { color: #dc2626; }
+    .draft-status.error { color: var(--danger); }
     /* 旧サイドバータイトル系（隠し要素として保持・互換用） */
     .draft-title-input.error {
-      border-color: #dc2626;
-    }
-    .draft-btn {
-      padding: 6px 8px;
-      font-size: 11px;
-      border: 1px solid #d1d5db;
-      background: #fff;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .draft-btn:hover {
-      background: #f3f4f6;
-      border-color: #9ca3af;
-    }
-    .draft-btn.primary {
-      background: #f59e0b;
-      color: #fff;
-      border-color: #f59e0b;
-      font-weight: 600;
-    }
-    .draft-btn.primary:hover {
-      background: #d97706;
-      border-color: #d97706;
+      border-color: var(--danger);
     }
     .draft-list {
       /* 縦に積み上がる履歴リスト（Geminiライク） */
     }
     .draft-list:empty::after {
-      content: '履歴はまだありません。GEMINI HTMLを貼り付けて「テーマを適用」を実行してください。';
+      content: '履歴はまだありません。「履歴に残す」を押すとここに追加されます。';
       display: block;
       padding: 16px 8px;
-      font-size: 11px;
-      color: #9ca3af;
+      font-size: var(--fs-xs);
+      color: var(--muted);
       text-align: center;
       line-height: 1.6;
     }
@@ -332,7 +421,7 @@
       content: '📌';
       flex-shrink: 0;
       opacity: 0.5;
-      font-size: 11px;
+      font-size: var(--fs-xs);
     }
     .draft-item .draft-name {
       flex: 1;
@@ -345,8 +434,8 @@
       font-weight: 600;
     }
     .draft-item .draft-badge {
-      font-size: 9px;
-      background: #f59e0b;
+      font-size: var(--fs-xs);
+      background: var(--orange);
       color: #fff;
       padding: 1px 5px;
       border-radius: 3px;
@@ -354,8 +443,8 @@
       font-weight: 700;
     }
     .draft-item .draft-meta {
-      font-size: 10px;
-      color: #9ca3af;
+      font-size: var(--fs-xs);
+      color: var(--muted);
       flex-shrink: 0;
     }
     .draft-item.current .draft-meta {
@@ -364,7 +453,7 @@
     .draft-item-delete {
       border: none;
       background: transparent;
-      color: #9ca3af;
+      color: var(--muted);
       cursor: pointer;
       font-size: 16px;
       padding: 0 4px;
@@ -381,11 +470,11 @@
     /* === アイコン版エディタCSS === */
     #eisai-editor-icons {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #111827;
-      box-shadow: 0 8px 28px rgba(0,0,0,0.15);
-      border-radius: 12px;
-      border: 1px solid #e5e7eb;
-      background: #ffffff;
+      color: var(--ink);
+      box-shadow: var(--shadow-soft);
+      border-radius: var(--r-md);
+      border: 1px solid var(--line);
+      background: var(--surface);
       display: flex;
       flex-direction: column;
       /* 高さ固定を撤廃：本文に応じて自然に伸びる */
@@ -410,7 +499,7 @@
       display: flex;
       flex-direction: column;
       gap: 0;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid var(--line);
       flex-shrink: 0;
       position: sticky;
       top: 60px;
@@ -422,37 +511,41 @@
       display: flex;
       gap: 3px;
       padding: 10px 16px;
-      background: #ffffff;
+      background: var(--surface);
       flex-wrap: wrap;
       align-items: center;
+    }
+    /* パーツ行（カスタムモード時の第2行）とフォーマット行の間に区切り線 */
+    .eisai-toolbar-container .eisai-toolbar + .eisai-toolbar {
+      border-top: 1px solid var(--line);
     }
     .eisai-toolbar-separator {
       width: 1px;
       height: 28px;
-      background: #e5e7eb;
+      background: var(--line);
       margin: 0 6px;
       opacity: 0.6;
     }
     .eisai-btn {
       width: 36px;
       height: 36px;
-      border: 1px solid #e5e7eb;
-      background: #ffffff;
-      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: var(--r-sm);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: all 0.2s ease;
-      color: #6b7280;
+      color: var(--muted);
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
       position: relative;
     }
     .eisai-btn:hover {
-      background: #f8fafc;
-      border-color: #3b82f6;
-      color: #3b82f6;
-      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+      background: var(--cream);
+      border-color: var(--navy);
+      color: var(--navy);
+      box-shadow: none;
       transform: translateY(-1px);
     }
     .eisai-btn:active {
@@ -460,9 +553,9 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
     .eisai-btn.active {
-      background: #dbeafe;
-      border-color: #3b82f6;
-      color: #1d4ed8;
+      background: rgba(18, 41, 77, 0.1);
+      border-color: var(--navy);
+      color: var(--navy);
     }
     .eisai-btn svg {
       width: 18px;
@@ -477,25 +570,27 @@
       display: inline-block;
     }
     .eisai-dropdown-btn {
-      padding: 8px 12px;
-      border: 1px solid #e5e7eb;
-      background: #ffffff;
-      border-radius: 8px;
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: var(--r-sm);
       cursor: pointer;
-      font-size: 12px;
+      font-size: var(--fs-xs);
       transition: all 0.2s ease;
       display: flex;
       align-items: center;
       gap: 6px;
-      color: #6b7280;
+      color: var(--muted);
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
       font-weight: 500;
+      box-sizing: border-box;
     }
     .eisai-dropdown-btn:hover {
-      background: #f8fafc;
-      border-color: #3b82f6;
-      color: #3b82f6;
-      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+      background: var(--cream);
+      border-color: var(--navy);
+      color: var(--navy);
+      box-shadow: none;
       transform: translateY(-1px);
     }
     .eisai-dropdown-btn svg {
@@ -507,14 +602,14 @@
       position: absolute;
       top: 100%;
       left: 0;
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
       box-shadow: 0 8px 25px rgba(0,0,0,0.1);
       z-index: 1000;
-      min-width: 400px;
-      max-height: 400px;
-      overflow-y: auto;
+      min-width: min(520px, calc(100vw - 32px));
+      max-height: 70vh;
+      overflow: auto;
       display: none;
       margin-top: 4px;
       backdrop-filter: blur(10px);
@@ -541,7 +636,7 @@
       border: none;
       background: none;
       text-align: left;
-      font-size: 12px;
+      font-size: var(--fs-xs);
       cursor: pointer;
       transition: all 0.15s ease;
       color: #374151;
@@ -552,8 +647,8 @@
       gap: 12px;
     }
     .eisai-drop-item:hover {
-      background: #f1f5f9;
-      color: #1e40af;
+      background: var(--cream);
+      color: var(--navy);
       transform: translateX(4px);
     }
     .eisai-drop-preview {
@@ -592,7 +687,7 @@
       position: relative;
     }
     .eisai-color-btn:hover {
-      border-color: #3b82f6;
+      border-color: var(--navy);
       transform: translateY(-1px) scale(1.08);
       box-shadow: 0 3px 10px rgba(148, 163, 184, 0.6);
     }
@@ -603,15 +698,15 @@
       left: 50%;
       transform: translate(-50%, -50%);
       color: white;
-      font-size: 10px;
+      font-size: var(--fs-xs);
       font-weight: bold;
       text-shadow: 0 1px 2px rgba(0,0,0,0.5);
     }
     .eisai-editor-container {
       padding: 0;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      margin-top: var(--sp-4);
       display: flex;
       flex-direction: column;
       position: relative; /* 本文コピーボタンの絶対配置基準 */
@@ -703,13 +798,13 @@
     /* === 固定ヘッダー部分 === */
     .eisai-fixed-header {
       flex-shrink: 0;
-      background: #fff;
+      background: var(--surface);
     }
     /* === プリセットモードUI === */
     .preset-mode-container {
-      background: #f8fafc;
-      border-radius: 10px;
-      padding: 16px;
+      background: var(--cream);
+      border-radius: var(--r-md);
+      padding: var(--sp-4);
     }
     .preset-mode-header {
       display: flex;
@@ -718,16 +813,16 @@
       margin-bottom: 12px;
     }
     .preset-mode-title {
-      font-size: 14px;
+      font-size: var(--fs-md);
       font-weight: 600;
-      color: #334155;
+      color: var(--ink);
     }
     .preset-mode-toggle {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 12px;
-      color: #64748b;
+      font-size: var(--fs-xs);
+      color: var(--muted);
     }
     .preset-mode-toggle input[type="checkbox"] {
       width: 16px;
@@ -737,26 +832,26 @@
     .theme-selector {
       width: 100%;
       padding: 10px 12px;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
-      font-size: 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      font-size: var(--fs-sm);
       font-weight: 500;
-      background: white;
+      background: var(--surface);
       cursor: pointer;
       margin-bottom: 12px;
       transition: border-color 0.2s;
     }
     .theme-selector:focus {
       outline: none;
-      border-color: #3b82f6;
+      border-color: var(--navy);
     }
     .theme-description {
-      font-size: 11px;
-      color: #94a3b8;
+      font-size: var(--fs-xs);
+      color: var(--muted);
       margin-bottom: 12px;
       padding: 8px;
-      background: white;
-      border-radius: 6px;
+      background: var(--surface);
+      border-radius: var(--r-sm);
       text-align: center;
     }
     .preset-buttons {
@@ -766,10 +861,10 @@
     }
     .preset-btn {
       padding: 6px 10px;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 6px;
-      background: white;
-      font-size: 11px;
+      border: 1.5px solid var(--line);
+      border-radius: var(--r-sm);
+      background: var(--surface);
+      font-size: var(--fs-xs);
       font-weight: 500;
       color: #475569;
       cursor: pointer;
@@ -781,8 +876,8 @@
       gap: 4px;
     }
     .preset-btn:hover {
-      border-color: #3b82f6;
-      background: #eff6ff;
+      border-color: var(--navy);
+      background: var(--cream);
     }
     .preset-btn svg {
       width: 14px;
@@ -794,7 +889,7 @@
       justify-content: center;
       gap: 8px;
       padding: 10px;
-      background: #f1f5f9;
+      background: var(--cream);
     }
     /* トグルスイッチ */
     .toggle-switch {
@@ -807,7 +902,7 @@
       transition: background 0.3s;
     }
     .toggle-switch.active {
-      background: #3b82f6;
+      background: var(--navy);
     }
     .toggle-switch::after {
       content: '';
@@ -823,13 +918,6 @@
     }
     .toggle-switch.active::after {
       transform: translateX(16px);
-    }
-    .preset-mode-toggle {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      color: #64748b;
     }
     .eisai-category-container {
       display: flex;
@@ -988,40 +1076,42 @@
 <body>
   <div id="app">
     <div id="sidebar">
+      <!-- 貼り付け＆テーマ適用（最上部） -->
+      <div class="sb-section">
+        <h3 class="sb-title">📋 拡張機能（Gemini / ChatGPT）からコピーしたHTML</h3>
+        <textarea id="gemini-html-input" placeholder="ここに拡張機能（Gemini / ChatGPT）からコピーしたHTMLを貼り付け..." style="width: 100%; height: 280px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: var(--fs-xs); font-family: monospace; resize: vertical; margin-bottom: 8px; box-sizing: border-box;"></textarea>
+        <button id="btn-apply-theme" class="btn-primary" style="width: 100%;">テーマを適用</button>
+      </div>
+      <div id="sidebar-html-export" style="margin-bottom: 16px;"></div>
+
       <!-- 履歴パネル（v0.9.0 / Geminiライク） -->
       <div class="history-panel">
         <div class="history-header">
-          <button id="btn-new-draft" class="history-new-btn">🆕 新規作成</button>
+          <button id="btn-new-draft" class="btn-secondary">新規作成</button>
           <span id="draft-status" class="draft-status">未保存</span>
         </div>
         <div class="history-actions">
-          <button id="btn-save-draft" class="draft-btn primary">💾 履歴に残す</button>
-          <button id="btn-export-drafts" class="draft-btn" title="JSONエクスポート">📤</button>
-          <button id="btn-import-drafts" class="draft-btn" title="JSONインポート">📥</button>
+          <button id="btn-save-draft" class="btn-secondary">履歴に残す</button>
+          <button id="btn-export-drafts" class="btn-tertiary" title="履歴をファイルに保存（バックアップ）">バックアップ</button>
+          <button id="btn-import-drafts" class="btn-tertiary" title="ファイルから履歴を復元">復元</button>
         </div>
         <input type="file" id="draft-import-file" accept=".json" style="display:none;">
         <!-- 隠しタイトル入力（旧コードとの互換用 / 表題バーと双方向同期） -->
         <input type="text" id="draft-title-input" style="display:none;" maxlength="120">
-        <div class="history-divider">📚 履歴（自動保存＋手動スナップショット）</div>
+        <div class="history-divider">📚 履歴（「履歴に残す」で保存）</div>
         <div id="draft-list" class="draft-list"></div>
       </div>
 
-      <!-- GEMINI HTML貼り付けスペース（上） -->
-      <div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 16px;">
-        <h3 style="font-size:13px; margin:0 0 8px 0;">🤖 GEMINI HTML貼り付け</h3>
-        <textarea id="gemini-html-input" placeholder="ここにGEMINIからコピーしたHTMLを貼り付け..." style="width: 100%; height: 280px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; font-family: monospace; resize: vertical; margin-bottom: 8px; box-sizing: border-box;"></textarea>
-        <button id="btn-apply-theme" class="test-btn" style="background:#10b981;color:#fff; width: 100%;">🎨 テーマを適用</button>
-      </div>
-      <div id="sidebar-html-export" style="margin-bottom: 16px;"></div>
-
-      <!-- アイコン版ツール（下） -->
-      <h2 style="font-size:16px; margin-top:0;">🎨 アイコン版ツール</h2>
-      <button id="btn-generate-dummy" class="test-btn">📝 ダミー記事</button>
-      <button id="btn-generate-sample" class="test-btn">🎨 サンプル記事</button>
-      <button id="btn-generate-full" class="test-btn">🚀 全機能デモ</button>
-      <button id="btn-theme-samples" class="test-btn" style="background:#3498db;color:#fff;">🎨 テーマ別サンプル</button>
-      <button id="btn-custom-samples" class="test-btn" style="background:#9b59b6;color:#fff;">🔧 カスタムツール全種</button>
-      <button id="btn-clear-content" class="test-btn">🗑️ 内容をクリア</button>
+      <!-- 開発用サンプル（折りたたみ / 通常は使いません） -->
+      <details class="sb-dev">
+        <summary>開発用サンプル（通常は使いません）</summary>
+        <button id="btn-generate-dummy" class="test-btn">📝 ダミー記事</button>
+        <button id="btn-generate-sample" class="test-btn">🎨 サンプル記事</button>
+        <button id="btn-generate-full" class="test-btn">🚀 全機能デモ</button>
+        <button id="btn-theme-samples" class="test-btn">🎨 テーマ別サンプル</button>
+        <button id="btn-custom-samples" class="test-btn">🔧 カスタムツール全種</button>
+        <button id="btn-clear-content" class="btn-danger-ghost">内容をクリア</button>
+      </details>
     </div>
     <div id="playground">
     </div>
@@ -1030,6 +1120,26 @@
   </div>
 
   <script>
+    // === トースト通知（v0.11.0 P1: alert()を非モーダルに置き換え） ===
+    function showToast(message, type = 'info') {
+      let container = document.getElementById('eisai-toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'eisai-toast-container';
+        container.className = 'eisai-toast-container';
+        container.setAttribute('aria-live', 'polite');
+        document.body.appendChild(container);
+      }
+      const toast = document.createElement('div');
+      toast.className = 'eisai-toast eisai-toast-' + type;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('eisai-toast-hide');
+        setTimeout(() => toast.remove(), 300);
+      }, 2500);
+    }
+
     // === SVGアイコン定義（修正版） ===
     const ICONS = {
       undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>',
@@ -1094,21 +1204,96 @@
 
       // ブロック要素用: 段落途中で押された場合でも、前後のテキストを保ったまま
       // [前のテキストの<p>] [ブロック] [後ろのテキストの<p>] になるように挿入する
+      // v0.11.0 P1 C4b (OPS-09): <p>（や装飾のない<div>）の途中にブロックを挿入する際、
+      // <div>を<p>の中に入れ子にしてしまわず、本当に段落を分割する。
+      // 前半のテキストは元の<p>に残し、ブロックをその後に挿入し、後半は新しい<p>へ。
       function insertBlockAtCursor(editor, blockNode) {
         const sel = window.getSelection();
         if (!sel || !sel.rangeCount) return;
 
         const range = sel.getRangeAt(0);
-        
-        // 選択範囲を単一のブロックで置換
-        range.deleteContents();
-        range.insertNode(blockNode);
-        
+
+        // 選択範囲があれば削除してキャレット位置に確定する
+        if (!range.collapsed) {
+          range.deleteContents();
+        }
+
+        // 分割対象にできる「地の文の段落」かどうか判定
+        // （装飾テーマ・枠・吹き出し等の特殊要素は対象外。それぞれ専用の挿入処理がある）
+        const isPlainParagraph = (el) => {
+          if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+          if (el.tagName === 'P') return true;
+          if (el.tagName === 'DIV') {
+            const hasStyle = el.getAttribute('style');
+            const hasClass = el.className && String(el.className).trim();
+            return !hasStyle && !hasClass;
+          }
+          return false;
+        };
+
+        let startContainer = range.startContainer;
+        let container = startContainer.nodeType === Node.TEXT_NODE ? startContainer.parentNode : startContainer;
+
+        let paraEl = null;
+        let cur = container;
+        while (cur && cur !== editor) {
+          if (isPlainParagraph(cur)) { paraEl = cur; break; }
+          cur = cur.parentNode;
+        }
+
+        if (paraEl) {
+          // キャレットより後ろの内容を取り出す（前半は paraEl に残る）
+          const afterRange = document.createRange();
+          afterRange.setStart(range.startContainer, range.startOffset);
+          afterRange.setEnd(paraEl, paraEl.childNodes.length);
+          const afterFragment = afterRange.extractContents();
+
+          const beforeHasText = (paraEl.textContent || '').replace(/ /g, ' ').trim() !== '';
+          const afterHasText = (afterFragment.textContent || '').replace(/ /g, ' ').trim() !== '';
+
+          if (beforeHasText && afterHasText) {
+            // 前後どちらにも本文があるので、実際に段落を分割する
+            const afterEl = paraEl.cloneNode(false);
+            afterEl.removeAttribute('id');
+            afterEl.appendChild(afterFragment);
+            paraEl.parentNode.insertBefore(blockNode, paraEl.nextSibling);
+            paraEl.parentNode.insertBefore(afterEl, blockNode.nextSibling);
+          } else if (afterHasText) {
+            // キャレットが段落の先頭付近：取り出した内容を元の<p>へ戻し、ブロックはその前に挿入
+            while (afterFragment.firstChild) paraEl.appendChild(afterFragment.firstChild);
+            paraEl.parentNode.insertBefore(blockNode, paraEl);
+          } else {
+            // キャレットが段落の末尾付近：ブロックはその後に挿入
+            paraEl.parentNode.insertBefore(blockNode, paraEl.nextSibling);
+            if (!beforeHasText && paraEl.childNodes.length === 0) {
+              // 段落が空になった場合はキャレット表示のため<br>を残す
+              paraEl.appendChild(document.createElement('br'));
+            }
+          }
+        } else {
+          // 段落の外（エディタ直下など）ではそのまま挿入
+          range.insertNode(blockNode);
+        }
+
+        // v0.11.0 D-2 Part1-1: 分割時にエディタ直下へ孤立した<br>が残ることがある
+        // （例: P:AAAA, DIV.theme-box, BR, P:BBBB）。ブロックに隣接するその<br>を除去する。
+        if (blockNode.parentNode === editor) {
+          const prevSib = blockNode.previousSibling;
+          if (prevSib && prevSib.nodeType === Node.ELEMENT_NODE && prevSib.tagName === 'BR') {
+            prevSib.remove();
+          }
+          const nextSib = blockNode.nextSibling;
+          if (nextSib && nextSib.nodeType === Node.ELEMENT_NODE && nextSib.tagName === 'BR') {
+            nextSib.remove();
+          }
+        }
+
         // キャレットをブロックの後に移動
-        range.setStartAfter(blockNode);
-        range.setEndAfter(blockNode);
+        const caretRange = document.createRange();
+        caretRange.setStartAfter(blockNode);
+        caretRange.setEndAfter(blockNode);
         sel.removeAllRanges();
-        sel.addRange(range);
+        sel.addRange(caretRange);
       }
 
       // ========================================
@@ -1308,6 +1493,7 @@
           description: '情熱・セール・注目・アフィリエイト向け',
           html: {
             heading: '<div style="background: #c0392b; color: #fff; padding: 15px 20px; font-size: 120%; font-weight: bold; margin: 20px 0;">{{text}}</div>',
+            subheading: '<div style="color: #c0392b !important; font-size: 105% !important; font-weight: bold !important; margin: 15px 0 !important; padding: 8px 0 !important; border-bottom: 2px solid #f1948a !important; padding-left: 10px !important;">{{text}}</div>',
             box: '<div style="background: #fff; border: 3px solid #c0392b; padding: 20px; margin: 1em 0; box-shadow: 5px 5px 0 #fdedec;">{{text}}</div>',
             bubbleLeft: '<div style="position: relative; display: inline-block; background: #c0392b; color: #fff; border-radius: 15px; padding: 15px 20px; margin: 1em 0 1em 30px; max-width: 80%;"><span style="position: absolute; left: -18px; top: 50%; transform: translateY(-50%); border: 12px solid transparent; border-right: 18px solid #c0392b;"></span>{{text}}</div>',
             bubbleRight: '<div style="position: relative; display: block; background: #f1948a; color: #641e16; border-radius: 15px; padding: 15px 20px; margin: 1em 30px 1em auto; max-width: 80%; width: fit-content;"><span style="position: absolute; right: -18px; top: 50%; transform: translateY(-50%); border: 12px solid transparent; border-left: 18px solid #f1948a;"></span>{{text}}</div>',
@@ -1442,7 +1628,7 @@
                   max-width:180px;
                   box-sizing:border-box;
                 ">
-                  <div style="font-size:11px; line-height:1.4;">
+                  <div style="font-size:12px; line-height:1.4;">
                     ${inner}
                   </div>
                 </div>
@@ -1605,13 +1791,26 @@
       // 選択範囲保存用（ボタンクリックでフォーカスが外れる対策）
       let globalSavedRange = null;
 
-      async function applyBlock(editor, catKey, itemDef) {
-        // 選択範囲を復元（ボタンクリックで外れたフォーカスを戻す）
-        if (globalSavedRange) {
+      // v0.11.0 D-2 Part1-4 (OPS-22): globalSavedRangeが古い/別画面のノードを指していると
+      // 復元時に例外や意図しない場所への挿入を起こす。エディタ内の有効な範囲であることを
+      // 確認できた場合のみ復元する。復元できたかどうかをboolで返す。
+      function restoreSavedRange(editor) {
+        if (!globalSavedRange) return false;
+        try {
+          const container = globalSavedRange.commonAncestorContainer;
+          if (!container || !editor.contains(container)) return false;
           const s = window.getSelection();
           s.removeAllRanges();
           s.addRange(globalSavedRange);
-        } else {
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      async function applyBlock(editor, catKey, itemDef) {
+        // 選択範囲を復元（ボタンクリックで外れたフォーカスを戻す）
+        if (!restoreSavedRange(editor)) {
           editor.focus();
           // 選択範囲がない場合はエディタの末尾にキャレットを置く
           const s = window.getSelection();
@@ -1644,14 +1843,16 @@
           case 'bubble':
             // 吹き出しは配置選択あり
             const alignment = await showListAlignmentDialog();
+            // v0.11.0 P1 C4d: キャンセル（null）の場合は何も挿入・変更しない
+            if (alignment === null) {
+              editor.focus();
+              restoreSavedRange(editor);
+              return;
+            }
             newNode = createMocaBlock(itemDef.no, catKey, selectedText, itemDef.color, itemDef.isGradient, '', alignment);
             // ダイアログ後にフォーカスを戻す
             editor.focus();
-            if (globalSavedRange) {
-              const s = window.getSelection();
-              s.removeAllRanges();
-              s.addRange(globalSavedRange);
-            }
+            restoreSavedRange(editor);
             break;
           case 'button':
             newNode = createMocaBlock(itemDef.no, catKey, selectedText, itemDef.color, itemDef.isGradient, itemDef.url);
@@ -1673,8 +1874,11 @@
         
         // ブロック系は段落を分割して挿入
         insertBlockAtCursor(editor, newNode);
-        // 末尾に空行を入れる
-        insertNodeAtCursor(document.createElement('br'));
+        // 末尾に空行を入れる（ブロックの直後に既に段落等が続く場合は入れない。
+        // 入れてしまうとエディタ直下に孤立した<br>が残り、コピー時に余分な空行になる）
+        if (!newNode.nextSibling) {
+          insertNodeAtCursor(document.createElement('br'));
+        }
       }
 
       function applyTextStyle(type, color) {
@@ -1686,6 +1890,24 @@
         
         if (type === 'marker') {
           if (!selectedText) return;
+
+          // 選択範囲が複数の段落（ブロック）をまたいでいないか確認する（v0.11.0 P1 C4c / OPS-15）
+          // またいでいる場合、そのまま適用すると段落が統合され構造が壊れるため中断する
+          const getBlockAncestor = (node) => {
+            const blockTags = ['P', 'DIV', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'TD', 'TH', 'PRE'];
+            let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+            while (el && el !== editor) {
+              if (blockTags.includes(el.tagName)) return el;
+              el = el.parentElement;
+            }
+            return editor;
+          };
+          const startBlock = getBlockAncestor(range.startContainer);
+          const endBlock = getBlockAncestor(range.endContainer);
+          if (startBlock !== endBlock) {
+            showToast('1つの段落内で選択してください', 'info');
+            return;
+          }
 
           // マーカー色ごとの下線ハイライト色を定義（CSSに依存せずHTMLだけで完結させる）
           const markerBgMap = {
@@ -1700,9 +1922,10 @@
           // 下側だけ色が付くように linear-gradient でアンダーマーカーを表現
           const span = document.createElement('span');
           span.style.backgroundImage = `linear-gradient(transparent 60%, ${bg} 60%)`;
-          span.textContent = selectedText;
 
-          range.deleteContents();
+          // ★ 選択範囲の中身（ネストした太字・リンク等）を保持したままspanで包む（OPS-15）
+          const frag = range.extractContents();
+          span.appendChild(frag);
           range.insertNode(span);
         }
       }
@@ -1919,23 +2142,42 @@
         return new Promise((resolve) => {
           const overlay = document.createElement('div');
           overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; justify-content: center; align-items: center;';
-          
+
           const dialog = document.createElement('div');
           dialog.style.cssText = 'background: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); text-align: center;';
-          
+
           const title = document.createElement('p');
           title.textContent = '配置を選択してください';
           title.style.cssText = 'margin: 0 0 15px 0; font-weight: bold; font-size: 14px; color: #333;';
-          
+
           const btnContainer = document.createElement('div');
           btnContainer.style.cssText = 'display: flex; gap: 10px; justify-content: center;';
-          
+
           const alignments = [
             { value: 'left', label: '左寄せ', icon: '◀' },
             { value: 'center', label: '中央', icon: '●' },
             { value: 'right', label: '右寄せ', icon: '▶' }
           ];
-          
+
+          // v0.11.0 P1 C4d (OPS-12 / UX-16): キャンセル可能にする。
+          // Escape・オーバーレイクリック・キャンセルボタンはすべて null を返し、
+          // 呼び出し元で「何も挿入・変更しない」ことを判定できるようにする。
+          let settled = false;
+          function cleanup(result) {
+            if (settled) return;
+            settled = true;
+            document.removeEventListener('keydown', onKeydown, true);
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+            resolve(result);
+          }
+          function onKeydown(e) {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              cleanup(null);
+            }
+          }
+
           alignments.forEach(align => {
             const btn = document.createElement('button');
             btn.innerHTML = `${align.icon}<br><span style="font-size: 12px;">${align.label}</span>`;
@@ -1943,22 +2185,32 @@
             btn.onmouseover = () => { btn.style.background = '#3498db'; btn.style.color = 'white'; };
             btn.onmouseout = () => { btn.style.background = 'white'; btn.style.color = '#333'; };
             btn.onclick = () => {
-              document.body.removeChild(overlay);
-              resolve(align.value);
+              cleanup(align.value);
             };
             btnContainer.appendChild(btn);
           });
-          
+
+          // キャンセルボタン
+          const cancelBtn = document.createElement('button');
+          cancelBtn.textContent = 'キャンセル';
+          cancelBtn.style.cssText = 'display: block; width: 100%; margin-top: 14px; padding: 8px 20px; border: 1px solid #ccc; background: #f9fafb; color: #555; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s;';
+          cancelBtn.onmouseover = () => { cancelBtn.style.background = '#e5e7eb'; };
+          cancelBtn.onmouseout = () => { cancelBtn.style.background = '#f9fafb'; };
+          cancelBtn.onclick = () => {
+            cleanup(null);
+          };
+
           dialog.appendChild(title);
           dialog.appendChild(btnContainer);
+          dialog.appendChild(cancelBtn);
           overlay.appendChild(dialog);
           document.body.appendChild(overlay);
-          
-          // オーバーレイクリックでキャンセル（中央をデフォルト）
+          document.addEventListener('keydown', onKeydown, true);
+
+          // オーバーレイクリックでキャンセル（null＝何もしない）
           overlay.onclick = (e) => {
             if (e.target === overlay) {
-              document.body.removeChild(overlay);
-              resolve('center');
+              cleanup(null);
             }
           };
         });
@@ -1974,22 +2226,9 @@
         
         // 選択範囲を復元または作成
         const sel = window.getSelection();
-        let rangeRestored = false;
-        
-        // globalSavedRangeがエディタ内の有効な範囲かチェック
-        if (globalSavedRange) {
-          try {
-            const container = globalSavedRange.commonAncestorContainer;
-            if (container && editor.contains(container)) {
-              sel.removeAllRanges();
-              sel.addRange(globalSavedRange);
-              rangeRestored = true;
-            }
-          } catch (e) {
-            // 無効な範囲の場合は無視
-          }
-        }
-        
+        // globalSavedRangeがエディタ内の有効な範囲かチェックして復元
+        let rangeRestored = restoreSavedRange(editor);
+
         // 復元できなかった場合、末尾にカーソルを置く
         if (!rangeRestored) {
           const range = document.createRange();
@@ -2011,7 +2250,13 @@
         if (elementType === 'button') {
           const url = prompt('リンク先URLを入力してください:', 'https://');
           if (url === null) return; // キャンセル
-          html = html.replace('{{url}}', url || '#');
+          // v0.11.0 D-2 Part1-7 (UX-15): 未入力やhttps://だけの状態でリンクを作らせない
+          const trimmedUrl = url.trim();
+          if (!trimmedUrl || trimmedUrl === 'https://' || trimmedUrl === 'http://') {
+            showToast('URLを入力してください', 'info');
+            return;
+          }
+          html = html.replace('{{url}}', trimmedUrl);
           html = html.replace('{{text}}', selectedText || 'ボタン');
         } else if (elementType === 'heading') {
           // 見出しは横幅いっぱい、配置選択なし
@@ -2054,10 +2299,13 @@
 
         // ブロック系は段落を分割して挿入
         insertBlockAtCursor(editor, newNode);
-        // 末尾に空行を入れる
-        insertNodeAtCursor(document.createElement('br'));
+        // 末尾に空行を入れる（ブロックの直後に既に段落等が続く場合は入れない。
+        // 入れてしまうとエディタ直下に孤立した<br>が残り、コピー時に余分な空行になる）
+        if (!newNode.nextSibling) {
+          insertNodeAtCursor(document.createElement('br'));
+        }
       }
-      
+
       // 配置をHTMLに適用するヘルパー関数
       function applyAlignmentToHtml(html, alignment) {
         // margin: 1em auto; の部分を配置に応じて変更
@@ -2411,17 +2659,17 @@
           const hasLeftHeader = document.getElementById('table-left-header').checked;
           
           const table = createTableWithSize(cols, rows, hasHeader, hasLeftHeader);
-          
+
           // カーソル位置を復元
-          if (globalSavedRange) {
-            const s = window.getSelection();
-            s.removeAllRanges();
-            s.addRange(globalSavedRange);
-          }
-          
+          restoreSavedRange(editor);
+
           insertBlockAtCursor(editor, table);
-          insertNodeAtCursor(document.createElement('br'));
-          
+          // 末尾に空行を入れる（テーブルの直後に既に段落等が続く場合は入れない。
+          // 入れてしまうとエディタ直下に孤立した<br>が残り、コピー時に余分な空行になる）
+          if (!table.nextSibling) {
+            insertNodeAtCursor(document.createElement('br'));
+          }
+
           closeDialog();
         };
         
@@ -2476,16 +2724,42 @@
         btn.innerHTML = icon;
         btn.onmousedown = (e) => e.preventDefault();
         btn.onclick = () => {
-          if (globalSavedRange) {
-            const s = window.getSelection();
-            s.removeAllRanges();
-            s.addRange(globalSavedRange);
-          }
+          restoreSavedRange(editor);
           editor.focus();
           onClick();
         };
         return btn;
       }
+
+      // v0.11.0 P1 D1-5: ドロップダウン/色ポップアップが画面外に出ないよう位置を補正する
+      // position:fixed / position:absolute のどちらでも、getBoundingClientRect() の
+      // ビューポート座標を基準に left/top を必要な分だけずらす（絶対配置でも差分適用で機能する）
+      function clampPopupToViewport(el) {
+        if (!el) return;
+        const margin = 8;
+        const rect = el.getBoundingClientRect();
+        const w = el.offsetWidth || rect.width;
+        const h = el.offsetHeight || rect.height;
+        if (!w || !h) return;
+        const clampedLeft = Math.max(margin, Math.min(rect.left, window.innerWidth - w - margin));
+        const clampedTop = Math.max(margin, Math.min(rect.top, window.innerHeight - h - margin));
+        const dx = clampedLeft - rect.left;
+        const dy = clampedTop - rect.top;
+        if (dx !== 0 || dy !== 0) {
+          const cs = window.getComputedStyle(el);
+          const curLeft = parseFloat(cs.left) || 0;
+          const curTop = parseFloat(cs.top) || 0;
+          el.style.left = (curLeft + dx) + 'px';
+          el.style.top = (curTop + dy) + 'px';
+        }
+      }
+      // 画面リサイズ時に開いているメニュー・ポップアップを再クランプ
+      window.addEventListener('resize', () => {
+        document.querySelectorAll('.eisai-dropdown-menu.show').forEach(clampPopupToViewport);
+        document.querySelectorAll('.eisai-color-popup').forEach((p) => {
+          if (p.style.display === 'block') clampPopupToViewport(p);
+        });
+      });
 
       function createColorPicker(toolbar, type) {
         const dropdown = createEl('div', { className: 'eisai-dropdown' }, toolbar);
@@ -2531,11 +2805,7 @@
 
           colorBtn.onmousedown = (e) => e.preventDefault();
           colorBtn.onclick = () => {
-            if (globalSavedRange) {
-              const s = window.getSelection();
-              s.removeAllRanges();
-              s.addRange(globalSavedRange);
-            }
+            restoreSavedRange(editor);
             editor.focus();
 
             if (type === 'text') {
@@ -2557,8 +2827,9 @@
             if (m !== menu) m.classList.remove('show');
           });
           menu.classList.toggle('show');
+          if (menu.classList.contains('show')) clampPopupToViewport(menu);
         };
-        
+
         document.addEventListener('click', (e) => {
           if (!dropdown.contains(e.target)) {
             menu.classList.remove('show');
@@ -2572,33 +2843,9 @@
       function createLargeHtmlExportButton(parent) {
         const wrapper = createEl('div', {}, parent);
         wrapper.style.cssText = 'margin: 12px 0 8px 0;';
-        const btn = createEl('button', {}, wrapper);
-        btn.innerHTML = '📋 HTML出力';
-        btn.style.cssText = [
-          'width: 100%',
-          'padding: 10px 16px',
-          'background: #ffffff',
-          'color: #2563eb',
-          'border: 1.5px solid #2563eb',
-          'border-radius: 999px',
-          'font-size: 13px',
-          'font-weight: 600',
-          'cursor: pointer',
-          'box-shadow: 0 2px 6px rgba(37, 99, 235, 0.18)',
-          'display: inline-flex',
-          'align-items: center',
-          'justify-content: center',
-          'gap: 6px',
-          'transition: all 0.2s ease'
-        ].join(';');
-        btn.onmouseover = () => {
-          btn.style.background = '#2563eb';
-          btn.style.color = '#ffffff';
-        };
-        btn.onmouseout = () => {
-          btn.style.background = '#ffffff';
-          btn.style.color = '#2563eb';
-        };
+        const btn = createEl('button', { className: 'btn-secondary' }, wrapper);
+        btn.innerHTML = 'HTML出力';
+        btn.style.width = '100%';
         btn.onclick = () => {
           if (onCopyHtml) {
             onCopyHtml(editor.innerHTML);
@@ -2606,38 +2853,19 @@
         };
 
         // サンプルチェックボタン（エディタ内容を新規タブで表示）
-        const previewBtn = createEl('button', {}, wrapper);
-        previewBtn.innerHTML = '🖥 サンプルチェック';
-        previewBtn.style.cssText = [
-          'width: 100%',
-          'margin-top: 8px',
-          'padding: 8px 16px',
-          'background: #f9fafb',
-          'color: #4b5563',
-          'border: 1px solid #e5e7eb',
-          'border-radius: 999px',
-          'font-size: 12px',
-          'font-weight: 500',
-          'cursor: pointer',
-          'display: inline-flex',
-          'align-items: center',
-          'justify-content: center',
-          'gap: 6px',
-          'transition: all 0.2s ease'
-        ].join(';');
-        previewBtn.onmouseover = () => {
-          previewBtn.style.background = '#e5e7eb';
-        };
-        previewBtn.onmouseout = () => {
-          previewBtn.style.background = '#f9fafb';
-        };
+        const previewBtn = createEl('button', { className: 'btn-tertiary' }, wrapper);
+        previewBtn.innerHTML = 'サンプルチェック';
+        previewBtn.style.width = '100%';
+        previewBtn.style.marginTop = '8px';
         previewBtn.onclick = () => {
           const win = window.open('', '_blank');
           if (!win) return;
+          // ★ 実際にコピーされるHTML（buildBlogHtml出力）と同じものを表示する（v0.11.0 P1 C2）
+          const previewHtml = buildBlogHtml(editor.innerHTML);
           win.document.open();
           win.document.write(
             '<!doctype html><html><head><meta charset="utf-8"></head><body>' +
-            editor.innerHTML +
+            previewHtml +
             '</body></html>'
           );
           win.document.close();
@@ -2818,6 +3046,7 @@
         while (current && current !== editor) {
           if (isDecoratedBlock(current)) {
             targetBlock = current;
+            break; // カーソルに最も近い装飾ブロックを採用（外側まで辿らない）
           }
           current = current.parentNode;
         }
@@ -2930,7 +3159,7 @@
         
         // 装飾パーツ名リスト用のメニュー（左側）
         const menu = createEl('div', { className: 'eisai-dropdown-menu' }, dropdown);
-        menu.style.cssText = 'min-width: 200px; padding: 8px 0; max-height: 350px; overflow-y: auto;';
+        menu.style.cssText = 'min-width: 200px; padding: 8px 0; max-height: 70vh; overflow-y: auto;';
 
         // 色バリエーション用の別ウィンドウ（右側に並べる）
         const colorPopup = createEl('div', { className: 'eisai-color-popup' });
@@ -2943,7 +3172,9 @@
           z-index: 10001;
           padding: 16px;
           display: none;
-          min-width: 520px;
+          min-width: min(520px, calc(100vw - 32px));
+          max-height: 70vh;
+          overflow: auto;
         `;
         document.body.appendChild(colorPopup);
 
@@ -2997,12 +3228,12 @@
           vividBtn.textContent = 'ビビッド';
           vividBtn.style.cssText = `
             padding: 4px 10px;
-            font-size: 11px;
+            font-size: var(--fs-xs);
             border: none;
             border-radius: 4px;
             cursor: pointer;
             transition: all 0.15s ease;
-            background: ${currentPattern === 'vivid' ? '#3b82f6' : 'transparent'};
+            background: ${currentPattern === 'vivid' ? 'var(--navy)' : 'transparent'};
             color: ${currentPattern === 'vivid' ? 'white' : '#6b7280'};
             font-weight: 500;
           `;
@@ -3011,12 +3242,12 @@
           pastelBtn.textContent = 'パステル';
           pastelBtn.style.cssText = `
             padding: 4px 10px;
-            font-size: 11px;
+            font-size: var(--fs-xs);
             border: none;
             border-radius: 4px;
             cursor: pointer;
             transition: all 0.15s ease;
-            background: ${currentPattern === 'pastel' ? '#3b82f6' : 'transparent'};
+            background: ${currentPattern === 'pastel' ? 'var(--navy)' : 'transparent'};
             color: ${currentPattern === 'pastel' ? 'white' : '#6b7280'};
             font-weight: 500;
           `;
@@ -3099,25 +3330,23 @@
               if (categoryKey === 'button') {
                 const url = prompt('リンク先URLを入力してください:', 'https://');
                 if (url === null) return; // キャンセル
-                
-                // クリック直前の選択範囲を強制復元
-                if (globalSavedRange) {
-                  const s = window.getSelection();
-                  s.removeAllRanges();
-                  s.addRange(globalSavedRange);
+                // v0.11.0 D-2 Part1-7 (UX-15): 未入力やhttps://だけの状態でリンクを作らせない
+                const trimmedUrl = url.trim();
+                if (!trimmedUrl || trimmedUrl === 'https://' || trimmedUrl === 'http://') {
+                  showToast('URLを入力してください', 'info');
+                  return;
                 }
+
+                // クリック直前の選択範囲を強制復元
+                restoreSavedRange(editor);
                 editor.focus();
 
                 // データを設定して適用（URLも含める）
-                const data = { ...item.data, color: colorObj.hex, isGradient: colorObj.isGradient, url: url || '#' };
+                const data = { ...item.data, color: colorObj.hex, isGradient: colorObj.isGradient, url: trimmedUrl };
                 applyBlock(editor, categoryKey, data);
               } else {
                 // クリック直前の選択範囲を強制復元
-                if (globalSavedRange) {
-                  const s = window.getSelection();
-                  s.removeAllRanges();
-                  s.addRange(globalSavedRange);
-                }
+                restoreSavedRange(editor);
                 editor.focus();
 
                 // データを設定して適用（グラデーションフラグも含める）
@@ -3139,6 +3368,8 @@
           colorPopup.style.top = menuRect.top + 'px';
           colorPopup.style.left = (menuRect.right + 8) + 'px';
           colorPopup.style.transform = 'none';
+          // v0.11.0 P1 D1-5: 画面外に出る場合は左右・上下ともビューポート内に収める
+          clampPopupToViewport(colorPopup);
         }
 
         // 装飾パーツ名リストを作成
@@ -3201,7 +3432,8 @@
           });
           
           menu.classList.toggle('show');
-          
+          if (menu.classList.contains('show')) clampPopupToViewport(menu);
+
           // メニューを閉じるときは色ポップアップも閉じる
           if (!menu.classList.contains('show')) {
             colorPopup.style.display = 'none';
@@ -3250,6 +3482,7 @@
             if (m !== menu) m.classList.remove('show');
           });
           menu.classList.toggle('show');
+          if (menu.classList.contains('show')) clampPopupToViewport(menu);
         };
 
         document.addEventListener('click', (e) => {
@@ -3354,6 +3587,9 @@
         if (categoryContainer) {
           categoryContainer.style.display = isCustomMode ? 'flex' : 'none';
         }
+        // v0.11.0 P1 D1-3: プリセットモード時は空の第2ツールバー行自体を隠し、
+        // 空バンドが残らないようにする
+        row2Toolbar.hidden = !isCustomMode;
         // プリセットボタンの表示/非表示
         presetButtons.style.display = isCustomMode ? 'none' : 'grid';
         themeSelector.style.display = isCustomMode ? 'none' : 'block';
@@ -3365,6 +3601,8 @@
       const toolbarContainer = createEl('div', { className: 'eisai-toolbar-container' }, fixedHeader);
       const row1Toolbar = createEl('div', { className: 'eisai-toolbar' }, toolbarContainer);
       const row2Toolbar = createEl('div', { className: 'eisai-toolbar' }, toolbarContainer);
+      // v0.11.0 P1 D1-3: 初期状態（プリセットモード）では第2行を隠し、空バンドを出さない
+      row2Toolbar.hidden = !isCustomMode;
       
       const editorArea = createEl('div', { className: 'eisai-editor-container' }, panel);
       const editor = createEl('div', { className: 'eisai-editor' }, editorArea);
@@ -3838,16 +4076,32 @@
         }
         
         if (!block) return;
-        
+
         // 見出し（横幅いっぱい）は配置変更しない
         const blockWidth = block.style.width;
         if (!blockWidth || blockWidth === '100%' || blockWidth === 'auto') {
           return;
         }
-        
+
+        // v0.11.0 P1 C4d: 単語のダブルクリック（部分選択）ではダイアログを開かない。
+        // ブロック全体が選択されている場合、またはテキスト選択がない場合のみ開く。
+        const dblSel = window.getSelection();
+        if (dblSel && dblSel.rangeCount > 0 && !dblSel.getRangeAt(0).collapsed) {
+          const selectedText = dblSel.toString();
+          const blockText = block.textContent || '';
+          if (selectedText.trim() !== '' && selectedText.trim() !== blockText.trim()) {
+            return;
+          }
+        }
+
         // 配置選択ダイアログを表示
         const alignment = await showListAlignmentDialog();
-        
+        // v0.11.0 P1 C4d: キャンセル（null）の場合は何も変更しない
+        if (alignment === null) {
+          editor.focus();
+          return;
+        }
+
         // width: fit-content を設定（まだ設定されていない場合）
         if (!block.style.width || block.style.width === 'auto' || block.style.width === '100%') {
           block.style.width = 'fit-content';
@@ -3929,11 +4183,7 @@
           item.style.fontSize = sizeDef.px;
           item.onmousedown = (e) => e.preventDefault();
           item.onclick = () => {
-            if (globalSavedRange) {
-              const sel = window.getSelection();
-              sel.removeAllRanges();
-              sel.addRange(globalSavedRange);
-            }
+            restoreSavedRange(editor);
             editor.focus();
             applyFontSize(sizeDef.val);
             menu.classList.remove('show');
@@ -3948,7 +4198,7 @@
       
       // 書式クリアボタン（ツールバー内）
       const clearBtn = createEl('button', { className: 'eisai-dropdown-btn' }, row1Toolbar);
-      clearBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>クリア';
+      clearBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>装飾を外す';
       clearBtn.title = '書式クリア';
       clearBtn.onmousedown = (e) => e.preventDefault();
       clearBtn.onclick = () => {
@@ -3957,39 +4207,65 @@
       };
 
       // 全クリアボタン（装飾をすべて削除してテキストのみ）
-      const allClearBtn = createEl('button', { className: 'eisai-dropdown-btn' }, row1Toolbar);
-      allClearBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/></svg>全クリア';
+      const allClearBtn = createEl('button', { className: 'btn-danger-ghost' }, row1Toolbar);
+      allClearBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"/></svg>全装飾を外す';
       allClearBtn.title = '装飾をすべて削除してテキストのみ';
       allClearBtn.onmousedown = (e) => e.preventDefault();
       allClearBtn.onclick = () => {
+        if (!confirm('装飾をすべて外して平文にします。元に戻せません。よろしいですか？')) return;
         editor.focus();
+
+        // 元に戻せない操作のため、装飾解除前の状態を履歴へ自動退避しておく
+        try {
+          const currentTitle = (typeof getDraftTitle === 'function') ? getDraftTitle() : '';
+          let currentHtml = (typeof getPlaygroundHtml === 'function') ? getPlaygroundHtml() : editor.innerHTML;
+          if (currentTitle && currentHtml && currentHtml.trim() && typeof Drafts !== 'undefined') {
+            if (typeof stripExtensionInjectedNodes === 'function') {
+              currentHtml = stripExtensionInjectedNodes(currentHtml);
+            }
+            // 「現在編集中」の履歴は上書きせず、別エントリとしてスナップショット保存する
+            const savedCurrentId = Drafts.getCurrentId();
+            Drafts.clearCurrentId();
+            const snap = Drafts.saveOrUpdate(currentTitle + '（装飾解除前）', currentHtml);
+            Drafts.setCurrentId(savedCurrentId);
+            if (!snap && typeof setDraftStatus === 'function') {
+              setDraftStatus('⚠️ 装飾解除前のスナップショット保存に失敗しました', 'error');
+            }
+            if (typeof renderDraftList === 'function') renderDraftList();
+          }
+        } catch (e) {
+          console.warn('[Eisai] 装飾解除前スナップショットに失敗:', e);
+        }
+
         // 全クリア機能：装飾をすべて削除してテキストと改行のみ
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = editor.innerHTML;
-        
-        // ブロック要素ごとにテキストを抽出して改行を保持
+
+        // トップレベルのブロックのみを1回ずつ処理する（子孫要素まで再帰的に
+        // querySelectorAll していた旧実装は、入れ子のdiv/pを何重にも拾って
+        // 同じテキストが重複する不具合と O(n×depth) の無駄な走査を招いていた）
+        const topBlocks = Array.from(tempDiv.children);
+
         let plainText = '';
-        const blockElements = tempDiv.querySelectorAll('div, p, h1, h2, h3, h4, h5, h6, li, blockquote');
-        
-        if (blockElements.length > 0) {
-          // ブロック要素がある場合、各要素のテキストを改行で連結
-          blockElements.forEach((el, index) => {
-            const text = el.textContent || el.innerText;
+        if (topBlocks.length > 0) {
+          // トップレベル要素ごとにテキストを抽出して改行を保持
+          topBlocks.forEach((el, index) => {
+            const text = el.textContent || el.innerText || '';
             if (text.trim()) {
               plainText += text.trim();
-              if (index < blockElements.length - 1) {
+              if (index < topBlocks.length - 1) {
                 plainText += '\n\n'; // 段落間は2行改行
               }
             }
           });
         } else {
           // ブロック要素がない場合は全体のテキストを使用
-          plainText = tempDiv.innerText || tempDiv.textContent;
+          plainText = tempDiv.innerText || tempDiv.textContent || '';
         }
-        
+
         // 余分な改行を調整
         plainText = plainText.replace(/\n{3,}/g, '\n\n').trim();
-        
+
         // プレーンテキストをエディタに設定
         editor.innerHTML = plainText.replace(/\n/g, '<br>');
       };
@@ -4027,7 +4303,9 @@
 
       return {
         setContent(content) {
+          _suppressUnsavedMark = true;
           editor.innerHTML = content;
+          setTimeout(() => { _suppressUnsavedMark = false; }, 0);
         },
         getHtml() {
           return editor.innerHTML;
@@ -4044,7 +4322,10 @@
       const formattingSelectors = [
         'strong', 'b', 'em', 'i', 'u', 's', 'del', 'mark',
         'span[style*="color"]', 'span[style*="background"]', 'span[style*="font-weight"]',
-        'span[style*="font-style"]', 'span[style*="text-decoration"]'
+        'span[style*="font-style"]', 'span[style*="text-decoration"]',
+        // table/blockquote/pre/code はコピー時にインラインスタイルを付与するため（B6）、
+        // CMS側の素のCSSに負けないよう他の装飾要素と同じく!important化の対象にする
+        'table', 'th', 'td', 'blockquote', 'pre', 'code'
       ];
       
       formattingSelectors.forEach(selector => {
@@ -4122,93 +4403,132 @@
       // 一時的なdivを作成してHTMLを解析
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = html;
-      
-      // 現在選択中のテーマを取得
+
+      // 現在選択中のテーマを取得（要素にdata-themeが見つからない場合のフォールバック用）
       const themeSelector = document.querySelector('.theme-selector');
       const selectedTheme = themeSelector ? themeSelector.value : 'business-blue';
       const theme = window.PRESET_THEMES[selectedTheme];
-      
+
       if (!theme) {
         console.warn('テーマが見つかりません:', selectedTheme);
         return html;
       }
-      
+
+      // 表示（addThemeStyles）と一致させるため、要素ごとに直近の data-theme から
+      // 適用すべきテーマを解決する。無ければ選択中テーマにフォールバック (v0.11.0 B9)
+      const resolveElTheme = (el) => {
+        try {
+          const dt = el.closest && el.closest('[data-theme]');
+          const name = dt ? dt.getAttribute('data-theme') : null;
+          return (name && window.PRESET_THEMES[name]) || theme;
+        } catch (e) {
+          return theme;
+        }
+      };
+
+      // 見出し系のみ対象：中身が丸ごと1つのdiv/pだけでラップされている場合に限り
+      // そのラッパーだけを剥がす（<strong>/<a>/<br>等のインライン書式は保持する）(v0.11.0 B4)
+      const stripHeadingWrapper = (innerHtml) => {
+        const wrap = document.createElement('div');
+        wrap.innerHTML = innerHtml;
+        let guard = 0;
+        while (wrap.childNodes.length === 1 && wrap.firstChild.nodeType === 1 &&
+               /^(div|p)$/i.test(wrap.firstChild.tagName) && guard < 5) {
+          wrap.innerHTML = wrap.firstChild.innerHTML;
+          guard++;
+        }
+        return wrap.innerHTML;
+      };
+
       // 標準的なH2/H3タグをテーマスタイルに変換
       tempDiv.querySelectorAll('h2').forEach(el => {
-        const text = el.textContent || el.innerHTML;
-        el.outerHTML = `<div style="background: ${theme.lightColor} !important; border-left: 5px solid ${theme.color} !important; padding: 15px 20px !important; font-size: 120% !important; font-weight: bold !important; margin: 20px 0 !important; line-height: 1.8 !important;">${text}</div>`;
+        const elTheme = resolveElTheme(el);
+        const text = stripHeadingWrapper(el.innerHTML);
+        el.outerHTML = `<div style="background: ${elTheme.lightColor} !important; border-left: 5px solid ${elTheme.color} !important; padding: 15px 20px !important; font-size: 120% !important; font-weight: bold !important; margin: 20px 0 !important; line-height: 1.8 !important;">${text}</div>`;
       });
-      
+
       tempDiv.querySelectorAll('h3').forEach(el => {
-        const text = el.textContent || el.innerHTML;
-        el.outerHTML = `<div style="color: ${theme.color} !important; font-size: 105% !important; font-weight: bold !important; margin: 15px 0 !important; padding: 8px 0 !important; border-bottom: 2px solid ${theme.subColor} !important; padding-left: 10px !important; line-height: 1.8 !important;">${text}</div>`;
+        const elTheme = resolveElTheme(el);
+        const text = stripHeadingWrapper(el.innerHTML);
+        el.outerHTML = `<div style="color: ${elTheme.color} !important; font-size: 105% !important; font-weight: bold !important; margin: 15px 0 !important; padding: 8px 0 !important; border-bottom: 2px solid ${elTheme.subColor} !important; padding-left: 10px !important; line-height: 1.8 !important;">${text}</div>`;
       });
-      
+
       // テーマ見出しを変換 - エディタ内CSSと同じデザイン
       // エディタCSS: background: #ebf5fb; border-left: 5px solid #2980b9; padding: 15px 20px; font-size: 120%; font-weight: bold; margin: 20px 0;
       tempDiv.querySelectorAll('.theme-heading').forEach(el => {
-        const text = el.textContent || el.innerHTML;
-        el.outerHTML = `<div style="background: ${theme.lightColor}; border-left: 5px solid ${theme.color}; padding: 15px 20px; font-size: 120%; font-weight: bold; margin: 20px 0;">${text}</div>`;
+        const elTheme = resolveElTheme(el);
+        const text = stripHeadingWrapper(el.innerHTML);
+        el.outerHTML = `<div style="background: ${elTheme.lightColor}; border-left: 5px solid ${elTheme.color}; padding: 15px 20px; font-size: 120%; font-weight: bold; margin: 20px 0;">${text}</div>`;
       });
-      
+
       // テーマサブ見出しを変換 - H3用の軽量なデザイン
       tempDiv.querySelectorAll('.theme-subheading').forEach(el => {
-        const text = el.textContent || el.innerHTML;
-        el.outerHTML = `<div style="color: ${theme.color} !important; font-size: 110% !important; font-weight: 600 !important; margin: 15px 0 !important; padding: 8px 0 !important; border-bottom: 3px solid ${theme.color} !important; padding-left: 10px !important;">${text}</div>`;
+        const elTheme = resolveElTheme(el);
+        const text = stripHeadingWrapper(el.innerHTML);
+        el.outerHTML = `<div style="color: ${elTheme.color} !important; font-size: 110% !important; font-weight: 600 !important; margin: 15px 0 !important; padding: 8px 0 !important; border-bottom: 3px solid ${elTheme.color} !important; padding-left: 10px !important;">${text}</div>`;
       });
-      
+
       // テーマ吹き出し（右）を変換 - 右寄せ + 吹き出し口（右側に三角形）
       tempDiv.querySelectorAll('.theme-bubble-right').forEach(el => {
-        // 装飾用のspanタグを除去してテキストのみ取得
+        const elTheme = resolveElTheme(el);
+        // 空の装飾用tailスパンだけを除去し、文字を持つspan（太字/マーカー等の装飾）は保持する (v0.11.0 B5)
         const tempContainer = document.createElement('div');
         tempContainer.innerHTML = el.innerHTML;
-        tempContainer.querySelectorAll('span').forEach(span => span.remove());
+        tempContainer.querySelectorAll(':scope > span').forEach(s => {
+          if (!s.textContent.trim() && !s.children.length) s.remove();
+        });
         const text = tempContainer.innerHTML;
         // 右寄せ + 吹き出し口を右側に配置 + 右側余白を追加（margin-right: 30px）
-        el.outerHTML = `<div style="text-align: right; margin: 1em 0;"><div style="display: inline-block; position: relative; background: ${theme.lightColor}; color: #154360; border-radius: 20px; padding: 12px 16px; max-width: 80%; line-height: 1.6; text-align: left; margin-right: 30px;">${text}<span style="position: absolute; right: -16px; top: 50%; transform: translateY(-50%); border: 10px solid transparent; border-left: 16px solid ${theme.lightColor};"></span></div></div>`;
+        el.outerHTML = `<div style="text-align: right; margin: 1em 0;"><div style="display: inline-block; position: relative; background: ${elTheme.lightColor}; color: #154360; border-radius: 20px; padding: 12px 16px; max-width: 80%; line-height: 1.6; text-align: left; margin-right: 30px;">${text}<span style="position: absolute; right: -16px; top: 50%; transform: translateY(-50%); border: 10px solid transparent; border-left: 16px solid ${elTheme.lightColor};"></span></div></div>`;
       });
-      
+
       // テーマ吹き出し（左）を変換 - 左寄せ + 吹き出し口（左側に三角形）
       tempDiv.querySelectorAll('.theme-bubble-left').forEach(el => {
-        // 装飾用のspanタグを除去してテキストのみ取得
+        const elTheme = resolveElTheme(el);
+        // 空の装飾用tailスパンだけを除去し、文字を持つspan（太字/マーカー等の装飾）は保持する (v0.11.0 B5)
         const tempContainer = document.createElement('div');
         tempContainer.innerHTML = el.innerHTML;
-        tempContainer.querySelectorAll('span').forEach(span => span.remove());
+        tempContainer.querySelectorAll(':scope > span').forEach(s => {
+          if (!s.textContent.trim() && !s.children.length) s.remove();
+        });
         const text = tempContainer.innerHTML;
         // 左寄せ + 吹き出し口を左側に配置
-        el.outerHTML = `<div style="text-align: left; margin: 1em 0;"><div style="display: inline-block; position: relative; background: ${theme.color}; color: #fff; border-radius: 20px; padding: 12px 16px; max-width: 80%; line-height: 1.6; text-align: left; margin-left: 20px;">${text}<span style="position: absolute; left: -16px; top: 50%; transform: translateY(-50%); border: 10px solid transparent; border-right: 16px solid ${theme.color};"></span></div></div>`;
+        el.outerHTML = `<div style="text-align: left; margin: 1em 0;"><div style="display: inline-block; position: relative; background: ${elTheme.color}; color: #fff; border-radius: 20px; padding: 12px 16px; max-width: 80%; line-height: 1.6; text-align: left; margin-left: 20px;">${text}<span style="position: absolute; left: -16px; top: 50%; transform: translateY(-50%); border: 10px solid transparent; border-right: 16px solid ${elTheme.color};"></span></div></div>`;
       });
-      
+
       // テーマボックスを変換 - エディタ内CSSと同じデザイン
       // エディタCSS: border: 1px solid #2980b9; border-radius: 4px; padding: 20px; margin: 1em 0;
       tempDiv.querySelectorAll('.theme-box').forEach(el => {
-        const text = el.textContent || el.innerHTML;
-        el.outerHTML = `<div style="border: 1px solid ${theme.color}; border-radius: 4px; padding: 20px; margin: 1em 0;">${text}</div>`;
+        const elTheme = resolveElTheme(el);
+        const text = el.innerHTML;
+        el.outerHTML = `<div style="border: 1px solid ${elTheme.color}; border-radius: 4px; padding: 20px; margin: 1em 0;">${text}</div>`;
       });
-      
+
       // テーマボタンを変換 - エディタ内CSSと同じデザイン
       // エディタCSS: display: block; margin: 20px auto; padding: 12px 30px; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
       tempDiv.querySelectorAll('.theme-button').forEach(el => {
-        const text = el.textContent || el.innerHTML;
+        const elTheme = resolveElTheme(el);
+        const text = el.innerHTML;
         const url = el.getAttribute('onclick')?.match(/location\.href='([^']*)'/)?.[1] || '#';
-        el.outerHTML = `<a href="${url}" style="display: block; margin: 20px auto; padding: 12px 30px; background: ${theme.color}; color: #fff; border: none; border-radius: 4px; font-weight: bold; text-decoration: none; text-align: center; max-width: 300px;">${text}</a>`;
+        el.outerHTML = `<a href="${url}" style="display: block; margin: 20px auto; padding: 12px 30px; background: ${elTheme.color}; color: #fff; border: none; border-radius: 4px; font-weight: bold; text-decoration: none; text-align: center; max-width: 300px;">${text}</a>`;
       });
-      
+
       // テーマリストを変換 - エディタ内CSSと同じデザイン
       // エディタCSS: border: 2px solid #2980b9; border-radius: 6px; margin: 1em 0; overflow: hidden;
       // タイトル: background: #2980b9; color: #fff; padding: 8px 15px; font-weight: bold;
       // ul: margin: 0; padding: 15px 15px 15px 35px;
       tempDiv.querySelectorAll('.theme-list').forEach(el => {
+        const elTheme = resolveElTheme(el);
         const titleEl = el.querySelector('.theme-list-title');
         const listEl = el.querySelector('ul');
-        
+
         if (titleEl && listEl) {
           const title = titleEl.textContent || titleEl.innerHTML;
           // 各li要素に箇条書きスタイルを設定
           const liElements = listEl.querySelectorAll('li');
           liElements.forEach(li => {
             li.setAttribute('style', 'display: list-item !important; list-style-type: disc !important; list-style-position: inside !important; margin-bottom: 8px !important; line-height: 1.8 !important;');
-            
+
             // li内のstrongタグにもインラインスタイルを追加して太字を強制
             const strongElements = li.querySelectorAll('strong');
             strongElements.forEach(strong => {
@@ -4216,43 +4536,105 @@
             });
           });
           const items = listEl.innerHTML;
-          el.outerHTML = `<div style="border: 2px solid ${theme.color}; border-radius: 6px; margin: 1em 0; overflow: hidden;"><div style="background: ${theme.color}; color: #fff; padding: 8px 15px; font-weight: bold; margin: 0;">${title}</div><ul style="margin: 0; padding: 15px 20px 15px 40px; list-style: none; line-height: 1.8;">${items}</ul></div>`;
+          el.outerHTML = `<div style="border: 2px solid ${elTheme.color}; border-radius: 6px; margin: 1em 0; overflow: hidden;"><div style="background: ${elTheme.color}; color: #fff; padding: 8px 15px; font-weight: bold; margin: 0;">${title}</div><ul style="margin: 0; padding: 15px 20px 15px 40px; list-style: none; line-height: 1.8;">${items}</ul></div>`;
         }
       });
-      
+
       // すべてのul要素にリストスタイルを適用（テーマリスト以外も対応）
       tempDiv.querySelectorAll('ul').forEach(listEl => {
         // テーマリスト内のulは除外（既に処理済み）
         if (listEl.closest('.theme-list')) {
           return;
         }
-        
+
         // 各li要素に箇条書きスタイルを設定
         const liElements = listEl.querySelectorAll('li');
         liElements.forEach(li => {
           li.setAttribute('style', 'display: list-item !important; list-style-type: disc !important; list-style-position: inside !important; margin-bottom: 8px !important; line-height: 1.8 !important;');
-          
+
           // li内のstrongタグにもインラインスタイルを追加
           const strongElements = li.querySelectorAll('strong');
           strongElements.forEach(strong => {
             strong.setAttribute('style', 'font-weight: bold !important;');
           });
         });
-        
+
         // ul自体にもスタイルを設定（左パディングを増やして箇条書きのスペースを確保）
         listEl.setAttribute('style', 'margin: 1em 0; padding: 15px 20px 15px 40px; list-style: none; line-height: 1.8;');
       });
-      
+
+      // テーブル/blockquote/pre/code にもテーマ色でインラインスタイルを付与する
+      // （コピー先CMSに対応CSSが無いと無装飾のまま貼り付いてしまうため）(v0.11.0 B6)
+      tempDiv.querySelectorAll('table').forEach(el => {
+        const elTheme = resolveElTheme(el);
+        const prevTable = el.getAttribute('style') || '';
+        el.setAttribute('style', `${prevTable}; border-collapse: collapse; width: 100%; margin: 1em 0;`);
+        const headerCells = el.querySelectorAll('th');
+        headerCells.forEach(th => {
+          const prev = th.getAttribute('style') || '';
+          th.setAttribute('style', `${prev}; border: 1px solid ${elTheme.color}; padding: 8px 12px; background: ${elTheme.color}; color: #fff;`);
+        });
+        if (!headerCells.length) {
+          // thead/thが無いテーブルは先頭行をヘッダー扱いにする
+          const firstRow = el.querySelector('tr');
+          if (firstRow) {
+            Array.from(firstRow.children).forEach(cell => {
+              const prev = cell.getAttribute('style') || '';
+              cell.setAttribute('style', `${prev}; border: 1px solid ${elTheme.color}; padding: 8px 12px; background: ${elTheme.color}; color: #fff; font-weight: bold;`);
+            });
+          }
+        }
+        el.querySelectorAll('td').forEach(td => {
+          const prev = td.getAttribute('style') || '';
+          // 既にヘッダー扱いで枠線を設定済みのセルは上書きしない
+          if (!/border:/.test(prev)) {
+            td.setAttribute('style', `${prev}; border: 1px solid ${elTheme.color}; padding: 8px 12px;`);
+          }
+        });
+      });
+
+      tempDiv.querySelectorAll('blockquote').forEach(el => {
+        const elTheme = resolveElTheme(el);
+        const prev = el.getAttribute('style') || '';
+        el.setAttribute('style', `${prev}; border-left: 4px solid ${elTheme.color}; background: ${elTheme.lightColor}; padding: 10px 16px; margin: 1em 0;`);
+      });
+
+      tempDiv.querySelectorAll('pre').forEach(el => {
+        const elTheme = resolveElTheme(el);
+        const prev = el.getAttribute('style') || '';
+        el.setAttribute('style', `${prev}; font-family: monospace; background: ${elTheme.lightColor}; padding: 12px 16px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap;`);
+      });
+
+      tempDiv.querySelectorAll('code').forEach(el => {
+        const elTheme = resolveElTheme(el);
+        const prev = el.getAttribute('style') || '';
+        if (el.closest('pre')) {
+          // pre内のcodeは親のpreで既に装飾済みなので軽めに
+          el.setAttribute('style', `${prev}; font-family: monospace;`);
+        } else {
+          el.setAttribute('style', `${prev}; font-family: monospace; background: ${elTheme.lightColor}; padding: 2px 6px; border-radius: 3px;`);
+        }
+      });
+
       // すべてのインライン装飾要素に!importantを追加
       preserveInlineFormatting(tempDiv);
-      
+
       return tempDiv.innerHTML;
     }
 
     // === HTMLをブログ用にフォーマットする関数 ===
     function formatHtmlForBlog(html) {
       let formattedHtml = html;
-      
+
+      // <pre>...</pre> の中身は改行・連続スペースをそのまま保持したいので、
+      // 以降の改行削除／空白圧縮の対象から外すため一時的にプレースホルダへ退避
+      const preBlocks = [];
+      formattedHtml = formattedHtml.replace(/<pre[\s\S]*?<\/pre>/gi, (m) => {
+        const idx = preBlocks.length;
+        preBlocks.push(m);
+        return `__PRE_${idx}__`;
+      });
+
       // 段落にブログシステムと同じスタイルを追加（空段落は除く）
       formattedHtml = formattedHtml.replace(/<p>(?!<br>)/g, '<p style="font-weight: normal; margin: 1em 0; line-height: 1.8;">');
       
@@ -4276,10 +4658,15 @@
       
       // 複数のスペースを1つに圧縮
       formattedHtml = formattedHtml.replace(/\s{2,}/g, ' ');
-      
-      // タグ間のスペースを削除
-      formattedHtml = formattedHtml.replace(/>\s+</g, '><');
-      
+
+      // ブロック要素の閉じタグ直後の空白のみを圧縮
+      // （インライン要素間の意味のあるスペースや pre/code 内の書式を壊さないよう、
+      //   タグ間全般を潰していた >\s+< から対象を限定）
+      formattedHtml = formattedHtml.replace(/(<\/(?:p|div|ul|ol|li|table|thead|tbody|tr|td|th|h[1-6]|blockquote)>)\s+(<)/g, '$1$2');
+
+      // 退避しておいた<pre>ブロックを復元
+      formattedHtml = formattedHtml.replace(/__PRE_(\d+)__/g, (m, i) => preBlocks[Number(i)] !== undefined ? preBlocks[Number(i)] : m);
+
       return formattedHtml;
     }
 
@@ -4292,6 +4679,21 @@
     const DRAFTS_MAX = 50;
     const AUTOSAVE_DELAY_MS = 2000;
     let _currentDraftId = ''; // インメモリ：リロードでリセット
+
+    // === 未保存変更の検知・警告 (v0.11.0 P0データセーフティ) ===
+    // _dirty: 編集監視（MutationObserver / タイトル入力）で true になる。保存成功時や
+    //         履歴読込・新規作成・テーマ適用の完了時に false へ戻す。
+    let _dirty = false;
+    // 履歴読込・サンプル生成など「プログラムによる内容の丸ごと置換」の最中は
+    // MutationObserver 経由の markUnsavedChange() を発火させないための抑制フラグ。
+    let _suppressUnsavedMark = false;
+    function hasUnsavedChanges() {
+      return _dirty && getPlaygroundHtml().trim().length > 0;
+    }
+    function guardUnsaved(actionLabel) {
+      if (!hasUnsavedChanges()) return true;
+      return confirm(actionLabel + '\n\n未保存の変更があります。破棄してよろしいですか？');
+    }
 
     const Drafts = {
       // ID重複排除：同IDが複数あれば updatedAt が新しい方を残す
@@ -4309,13 +4711,23 @@
           .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
       },
       load() {
+        let raw = null;
         try {
-          const raw = localStorage.getItem(DRAFTS_KEY);
+          raw = localStorage.getItem(DRAFTS_KEY);
           if (!raw) return [];
           const parsed = JSON.parse(raw);
           return this._dedupe(parsed);
         } catch (e) {
           console.warn('下書き読込エラー:', e);
+          // 壊れた生データを別キーに退避してから空リストを返す（データ消失を防ぐ）
+          try {
+            if (raw) localStorage.setItem(DRAFTS_KEY + '_broken_' + Date.now(), raw);
+          } catch (e2) {
+            console.warn('壊れた下書きデータの退避に失敗:', e2);
+          }
+          if (typeof setDraftStatus === 'function') {
+            setDraftStatus('履歴データが壊れていたため退避しました', 'error');
+          }
           return [];
         }
       },
@@ -4328,7 +4740,7 @@
         } catch (e) {
           console.error('下書き保存エラー:', e);
           if (e.name === 'QuotaExceededError') {
-            alert('❌ ブラウザのストレージ容量が一杯です。古い下書きを削除してください。');
+            showToast('❌ ブラウザのストレージ容量が一杯です。古い下書きを削除してください。', 'error');
           }
           return false;
         }
@@ -4374,7 +4786,8 @@
           list.push(item);
           this.setCurrentId(item.id);
         }
-        this.save(list);
+        const ok = this.save(list);
+        if (!ok) return null; // 保存失敗（容量超過等）：呼び出し元で失敗表示させる
         return item;
       },
       // 既存エントリ（履歴）を「現在編集中」として開く（コピーして新IDで開始）
@@ -4384,7 +4797,8 @@
         const item = this._newItem(src.title, src.html, 'current');
         const list = this.load();
         list.push(item);
-        this.save(list);
+        const ok = this.save(list);
+        if (!ok) return null; // 保存失敗：現在IDは更新しない
         this.setCurrentId(item.id);
         return item;
       },
@@ -4432,12 +4846,14 @@
     function parseEisaiTitlesFromHtml(html) {
       let titles = [];
       let cleaned = html || '';
-      const m = cleaned.match(/<!--\s*EISAI_TITLES\s*:\s*(\[[\s\S]*?\])\s*-->/i)
-        || cleaned.match(/&lt;!--\s*EISAI_TITLES\s*:\s*(\[[\s\S]*?\])\s*--&gt;/i)
-        || cleaned.match(/EISAI_TITLES\s*:\s*(\[[\s\S]*?\])/i);
+      // v0.11.0 D-2 Part1-3 (OPS-21): タイトル文字列に "]" が含まれると、配列部分だけを
+      // 非欲張りにマッチする旧正規表現ではコメントの途中で切れてしまう。
+      // まずコメント全体（最初の "-->" まで）を丸ごと捕捉し、その内容をJSON.parseする。
+      const m = cleaned.match(/<!--\s*EISAI_TITLES\s*:\s*([\s\S]*?)-->/i)
+        || cleaned.match(/&lt;!--\s*EISAI_TITLES\s*:\s*([\s\S]*?)--&gt;/i);
       if (m) {
         try {
-          const decoded = m[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+          const decoded = m[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').trim();
           const parsed = JSON.parse(decoded);
           if (Array.isArray(parsed)) {
             titles = parsed.map(t => String(t || '').trim()).filter(Boolean).map(t => t.slice(0, 33));
@@ -4445,8 +4861,10 @@
         } catch (e) {
           console.warn('[Eisai] EISAI_TITLESの解析に失敗:', e);
         }
+        // JSON.parseに失敗しても、マッチしたコメント全体は必ず除去する（"]-->"等の断片を残さない）
+        cleaned = cleaned.slice(0, m.index) + cleaned.slice(m.index + m[0].length);
       }
-      // コメントは本文へ残さない（<p>で包まれたケースも含めて除去）
+      // コメントは本文へ残さない（<p>で包まれたケースや旧形式の残骸も保険的に除去）
       cleaned = cleaned.replace(/<p[^>]*>\s*(?:<!--|&lt;!--)?\s*EISAI_TITLES[\s\S]*?(?:-->|--&gt;)\s*<\/p>/gi, '');
       cleaned = cleaned.replace(/(?:<!--|&lt;!--)\s*EISAI_TITLES[\s\S]*?(?:-->|--&gt;)/gi, '');
       cleaned = cleaned.replace(/EISAI_TITLES\s*:\s*\[[\s\S]*?\]/gi, '');
@@ -4523,7 +4941,11 @@
 
     function setPlaygroundHtml(html) {
       const editorEl = document.querySelector('.eisai-editor');
-      if (editorEl) editorEl.innerHTML = extractBodyHtml(html);
+      if (editorEl) {
+        _suppressUnsavedMark = true;
+        editorEl.innerHTML = extractBodyHtml(html);
+        setTimeout(() => { _suppressUnsavedMark = false; }, 0);
+      }
     }
 
     // 日付グループ判定（今日/昨日/今週/過去）
@@ -4633,10 +5055,15 @@
       const src = Drafts.get(id);
       if (!src) return;
       if (id === Drafts.getCurrentId()) return;
+      if (!guardUnsaved('履歴を開く')) return;
+      // v0.11.0 D-2 Part1-5 (OPS-24): 前の記事の3タイトル候補が残らないようにリセット
+      editorTitleCandidates = [];
+      renderEditorTitleCandidates();
       Drafts.setCurrentId(id);
       const cleaned = extractBodyHtml(src.html);
       setDraftTitle(src.title);
       setPlaygroundHtml(cleaned);
+      _dirty = false;
       // 旧バグの巻き添えエントリをクリーン版で自動修復（永続化）
       if (cleaned !== src.html) {
         const list = Drafts.load();
@@ -4656,13 +5083,13 @@
     function saveDraft() {
       const title = getDraftTitle();
       if (!title) {
-        alert('表題が空です。「テーマを適用」でH1から自動入力できます。');
+        showToast('表題が空です。「テーマを適用」でH1から自動入力できます。', 'info');
         flashTitleError();
         return;
       }
       let html = getPlaygroundHtml();
       if (!html || html.trim().length === 0) {
-        alert('本文が空です。');
+        showToast('本文が空です。', 'info');
         return;
       }
       // 拡張機能の注入要素を除去してから保存（履歴も常にクリーンに保つ）
@@ -4671,16 +5098,26 @@
       }
       const wasUpdate = !!Drafts.getCurrentId();
       const item = Drafts.saveOrUpdate(title, html);
-      if (!item) return;
+      if (!item) {
+        setDraftStatus('❌ 保存に失敗しました（ストレージ容量を確認してください）', 'error');
+        showToast('❌ 履歴の保存に失敗しました。ブラウザのストレージ容量をご確認ください。', 'error');
+        return;
+      }
+      _dirty = false;
       setDraftStatus((wasUpdate ? '✅ 履歴を更新' : '✅ 新規保存') + ': ' + formatDate(item.updatedAt), 'saved');
       renderDraftList();
     }
 
     // 新規作成：現在の編集内容は自動保存で履歴に残っているため、確認なしで即座にまっさらへ
     function newDraft() {
+      if (!guardUnsaved('新規作成')) return;
+      // v0.11.0 D-2 Part1-5 (OPS-24): 前の記事の3タイトル候補が残らないようにリセット
+      editorTitleCandidates = [];
+      renderEditorTitleCandidates();
       Drafts.clearCurrentId();
       setDraftTitle('');
       setPlaygroundHtml('');
+      _dirty = false;
       setDraftStatus('未保存（新規）', '');
       renderDraftList();
       // 表題バーへフォーカス
@@ -4691,7 +5128,7 @@
     function exportAllDrafts() {
       const drafts = Drafts.load();
       if (drafts.length === 0) {
-        alert('エクスポートする下書きがありません。');
+        showToast('エクスポートする下書きがありません。', 'info');
         return;
       }
       const payload = {
@@ -4715,7 +5152,7 @@
         try {
           const data = JSON.parse(e.target.result);
           if (data.format !== 'eisai-editor-drafts' || !Array.isArray(data.drafts)) {
-            alert('❌ ファイル形式が正しくありません。');
+            showToast('❌ ファイル形式が正しくありません。', 'error');
             return;
           }
           // v1（旧 name フィールド）→ v2（title）の互換変換
@@ -4729,11 +5166,21 @@
           }));
           const existing = Drafts.load();
           const merged = normalized.concat(existing);
-          Drafts.save(merged);
+          const dedupedCount = Drafts._dedupe(merged).length;
+          const ok = Drafts.save(merged);
+          if (!ok) {
+            showToast('❌ インポートの保存に失敗しました。ブラウザのストレージ容量をご確認ください。', 'error');
+            return;
+          }
           renderDraftList();
-          alert(`✅ ${normalized.length}件の下書きをインポートしました。`);
+          if (dedupedCount > DRAFTS_MAX) {
+            const omitted = dedupedCount - DRAFTS_MAX;
+            showToast(`✅ ${DRAFTS_MAX}件を取り込み（上限のため${omitted}件は省略）`, 'success');
+          } else {
+            showToast(`✅ ${normalized.length}件の下書きをインポートしました。`, 'success');
+          }
         } catch (err) {
-          alert('❌ ファイルの読込に失敗しました: ' + err.message);
+          showToast('❌ ファイルの読込に失敗しました: ' + err.message, 'error');
         }
       };
       reader.readAsText(file);
@@ -4741,9 +5188,10 @@
 
     // 自動保存は廃止。変更があった場合のみ「未保存の変更あり」とステータス表示する。
     function markUnsavedChange() {
+      _dirty = true;
       const title = getDraftTitle();
       if (!title) {
-        setDraftStatus('タイトル待ち（テーマを適用してください）', 'error');
+        setDraftStatus('表題を入力してください', 'error');
         return;
       }
       setDraftStatus('● 未保存の変更あり', 'saving');
@@ -4794,8 +5242,6 @@
         const unwrapSelectors = [
           '.lg-badge-container',           // LanguageTool バッジコンテナ
           '.grammarly-btn', '.gr_-editor',
-          '[class*="lt-"]',                // LanguageTool 系 lt-* クラス
-          '[class*="grammarly-"]',
           'lt-div',
         ];
         unwrapSelectors.forEach((sel) => {
@@ -4808,6 +5254,27 @@
             });
           } catch (e) {}
         });
+
+        // lt-* / grammarly-* 系クラスはトークン（クラス先頭一致）で判定してunwrap。
+        // [class*="lt-"] のような部分一致だと result-box や default-... のような
+        // 通常クラスまで誤って剥がしてしまうため、クラス単位の startsWith に切り替える。
+        // theme- / eisai- / bubble 系クラスを併せ持つ要素は絶対にunwrapしない。
+        try {
+          const extensionPrefixes = ['lt-', 'lt_', 'grammarly-', 'gr_'];
+          const protectedTokens = ['theme-', 'eisai-', 'bubble'];
+          tmp.querySelectorAll('[class]').forEach((el) => {
+            const classes = Array.from(el.classList);
+            if (!classes.length) return;
+            const isExtensionNode = classes.some((c) => extensionPrefixes.some((p) => c.startsWith(p)));
+            if (!isExtensionNode) return;
+            const isProtected = classes.some((c) => protectedTokens.some((p) => c.includes(p)));
+            if (isProtected) return;
+            const parent = el.parentNode;
+            if (!parent) return;
+            while (el.firstChild) parent.insertBefore(el.firstChild, el);
+            parent.removeChild(el);
+          });
+        } catch (e) {}
 
         // 拡張機能由来のdata属性を持つ要素（属性だけ削除）
         tmp.querySelectorAll('[data-lt-installed], [data-gramm], [data-gramm_editor]').forEach((el) => {
@@ -4823,13 +5290,39 @@
       }
     }
 
+    // === ブログ貼付用HTML生成の単一パイプライン（v0.11.0 P1 C2: 出力経路の一本化） ===
+    // サイドバー「📋 HTML出力」・表題バー「📋 本文」・「🖥 サンプルチェック」の
+    // 3箇所は必ずこの関数を経由させ、出力されるHTMLを完全に一致させる。
+    function buildBlogHtml(rawHtml) {
+      // ★ ブラウザ拡張（LanguageTool / Grammarly等）の注入要素を除去
+      let html = (typeof stripExtensionInjectedNodes === 'function')
+        ? stripExtensionInjectedNodes(rawHtml)
+        : (rawHtml || '');
+      // ボタンのonclickを復元（エディタ用の無効化を解除）
+      html = html.replace(/data-onclick="([^"]*)" onclick="event\.preventDefault\(\);"/g, 'onclick="$1"');
+      // テーマクラスをインラインスタイルに変換（ブログ貼り付け用）
+      if (typeof convertThemeClassesToInlineStyles === 'function') {
+        html = convertThemeClassesToInlineStyles(html);
+      }
+      // ブロック要素間に改行を追加して読みやすくする
+      if (typeof formatHtmlForBlog === 'function') {
+        html = formatHtmlForBlog(html);
+      }
+      return html;
+    }
+
     function flashCopyOK(btn, msg) {
       if (!btn) return;
-      const original = btn.textContent;
+      // v0.11.0 D-2 Part1-2 (OPS-19): 元のラベルは初回のみ保存し、連打時に前のタイマーを
+      // 必ずクリアしてから張り直す。これにより高速な連続クリックでもラベルが固まらない。
+      if (btn.dataset.label === undefined) {
+        btn.dataset.label = btn.textContent;
+      }
+      clearTimeout(btn._flashTimer);
       btn.textContent = msg;
       btn.classList.add('copy-ok');
-      setTimeout(() => {
-        btn.textContent = original;
+      btn._flashTimer = setTimeout(() => {
+        btn.textContent = btn.dataset.label;
         btn.classList.remove('copy-ok');
       }, 1800);
     }
@@ -4858,8 +5351,8 @@
         titleBar.innerHTML = `
           <input type="text" id="article-title-display" class="article-title-display"
                  placeholder="表題はここ（テーマを適用するとH1が自動入力されます）" maxlength="120" autocomplete="off">
-          <button id="btn-copy-title" class="article-title-copy" title="表題HTMLをコピー">📋 タイトル</button>
-          <button id="btn-copy-body" class="article-body-copy" title="本文HTMLをコピー">📋 本文</button>
+          <button id="btn-copy-title" class="btn-primary" title="表題のテキストをコピー">タイトル</button>
+          <button id="btn-copy-body" class="btn-primary" title="本文HTMLをコピー">本文</button>
         `;
         panel.insertBefore(titleBar, editorArea);
       }
@@ -4893,21 +5386,20 @@
         });
       }
 
-      // タイトルコピー（H1タグ付き）
+      // タイトルコピー（v0.11.0 D-2 Part1-6 (UX-14/F17): プレーンテキストでコピー、タグは付けない）
       const copyTitleBtn = document.getElementById('btn-copy-title');
       if (copyTitleBtn) {
         copyTitleBtn.onclick = () => {
           const title = (articleEl ? articleEl.value : '').trim();
           if (!title) {
-            alert('表題が空です。テーマを適用してください。');
+            showToast('表題が空です。テーマを適用してください。', 'info');
             return;
           }
-          const html = `<h1>${escapeHtmlAttr(title)}</h1>`;
-          navigator.clipboard.writeText(html).then(() => {
+          navigator.clipboard.writeText(title).then(() => {
             flashCopyOK(copyTitleBtn, '✅ コピー完了');
           }).catch((err) => {
             console.error('タイトルコピー失敗:', err);
-            alert('❌ コピーに失敗しました。');
+            showToast('❌ コピーに失敗しました。', 'error');
           });
         };
       }
@@ -4918,30 +5410,21 @@
         copyBodyBtn.onclick = () => {
           const editorEl = document.querySelector('.eisai-editor');
           if (!editorEl) {
-            alert('本文エディタが見つかりません。');
+            showToast('本文エディタが見つかりません。', 'info');
             return;
           }
           let html = editorEl.innerHTML || '';
           if (!html.replace(/\s|<br\s*\/?>/g, '').trim()) {
-            alert('本文が空です。');
+            showToast('本文が空です。', 'info');
             return;
           }
-          // ★ LanguageTool / Grammarly 等の拡張機能が注入したラッパーを除去
-          //   （これがCMSで本文が表示されない原因になっていた）
-          html = stripExtensionInjectedNodes(html);
-          // 既存のonCopyHtmlロジックと同等の整形
-          html = html.replace(/data-onclick="([^"]*)" onclick="event\.preventDefault\(\);"/g, 'onclick="$1"');
-          if (typeof convertThemeClassesToInlineStyles === 'function') {
-            html = convertThemeClassesToInlineStyles(html);
-          }
-          if (typeof formatHtmlForBlog === 'function') {
-            html = formatHtmlForBlog(html);
-          }
+          // ★ サイドバー「HTML出力」・プレビューと完全に同じ出力にする（v0.11.0 P1 C2）
+          html = buildBlogHtml(html);
           navigator.clipboard.writeText(html).then(() => {
             flashCopyOK(copyBodyBtn, '✅ コピー完了');
           }).catch((err) => {
             console.error('本文コピー失敗:', err);
-            alert('❌ コピーに失敗しました。');
+            showToast('❌ コピーに失敗しました。', 'error');
           });
         };
       }
@@ -4969,7 +5452,10 @@
       // 編集監視：自動保存はしない。「未保存の変更あり」のステータス表示のみ
       const editorEl = document.querySelector('.eisai-editor');
       if (editorEl && 'MutationObserver' in window) {
-        const obs = new MutationObserver(() => markUnsavedChange());
+        const obs = new MutationObserver(() => {
+          if (_suppressUnsavedMark) return; // プログラムによる内容置換は未保存扱いにしない
+          markUnsavedChange();
+        });
         obs.observe(editorEl, { childList: true, subtree: true, characterData: true });
       }
 
@@ -4985,19 +5471,9 @@
         target: document.getElementById('playground'),
         initialContent: '',
         onCopyHtml: (html) => {
-          // ★ ブラウザ拡張（LanguageTool / Grammarly等）の注入要素を除去
-          let outputHtml = (typeof stripExtensionInjectedNodes === 'function')
-            ? stripExtensionInjectedNodes(html)
-            : html;
-          // ボタンのonclickを復元（エディタ用の無効化を解除）
-          outputHtml = outputHtml.replace(/data-onclick="([^"]*)" onclick="event\.preventDefault\(\);"/g, 'onclick="$1"');
+          // ★ 表題バー「本文コピー」・プレビューと完全に同じ出力にする（v0.11.0 P1 C2）
+          const outputHtml = buildBlogHtml(html);
 
-          // テーマクラスをインラインスタイルに変換（ブログ貼り付け用）
-          outputHtml = convertThemeClassesToInlineStyles(outputHtml);
-
-          // ブロック要素間に改行を追加して読みやすくする
-          outputHtml = formatHtmlForBlog(outputHtml);
-          
           latestHtml = outputHtml;
           document.getElementById('html-output').textContent = outputHtml;
           
@@ -5006,13 +5482,13 @@
             const charCount = outputHtml.length;
             const lineCount = (outputHtml.match(/\n/g) || []).length + 1;
             
-            // 詳細なアナウンスを表示
-            const message = `✅ HTMLをクリップボードにコピーしました！\n\n📊 コピー内容:\n• 文字数: ${charCount.toLocaleString()}文字\n• 行数: ${lineCount}行\n\n💡 貼り付け先:\n• テキストエディタやメモ帳にCtrl+V（Mac:⌘+V）で貼り付けできます\n• HTMLファイルとして保存してブラウザで開けばプレビューできます`;
-            
-            alert(message);
+            // 簡潔なアナウンスを表示
+            const message = `✅ HTMLをコピーしました（${charCount.toLocaleString()}文字 / ${lineCount}行）`;
+
+            showToast(message, 'success');
           }).catch(err => {
             console.error('クリップボードへのコピーに失敗しました:', err);
-            alert('❌ クリップボードへのコピーに失敗しました。\nブラウザの設定を確認してください。');
+            showToast('❌ クリップボードへのコピーに失敗しました。ブラウザの設定を確認してください。', 'error');
           });
         },
         onPreview: (html) => {
@@ -5053,6 +5529,7 @@
           // 枠(div) または リスト項目(li) の中かチェック
           let insideBlock = false;
           let current = node;
+          let isHeadingBlock = false;
           while (current && current !== playground) {
             // 枠（divでstyle属性を持つもの、またはテーマクラスを持つもの）または li
             const isStyledDiv = current.nodeName === 'DIV' && current.getAttribute('style');
@@ -5064,44 +5541,97 @@
               current.classList.contains('theme-list')
             );
             const isLi = current.nodeName === 'LI';
-            
+
             if (isStyledDiv || isThemeElement || isLi) {
               insideBlock = true;
+              isHeadingBlock = !!(current.classList && current.classList.contains('theme-heading'));
               break;
             }
             current = current.parentNode;
           }
 
           if (insideBlock) {
-            // Shift+Enterの挙動（<br>挿入）を強制する
-            // ...
-            
-            // リスト(li)の場合は、通常通りEnterで新しいliができる挙動で良いはずだが、
-            // もし枠(div)の中ならbrにすべき
+            // v0.11.0 P1 C4a (OPS-18): リスト項目(li)の場合。
+            // 空の最後のliでEnterを押した場合はリストから「抜けて」段落を作る。
+            // それ以外（通常のli）はデフォルト挙動（新しいli作成）に任せる。
             if (current.nodeName === 'LI') {
-               // リストの場合はデフォルト挙動（新しいli作成）に任せる
-               return;
+              const list = current.parentElement; // ul/ol
+              const isLastLi = list && list.lastElementChild === current;
+              const liText = (current.textContent || '').replace(/ /g, ' ').trim();
+              const hasImages = current.querySelector('img');
+
+              if (isLastLi && liText === '' && !hasImages && list) {
+                e.preventDefault();
+                const p = document.createElement('p');
+                p.innerHTML = '<br>';
+                const parentList = list;
+                const afterList = parentList.parentNode;
+                parentList.removeChild(current);
+                if (parentList.children.length === 0) {
+                  // リストが空になった場合はリスト自体を段落に置き換える
+                  afterList.insertBefore(p, parentList);
+                  afterList.removeChild(parentList);
+                } else {
+                  afterList.insertBefore(p, parentList.nextSibling);
+                }
+                const newRange = document.createRange();
+                newRange.setStart(p, 0);
+                newRange.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(newRange);
+                if (p.scrollIntoView) {
+                  p.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                }
+              }
+              return;
+            }
+
+            // v0.11.0 P1 C4a (OPS-18): キャレットがブロック（見出し/枠/吹き出し等）の
+            // 末尾にあるかを判定する。見出し(theme-heading)は常に「抜ける」動作、
+            // 枠・吹き出し等は末尾でのみ「抜ける」（それ以外は<br>で改行を維持）。
+            const endRange = document.createRange();
+            endRange.setStart(range.endContainer, range.endOffset);
+            endRange.setEnd(current, current.childNodes.length);
+            const tailProbe = document.createElement('div');
+            tailProbe.appendChild(endRange.cloneContents());
+            const atBlockEnd = (tailProbe.textContent || '').replace(/​/g, '').trim() === '';
+
+            if (isHeadingBlock || atBlockEnd) {
+              // ブロックの直後に新しい段落を作り、キャレットをそこへ移動する
+              e.preventDefault();
+              const p = document.createElement('p');
+              p.innerHTML = '<br>';
+              current.parentNode.insertBefore(p, current.nextSibling);
+              const newRange = document.createRange();
+              newRange.setStart(p, 0);
+              newRange.collapse(true);
+              sel.removeAllRanges();
+              sel.addRange(newRange);
+              if (p.scrollIntoView) {
+                p.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+              }
+              return;
             }
 
             e.preventDefault();
-            
+
             // Range APIを使って確実に改行を挿入
             const br = document.createElement('br');
             range.deleteContents(); // 選択範囲があれば削除
             range.insertNode(br);
-            
+
             // キャレットをbrの直後に移動
             // brの後にテキストノードなどがなければ、キャレットが移動しないように見えることがある
             // そのため、ゼロ幅スペースを入れるか、キャレット位置を調整する
             range.setStartAfter(br);
             range.setEndAfter(br);
-            
+
             // chromeなどの場合、末尾のbrは無視されることがあるため、
             // もうひとつbrが必要な場合があるが、まずはシンプルに
-            
+
             sel.removeAllRanges();
             sel.addRange(range);
-            
+
             // スクロール位置の調整（必要であれば）
             if (br.scrollIntoView) {
               br.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -5157,6 +5687,7 @@
     }
 
     function generateDummyArticle() {
+      if (!guardUnsaved('サンプルを読み込む')) return;
       const dummyContent = `
         <h2>プログラミング学習を始めよう</h2>
         
@@ -5193,9 +5724,11 @@
         <p>次回は、実際にPythonを使った簡単なプログラムの作り方をご紹介します。お楽しみに！</p>
       `;
       editor.setContent(dummyContent);
+      _dirty = false;
     }
 
     function generateSampleArticle() {
+      if (!guardUnsaved('サンプルを読み込む')) return;
       const sampleContent = `
         <div class="eisai-block eisai-heading eisai-heading-h2 eisai-heading-p1 eisai-color-blue">
           <h2>英才個別学院のブログ作成ツール</h2>
@@ -5233,9 +5766,11 @@
         </div>
       `;
       editor.setContent(sampleContent);
+      _dirty = false;
     }
 
     function generateFullDemo() {
+      if (!guardUnsaved('サンプルを読み込む')) return;
       const fullContent = `
         <div class="eisai-heading eisai-heading-h2 eisai-heading-p1 eisai-color-blue">
           <h2>🎨 ブログエディタ完全ガイド</h2>
@@ -5347,16 +5882,20 @@
         </div>
       `;
       editor.setContent(fullContent);
+      _dirty = false;
     }
 
     function clearContent() {
+      if (!guardUnsaved('内容をクリア')) return;
       editor.setContent('<p>ここに記事が表示されます...</p>');
+      _dirty = false;
     }
 
     // テーマ別サンプルを生成
     function generateThemeSamples() {
       if (!editor || !window.PRESET_THEMES) return;
-      
+      if (!guardUnsaved('サンプルを読み込む')) return;
+
       let content = '<h2 style="border-bottom: 3px solid #333; padding-bottom: 10px;">🎨 テーマ別サンプル一覧</h2>';
       
       for (const [themeKey, theme] of Object.entries(window.PRESET_THEMES)) {
@@ -5392,14 +5931,16 @@
         
         content += '<hr style="margin: 40px 0; border: none; border-top: 2px dashed #ddd;">';
       }
-      
+
       editor.setContent(content);
+      _dirty = false;
     }
 
     // カスタムツール全種サンプルを生成
     function generateCustomToolSamples() {
       if (!editor || !window.MOCA_TEMPLATES) return;
-      
+      if (!guardUnsaved('サンプルを読み込む')) return;
+
       let content = '<h2 style="border-bottom: 3px solid #333; padding-bottom: 10px;">🔧 カスタムツール全種サンプル</h2>';
       
       // 用途別に分類
@@ -5429,8 +5970,9 @@
         
         content += '<hr style="margin: 40px 0; border: none; border-top: 2px dashed #ddd;">';
       }
-      
+
       editor.setContent(content);
+      _dirty = false;
     }
 
     function getHtml() {
@@ -5449,22 +5991,37 @@
     // 吹き出し等のスタイルが当たらず「右向き吹き出しが左に配置される」等の
     // 不具合が発生していた。theme.color / subColor / lightColor を使って動的生成する。
     function addThemeStyles(themeName, theme) {
-      // 既存のテーマスタイルを削除
-      const existingStyle = document.getElementById('theme-styles');
-      if (existingStyle) {
-        existingStyle.remove();
+      // 旧IDのスタイル要素が残っていたら後始末（互換）
+      const legacyStyle = document.getElementById('theme-styles');
+      if (legacyStyle) {
+        legacyStyle.remove();
       }
-      if (!theme) return;
 
-      const c = theme.color || '#2980b9';
-      const cs = theme.subColor || '#7fb3d5';
-      const cl = theme.lightColor || '#ebf5fb';
-      const sel = `[data-theme="${themeName}"]`;
+      // v0.11.0 B9: 選択中テーマだけでなく PRESET_THEMES 全件分のCSSを
+      // 単一の <style id="eisai-theme-styles"> にまとめて注入する。
+      // テーマを切り替えたり、別テーマで保存された履歴を開いたりしても、
+      // 各要素は自分の data-theme に対応するCSSを常に見つけられるようにするため
+      // （以前は選択中テーマの [data-theme="X"] だけが注入され、それ以外の
+      //   data-theme を持つ装飾が無装飾になっていた＝表示とコピーの不一致）。
+      const themes = window.PRESET_THEMES || {};
+      let style = document.getElementById('eisai-theme-styles');
+      if (!style) {
+        style = document.createElement('style');
+        style.id = 'eisai-theme-styles';
+        document.head.appendChild(style);
+      }
 
-      const style = document.createElement('style');
-      style.id = 'theme-styles';
-      style.textContent = `
-        /* === 動的テーマCSS: ${themeName} === */
+      let css = '';
+      Object.keys(themes).forEach((name) => {
+        const t = themes[name];
+        if (!t) return;
+        const c = t.color || '#2980b9';
+        const cs = t.subColor || '#7fb3d5';
+        const cl = t.lightColor || '#ebf5fb';
+        const sel = `[data-theme="${name}"]`;
+
+        css += `
+        /* === 動的テーマCSS: ${name} === */
         .eisai-editor .theme-heading${sel} {
           background: ${cl} !important;
           border-left: 5px solid ${c} !important;
@@ -5561,8 +6118,10 @@
         .eisai-editor .theme-button${sel}:hover {
           filter: brightness(0.9);
         }
-      `;
-      document.head.appendChild(style);
+        `;
+      });
+
+      style.textContent = css;
     }
 
 
@@ -5570,7 +6129,7 @@
     function applyThemeToGeminiHtml() {
       let geminiHtml = document.getElementById('gemini-html-input').value.trim();
       if (!geminiHtml) {
-        alert('GEMINI HTMLを貼り付けてください');
+        showToast('拡張機能（Gemini / ChatGPT）からコピーしたHTMLを貼り付けてください', 'info');
         return;
       }
 
@@ -5579,12 +6138,43 @@
       const selectedTheme = themeSelector ? themeSelector.value : 'business-blue';
       const theme = window.PRESET_THEMES[selectedTheme];
       if (!theme) {
-        alert('テーマが選択されていません');
+        showToast('テーマが選択されていません', 'info');
         return;
       }
 
       console.log('選択されたテーマ:', selectedTheme);
       console.log('テーマオブジェクト:', theme);
+
+      // v0.11.0 B1: テーマにテンプレートキーが欠けていても例外を投げず、
+      // heading テンプレート（それも無ければプレーンなタグ）にフォールバックする。
+      // これにより一部テーマのテーブル定義が不完全でも適用処理全体が止まらない。
+      const getTpl = (key) => {
+        if (theme.html && theme.html[key]) return theme.html[key];
+        if (theme.html && theme.html.heading) return theme.html.heading;
+        return '<div>{{text}}</div>';
+      };
+      const headingTpl = getTpl('heading');
+      const subheadingTpl = getTpl('subheading');
+      const listTpl = (theme.html && theme.html.list) ? theme.html.list : '<ul>{{items}}</ul>';
+      const bubbleLeftTpl = getTpl('bubbleLeft');
+      const bubbleRightTpl = getTpl('bubbleRight');
+
+      // v0.11.0 B9: 適用後の各ブロックのルート要素に data-theme を付与し、
+      // 表示（addThemeStyles）・コピー（convertThemeClassesToInlineStyles）の
+      // どちらからも「このブロックはどのテーマで生成されたか」を辿れるようにする。
+      // 既にテンプレート側で data-theme が入っている場合（business-blueのクラス版）はそのまま尊重する。
+      const tagWithTheme = (htmlStr) => {
+        try {
+          const wrap = document.createElement('div');
+          wrap.innerHTML = htmlStr;
+          if (wrap.children.length === 1 && !wrap.children[0].hasAttribute('data-theme')) {
+            wrap.children[0].setAttribute('data-theme', selectedTheme);
+          }
+          return wrap.innerHTML;
+        } catch (e) {
+          return htmlStr;
+        }
+      };
 
       // テーマCSSを動的に追加
       addThemeStyles(selectedTheme, theme);
@@ -5615,7 +6205,7 @@
         if (typeof setDraftStatus === 'function') {
           setDraftStatus('⚠️ CTAが未処理（生のCTA_DATA）です。拡張機能の「▶ ブログHTMLをコピー」ボタン経由で貼り付けてください', 'error');
         }
-        alert('このHTMLはCTAが未処理（生のCTA_DATA素材）のため、ボタン付きCTAになりません。\n\nChatGPTのチャットから直接コピーせず、拡張機能パネルの「▶ ブログHTMLをコピーする」ボタンでコピーして貼り付けてください。\n\nこのまま続行するとCTAは表示されません。');
+        showToast('このHTMLはCTAが未処理（生のCTA_DATA素材）のため、ボタン付きCTAになりません。ChatGPT等のチャットから直接コピーせず、拡張機能パネルの「▶ ブログHTMLをコピーする」ボタンでコピーして貼り付けてください。このまま続行するとCTAは表示されません。', 'error');
         // 生CTA_DATAコメントは本文に残さない（不可視だが除去）
         geminiHtml = geminiHtml.replace(/<!--\s*CTA_DATA_START\s*-->[\s\S]*?<!--\s*CTA_DATA_END\s*-->/gi, '');
       }
@@ -5655,14 +6245,25 @@
           }
         }
         // 抽出した見出しノードを本文DOMから除去（本文側に出さない）
+        // v0.11.0 B3: H1から抽出した場合のみ本文から除去する。
+        // H2/H3/本文先頭からの推定タイトルは、除去すると本文の情報が失われてしまうため
+        // 本文側にはそのまま残す（推定であることはステータス欄に明記する）。
         if (titleNode && titleNode.parentNode) {
-          titleNode.parentNode.removeChild(titleNode);
-          console.log('[Eisai] 表題ノードを本文から除去:', source, extractedTitle.slice(0, 40));
+          if (source === 'H1') {
+            titleNode.parentNode.removeChild(titleNode);
+            console.log('[Eisai] 表題ノードを本文から除去:', source, extractedTitle.slice(0, 40));
+          } else {
+            console.log('[Eisai] 表題ノードは本文に残します（H1以外から推定）:', source, extractedTitle.slice(0, 40));
+          }
         }
         if (extractedTitle && typeof setDraftTitle === 'function') {
           setDraftTitle(extractedTitle);
           if (typeof setDraftStatus === 'function') {
-            setDraftStatus('表題抽出 (' + source + '): ' + extractedTitle.slice(0, 40) + '（未保存）', 'saving');
+            const isH1 = source === 'H1';
+            const inferredLabel = source.replace(/[（(].*$/, '');
+            const statusMsg = '表題抽出 (' + source + '): ' + extractedTitle.slice(0, 40) + '（未保存）' +
+              (isH1 ? '' : '。表題は' + inferredLabel + 'から推定（本文は残しています）');
+            setDraftStatus(statusMsg, 'saving');
           }
         }
       } catch (e) {
@@ -5680,83 +6281,122 @@
       // 結果を格納
       let themedHtml = '';
 
-      // 各要素を処理（吹き出し内の要素を除外）
+      // v0.11.0 B2: トップダウンの再帰処理に書き換え。
+      // 旧実装は querySelectorAll + closest() でネストした要素をフラットに拾っていたため、
+      // (a) <ul><li><p>x</p></li></ul> のようなネスト構造で内側の<p>が二重出力される、
+      // (b) hr/img/figure/pre や eisai-empathy-box 等のラッパーdivがセレクタに無く
+      //     サイレントに失われる（ラッパー内の<p>だけが生き残り中身のラベルごと消える）、
+      // (c) ol が ul テンプレートに変換され番号が失われる、
+      // といった問題があった。ここでは tempDiv.childNodes をトップレベルから1回だけ辿り、
+      // 処理済みブロックの子孫を再度拾わないようにする。
       // ★ 抽出済みの表題ノードは tempDiv から既に removeChild 済みのため、本文には出ない
-      const elements = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote, table, div[class*="bubble"]');
-      const filteredElements = Array.from(elements).filter(el => {
-        // 吹き出しdiv自体は保持し、吹き出し内の子要素のみ除外
-        return el.classList.contains('bubble-left') || 
-               el.classList.contains('bubble-right') || 
-               !el.closest('div[class*="bubble"]');
-      });
-      console.log('検出された要素数:', filteredElements.length);
 
-      if (filteredElements.length === 0) {
+      // 既知のEisaiラッパークラス（eisai-empathy-box / eisai-point-list / eisai-manager-note /
+      // eisai-highlight 等）はいずれも div なので、下の div/section/article 分岐で
+      // クラス・構造を保持したまま再帰処理される（フラット化しない）
+      const isBubbleLeft = (el) => typeof el.className === 'string' && el.className.includes('bubble-left');
+      const isBubbleRight = (el) => typeof el.className === 'string' && el.className.includes('bubble-right');
+
+      function walkNode(node) {
+        // テキストノード：意味のある文字が残っていれば<p>で包んで保持
+        if (node.nodeType === Node.TEXT_NODE) {
+          const t = node.textContent;
+          return t && t.trim() ? `<p>${t}</p>` : '';
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+          // コメント等は出力しない
+          return '';
+        }
+
+        const el = node;
+        const tagName = el.tagName.toLowerCase();
+        console.log('要素処理:', tagName, (el.textContent || '').substring(0, 30) + '...');
+
+        switch (tagName) {
+          case 'h1':
+          case 'h2':
+            // H1/H2見出し → テーマの見出しテンプレートを適用
+            return tagWithTheme(headingTpl.replace('{{text}}', el.innerHTML));
+          case 'h3':
+            // H3サブ見出し → テーマのサブ見出しテンプレートを適用
+            return tagWithTheme(subheadingTpl.replace('{{text}}', el.innerHTML));
+          case 'h4':
+          case 'h5':
+          case 'h6':
+            // H4-H6 → H2見出しテンプレートを適用
+            return tagWithTheme(headingTpl.replace('{{text}}', el.innerHTML));
+
+          case 'p':
+            // 段落 → 装飾なしの通常テキスト
+            return `<p>${el.innerHTML}</p>`;
+
+          case 'ul': {
+            // リスト → テーマのリストテンプレートを適用
+            const items = Array.from(el.children).filter(c => c.tagName === 'LI').map(li => `<li>${li.innerHTML}</li>`).join('');
+            return tagWithTheme(listTpl.replace('{{title}}', 'ポイント').replace('{{items}}', items));
+          }
+          case 'ol': {
+            // 順序付きリスト → 番号を保持するため<ol>のまま出力（テーマ装飾は当てない）
+            const items = Array.from(el.children).filter(c => c.tagName === 'LI').map(li => `<li>${li.innerHTML}</li>`).join('');
+            const startAttr = el.hasAttribute('start') ? ` start="${el.getAttribute('start')}"` : '';
+            const typeAttr = el.hasAttribute('type') ? ` type="${el.getAttribute('type')}"` : '';
+            return `<ol${startAttr}${typeAttr}>${items}</ol>`;
+          }
+
+          case 'blockquote':
+            // blockquote 自体は装飾タグとして出力しないが、中身は失わず再帰処理する
+            return Array.from(el.childNodes).map(walkNode).join('');
+
+          case 'table': {
+            // テーブル → エスケープされたCSSを修正して出力（CTAボタン用）
+            console.log('検出されたテーブルHTML:', el.outerHTML);
+            let tableHtml = el.outerHTML;
+            // エスケープされたCSSを修正（\# → #）
+            tableHtml = tableHtml.replace(/\\#/g, '#');
+            return tableHtml;
+          }
+
+          default:
+            break;
+        }
+
+        // 吹き出し要素の処理
+        if (isBubbleLeft(el)) {
+          return tagWithTheme(bubbleLeftTpl.replace('{{text}}', el.innerHTML));
+        }
+        if (isBubbleRight(el)) {
+          return tagWithTheme(bubbleRightTpl.replace('{{text}}', el.innerHTML));
+        }
+
+        // 既知のEisaiラッパー、および div/section/article は構造・クラスを保持したまま
+        // 子要素だけ再帰的にテーマ変換する（フラット化して中身だけ残す旧実装のバグを修正）
+        if (tagName === 'div' || tagName === 'section' || tagName === 'article') {
+          try {
+            const clone = el.cloneNode(false);
+            clone.innerHTML = Array.from(el.childNodes).map(walkNode).join('');
+            return clone.outerHTML;
+          } catch (e) {
+            console.warn('ラッパー要素の再帰処理に失敗、そのまま出力します:', tagName, e);
+            return el.outerHTML;
+          }
+        }
+
+        // hr / img / figure / pre / code / 未知タグなどは変更せずそのまま通す
+        return el.outerHTML;
+      }
+
+      const topNodes = Array.from(tempDiv.childNodes);
+      console.log('処理対象トップレベルノード数:', topNodes.length);
+
+      if (topNodes.length === 0) {
         // HTMLタグがない場合はそのままテキストとして出力
         themedHtml = `<p>${geminiHtml}</p>`;
       } else {
-        // 各要素を順番に処理
-        filteredElements.forEach((el, index) => {
-          const tagName = el.tagName.toLowerCase();
-          console.log(`要素 ${index + 1}:`, tagName, el.textContent.substring(0, 30) + '...');
-
-          switch (tagName) {
-            case 'h1':
-            case 'h2':
-              // H2見出し → テーマの見出しテンプレートを適用
-              themedHtml += theme.html.heading.replace('{{text}}', el.textContent);
-              break;
-            case 'h3':
-              // H3サブ見出し → テーマのサブ見出しテンプレートを適用
-              themedHtml += theme.html.subheading.replace('{{text}}', el.textContent);
-              break;
-            case 'h4':
-            case 'h5':
-            case 'h6':
-              // H4-H6 → H2見出しテンプレートを適用
-              themedHtml += theme.html.heading.replace('{{text}}', el.textContent);
-              break;
-
-            case 'p':
-              // 段落 → 装飾なしの通常テキスト
-              themedHtml += `<p>${el.innerHTML}</p>`;
-              break;
-
-            case 'ul':
-            case 'ol':
-              // リスト → テーマのリストテンプレートを適用
-              const items = Array.from(el.querySelectorAll('li')).map(li => `<li>${li.innerHTML}</li>`).join('');
-              themedHtml += theme.html.list.replace('{{title}}', 'ポイント').replace('{{items}}', items);
-              break;
-
-            case 'blockquote':
-              // blockquote は装飾タグとして無視（中の ul/ol は個別に処理される）
-              // blockquote 自体は出力しない
-              break;
-            case 'table':
-              // テーブル → エスケープされたCSSを修正して出力（CTAボタン用）
-              console.log('検出されたテーブルHTML:', el.outerHTML);
-              let tableHtml = el.outerHTML;
-              // エスケープされたCSSを修正（\# → #）
-              tableHtml = tableHtml.replace(/\\#/g, '#');
-              themedHtml += tableHtml;
-              break;
-
-            default:
-              // 吹き出し要素の処理
-              if (el.className.includes('bubble-left')) {
-                // 左吹き出し → テーマの左吹き出しテンプレートを適用
-                themedHtml += theme.html.bubbleLeft.replace('{{text}}', el.innerHTML);
-              } else if (el.className.includes('bubble-right')) {
-                // 右吹き出し → テーマの右吹き出しテンプレートを適用
-                themedHtml += theme.html.bubbleRight.replace('{{text}}', el.innerHTML);
-              } else {
-                // その他はそのまま
-                themedHtml += el.outerHTML;
-              }
-              break;
-          }
-        });
+        themedHtml = topNodes.map(walkNode).join('');
+        if (!themedHtml.trim()) {
+          // 有効な要素・テキストが一つも無かった場合はそのままテキストとして出力
+          themedHtml = `<p>${geminiHtml}</p>`;
+        }
       }
 
       // 退避しておいたCTAセクションを末尾にそのまま付与
@@ -5768,20 +6408,35 @@
 
       // エディタに設定
       if (themedHtml.trim()) {
+        if (!guardUnsaved('テーマを適用')) return;
+        // 新しく適用した記事は、直前まで開いていた履歴エントリを上書きせず
+        // 新規履歴として保存されるようにする（履歴上書きバグ対策）
+        Drafts.clearCurrentId();
         if (editor && editor.setContent) {
           editor.setContent(themedHtml);
         } else {
           const editorElement = document.querySelector('.eisai-editor');
           if (editorElement) {
+            _suppressUnsavedMark = true;
             editorElement.innerHTML = themedHtml;
+            setTimeout(() => { _suppressUnsavedMark = false; }, 0);
           }
         }
+        _dirty = false;
         document.getElementById('gemini-html-input').value = '';
-        alert('テーマを適用しました！');
+        showToast('✅ テーマを適用しました！', 'success');
       } else {
-        alert('変換できる要素が見つかりませんでした');
+        showToast('変換できる要素が見つかりませんでした', 'error');
       }
     }
+
+    // 未保存の変更がある状態でページを離脱しようとしたら警告する（v0.11.0 P0）
+    window.addEventListener('beforeunload', (e) => {
+      if (hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
 
     // イベントリスナー設定
     document.addEventListener('DOMContentLoaded', () => {
@@ -5816,7 +6471,7 @@
       // GEMINI HTMLを貼って「テーマを適用」した時点で初めて新規エントリが作られる
       setDraftTitle('');
       setPlaygroundHtml('');
-      setDraftStatus('まっさら（履歴から選択 or 新規入力）', '');
+      setDraftStatus('新しい記事（未保存）', '');
     });
   </script>
 </body>
