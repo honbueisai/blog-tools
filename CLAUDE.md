@@ -149,12 +149,12 @@ CHANGELOGエントリは **どちらのツールの変更か明記**：
 
 ## 7-1. デプロイ（エディター）
 
-`editor-icons.html` は `tools.eisai.org/blogs/` 配下にApacheで配信されている。
-**現状はFTP/SFTP等で手動アップロード**（GitHub Pages連携なし）。
+`editor-icons.html` / `editor-icons-legacy.html` は `tools.eisai.org/blogs/` 配下にApacheで配信されている。
 
-- リポジトリのmainマージ ≠ 本番反映
-- 本番反映は **明示指示があった時のみ実施**
-- デプロイ手段が確立したらこのセクションを更新する
+- **mainにマージされると、GitHub Actions（`.github/workflows/deploy-editor.yml`）がFTPで自動アップロードする**（最後に本番のバージョン表記を取得して一致を確認）。
+- 事前にリポジトリの Secrets（`FTP_SERVER` / `FTP_USERNAME` / `FTP_PASSWORD` / `FTP_SERVER_DIR`、任意で `FTP_PROTOCOL`）を登録しておく。未登録の間は何もせずに終わる。
+- 手動で反映したい時は、Actions画面から「エディターを本番へ反映」を実行（workflow_dispatch）。
+- エディターを変更するPRをマージする＝本番反映になるため、マージ前に動作確認を済ませる。
 
 ---
 
