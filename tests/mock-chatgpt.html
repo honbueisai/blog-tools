@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>mock-chatgpt.html - ChatGPT版拡張機能テスト用モック（合言葉方式・v0.4.1.0）</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+    background: #f7f7f8;
+    color: #111827;
+  }
+  #mock-info {
+    background: #111827;
+    color: #e5e7eb;
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 8px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  #mock-info code {
+    background: #1f2937;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #93c5fd;
+  }
+  main {
+    max-width: 768px;
+    margin: 0 auto;
+    padding: 24px 16px 160px;
+  }
+  .turn {
+    margin-bottom: 18px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.7;
+    font-size: 14px;
+  }
+  .turn[data-message-author-role="user"] {
+    background: #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-left: 12%;
+  }
+  .turn[data-message-author-role="assistant"] .markdown {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+  #composer-wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #ffffff;
+    border-top: 1px solid #d1d5db;
+    padding: 10px 16px 14px;
+  }
+  #composer-form {
+    max-width: 768px;
+    margin: 0 auto;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  #prompt-textarea {
+    flex: 1;
+    min-height: 44px;
+    max-height: 200px;
+    overflow: auto;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 11px 14px;
+    background: #ffffff;
+    font-size: 14px;
+  }
+  #prompt-textarea:empty::before {
+    content: "メッセージを入力...";
+    color: #9ca3af;
+  }
+  #composer-submit-button,
+  #stop-button {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #composer-submit-button {
+    background: #111827;
+    color: #ffffff;
+  }
+  #composer-submit-button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  #stop-button {
+    background: #dc2626;
+    color: #ffffff;
+  }
+  #fixture-missing-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  #mock-heavy-filler { display: none; }
+</style>
+</head>
+<body>
+
+<div id="mock-info">
+  mock-chatgpt.html（英才ブログ生成ツール ChatGPT版 v0.4.1.0 テスト用モック・合言葉方式・外部通信なし）<br>
+  fixture=<code id="mi-fixture">-</code>
+  &nbsp;fail=<code id="mi-fail">-</code>
+  &nbsp;speed=<code id="mi-speed">-</code>
+  &nbsp;layout=<code id="mi-layout">-</code>
+  &nbsp;seed=<code id="mi-seed">-</code>
+  &nbsp;hideDuring=<code id="mi-hideduring">-</code>
+  &nbsp;renderHidden=<code id="mi-renderhidden">-</code>
+  &nbsp;heavy=<code id="mi-heavy">-</code>
+  &nbsp;echo=<code id="mi-echo">-</code>
+  &nbsp;imgFail=<code id="mi-imgfail">-</code>
+  &nbsp;imgNone=<code id="mi-imgnone">-</code>
+  &nbsp;fixture読込：<code id="mi-status">確認中…</code>
+  <br>
+  <span id="mi-longtask-summary">ロングタスク（50ms超）：0件</span>
+</div>
+
+<main>
+  <div id="fixture-missing-banner" style="display:none;">
+    ⚠️ fixtureなし：URLパラメータ <code>?fixture=&lt;name&gt;</code> を指定するか、
+    <code>tests/fixtures/&lt;name&gt;.txt</code> を用意してください。
+    送信自体はできますが、ChatGPTの応答は再現されません。
+  </div>
+  <div id="thread"></div>
+</main>
+
+<div id="composer-wrap">
+  <form id="composer-form" onsubmit="return false;">
+    <div id="prompt-textarea" contenteditable="true" role="textbox" aria-label="Message ChatGPT"></div>
+    <button id="composer-submit-button" type="button" data-testid="send-button" aria-label="Send">送信</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------------------------------------------------------
+  // v0.4.1.0: 合言葉（マーカー）方式の再テスト用モック。
+  //
+  // 拡張機能はもう「ChatGPTの画面の作り」（role属性・data-testid・停止ボタン等）を一切見ない。
+  // 見るのは、main内の連結テキストに現れる目印文字列（[[EISAI-START-<ID>]]…[[EISAI-END-<ID>]]）
+  // だけ。そのため、このモックの主な役割は「送られてきたプロンプトから依頼番号を読み取り、
+  // fixture本文の前後に目印を付けて返す」ことと、「その返し方（DOM構造）をどれだけ意地悪く
+  // 変えても、拡張機能が同じように読み取れるか」を再現することの2つ。
+  //
+  // URLパラメータ：
+  //   fixture=<name>       記事本文のfixture名（tests/fixtures/<name>.txt）
+  //   fail=send             送信ボタン・Enterが反応しない状態を再現
+  //   speed=<ms>            1チャンクあたりの表示間隔
+  //   layout=<writing-block|markdown|stale|v2dom|random>
+  //     writing-block（既定）: 文書カード（div[data-testid="writing-block-container"] > .ProseMirror）
+  //     markdown            : 旧構造（.markdown直下に直接テキスト）
+  //     stale               : .markdownには残骸「<h」だけ、本文は別の無関係なdivに入る
+  //     v2dom                : role属性等が一切無い画面（echo=1でユーザー発言を行ごとの<p>に分割）
+  //     random               : ランダムな深さの入れ子div/span＋テキストノードを任意位置で分割
+  //                             （目印もまたぐ）。seed=<n>で乱数を固定できる。
+  //   echo=1（layout=v2dom限定）: ユーザー発言を行ごとの<p>に分割して表示する
+  //   hideDuring=1          : タブが裏にある間、ChatGPTのDOM反映が止まる実機の挙動を再現
+  //   renderHidden=1        : v0.4.1.2追加。2026-09-27に実機で確認した別パターン（裏にあっても
+  //                             ChatGPTは本文を最後まで描画し終える）を再現する。hideDuring=1と
+  //                             同時に指定した場合、こちらを優先し（裏でも本文の描画を止めない）、
+  //                             最後まで書き終える。hideDuring=1無しの既定でも本文は裏でも描画され
+  //                             続けるため、単独指定は主に「裏のまま最後まで完成すること」を明示
+  //                             的に確認したいテスト（run-matrix.mjsの「ずっと裏のまま」ケース）用。
+  //   heavy=1               : 実機同等の巨大DOM（要素数千〜数万）を追加し、性能（ロングタスク）を確認
+  //   imgFail=1 / imgNone=1 : 画像生成依頼への応答を失敗パターンで再現
+  //   composerNoId=1        : v0.4.1.4追加。#prompt-textareaというidを外し、入力欄を
+  //                             form内のdiv.ProseMirror[contenteditable="true"]
+  //                             [aria-label="ChatGPT に聞く"]だけにする。main内・入力欄より
+  //                             DOM順で先に、書き物キャンバスらしいデコイ要素
+  //                             （contenteditable="true"・aria-label="書き始める"）も置く。
+  //                             拡張機能が入力欄と書き物キャンバスを誤認しないかの確認用
+  //   lateSendBtn=1          : v0.4.1.5追加。タブが裏にある間、入力欄に文字が入ってから
+  //                             LATE_SEND_BTN_DELAY_MS（既定2秒）だけ送信ボタンを無効化する
+  //                             （実機でChatGPT側の描画が遅れ、送信ボタンがまだ出ていない
+  //                             一瞬を再現）。このモードではEnterキーのkeydownでは送信されない
+  //                             （拡張機能が送信ボタンを探し直すこと自体を確認するため）
+  //   throttle=1             : v0.4.1.6追加。タブが裏にある間、拡張機能
+  //                             （blog-generator-chatgpt.user.js）自身が呼んだ
+  //                             setTimeout／setIntervalの遅延だけをTHROTTLE_MULTIPLIER倍に
+  //                             伸ばす（呼び出し元のスタックトレースで判定。mock自身の内部
+  //                             タイマーは対象外）。ChromeのIntensive Throttlingで、拡張機能側の
+  //                             待ち方（sleepの繰り返し等）が大きく間引かれる状況の近似。本物の
+  //                             Intensive Throttlingはページの実際の占有・可視状態に基づく
+  //                             ブラウザ内部の仕組みで、document.hiddenのプロパティ上書きでは
+  //                             再現できないため、あくまで近似であることに注意。setTimeoutベース
+  //                             の待ち方が大きく間引かれる一方、DOM変化で起きるMutationObserver
+  //                             は影響を受けないことを確認する目的で使う
+  // ---------------------------------------------------------
+  var params = new URLSearchParams(location.search);
+  var fixtureName = params.get('fixture') || '';
+  var failMode = params.get('fail') || '';
+  var speedMs = Math.max(10, parseInt(params.get('speed'), 10) || 40);
+  var layoutParam = params.get('layout');
+  var layoutMode = (layoutParam === 'markdown' || layoutParam === 'stale' || layoutParam === 'v2dom' || layoutParam === 'random')
+    ? layoutParam
+    : 'writing-block';
+  var seedParam = parseInt(params.get('seed'), 10);
+  var seed = Number.isFinite(seedParam) && seedParam > 0 ? seedParam : 1;
+  var CHUNK_SIZE = 14;
+  var failSend = failMode === 'send';
+  var hideDuringMode = params.get('hideDuring') === '1';
+  var renderHiddenMode = params.get('renderHidden') === '1';
+  var heavyMode = params.get('heavy') === '1';
+  var echoMode = params.get('echo') === '1' && layoutMode === 'v2dom';
+  var imgFailMode = params.get('imgFail') === '1';
+  var imgNoneMode = params.get('imgNone') === '1';
+
+  // v0.4.1.6: throttle=1のとき、タブが裏にある間だけ、拡張機能（blog-generator-chatgpt.user.js）
+  // 自身が呼んだsetTimeout／setIntervalの遅延をTHROTTLE_MULTIPLIER倍に伸ばす（Chromeの
+  // Intensive Throttlingで、拡張機能側の待ち方（sleepの繰り返し等）が大きく間引かれる状況の
+  // 近似）。呼び出し元のスタックトレースにこのファイル名が含まれるかどうかで判定し、
+  // mock自身の内部タイマー（ストリーミング再生・lateSendBtnの再有効化等）は対象外にする
+  // （そうしないと、mock側が再現している「実機の遅延そのもの」まで一緒に伸びてしまい、
+  // 「待ち方を良くしても、起きた変化に気付くのが早くなるわけではない」という誤ったテストに
+  // なってしまうため）。ネイティブのタイマーIDをそのまま返すので、clearTimeout／
+  // clearIntervalは変更なしで動く。
+  var throttleMode = params.get('throttle') === '1';
+  var THROTTLE_MULTIPLIER = 15;
+  if (throttleMode) {
+    (function () {
+      var nativeSetTimeout = window.setTimeout;
+      var nativeSetInterval = window.setInterval;
+      function isCalledFromExtension() {
+        // v0.4.1.6: スタック全体に拡張機能のファイル名が含まれるかではなく、setTimeout／
+        // setIntervalを直接呼んだ1フレームだけを見る。button.click()等の同期的なイベント
+        // ディスパッチ経由でmock自身の関数が（拡張機能の呼び出しの続きとして）setTimeoutを
+        // 呼ぶ場合、スタック全体には拡張機能のフレームも含まれてしまうため、直接の呼び出し元
+        // だけを見て判定する必要がある。
+        try {
+          var lines = (new Error().stack || '').split('\n');
+          // lines[0]="Error", lines[1]=at isCalledFromExtension, lines[2]=at window.setTimeout
+          // （このラッパー自身）, lines[3]=直接の呼び出し元。
+          var callerLine = lines[3] || '';
+          return callerLine.indexOf('blog-generator-chatgpt.user.js') !== -1;
+        } catch (e) {
+          return false;
+        }
+      }
+      window.setTimeout = function (fn, delay) {
+        var extraArgs = Array.prototype.slice.call(arguments, 2);
+        var actualDelay = (document.hidden && typeof delay === 'number' && delay > 0 && isCalledFromExtension())
+          ? delay * THROTTLE_MULTIPLIER
+          : delay;
+        return nativeSetTimeout.apply(window, [fn, actualDelay].concat(extraArgs));
+      };
+      window.setInterval = function (fn, delay) {
+        var extraArgs = Array.prototype.slice.call(arguments, 2);
+        var actualDelay = (document.hidden && typeof delay === 'number' && delay > 0 && isCalledFromExtension())
+          ? delay * THROTTLE_MULTIPLIER
+          : delay;
+        return nativeSetInterval.apply(window, [fn, actualDelay].concat(extraArgs));
+      };
+    })();
+  }
+  var lateSendBtnMode = params.get('lateSendBtn') === '1';
+  var LATE_SEND_BTN_DELAY_MS = 2000;
+
+  function setInfo(id, text) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+  setInfo('mi-fixture', fixtureName || '(未指定)');
+  setInfo('mi-fail', failMode || '(なし)');
+  setInfo('mi-speed', String(speedMs) + 'ms');
+  setInfo('mi-layout', layoutMode);
+  setInfo('mi-seed', layoutMode === 'random' ? String(seed) : '(不使用)');
+  setInfo('mi-hideduring', hideDuringMode ? '1' : '(なし)');
+  setInfo('mi-renderhidden', renderHiddenMode ? '1（裏でも本文描画を継続・hideDuringより優先）' : '(なし)');
+  setInfo('mi-heavy', heavyMode ? '1（3000+40件のダミーDOMを追加）' : '(なし)');
+  setInfo('mi-echo', echoMode ? '1（ユーザー発言を行ごとに分割）' : '(なし)');
+  setInfo('mi-imgfail', imgFailMode ? '1（失敗文言＋下書きimgを出す）' : '(なし)');
+  setInfo('mi-imgnone', imgNoneMode ? '1（失敗文言のみ・imgなし）' : '(なし)');
+
+  // ---------------------------------------------------------
+  // ロングタスク監視（PerformanceObserver）。50ms超のタスクをコンソールと画面上部のカウンタに
+  // 出す。拡張機能側の1秒ごとの監視tick・collectMainTextIndexがメインスレッドを長時間
+  // ブロックしていないかを、実際にページを操作しながら確認できる。
+  // window.__eisaiLongTasks に生データも積む（devtools・run-matrix.mjsから直接読める）。
+  // ---------------------------------------------------------
+  window.__eisaiLongTasks = [];
+  (function setupLongTaskMonitor() {
+    var summaryEl = document.getElementById('mi-longtask-summary');
+    function renderSummary() {
+      if (!summaryEl) return;
+      var tasks = window.__eisaiLongTasks;
+      if (!tasks.length) {
+        summaryEl.textContent = 'ロングタスク（50ms超）：0件';
+        summaryEl.style.color = '#86efac';
+        return;
+      }
+      var max = tasks.reduce(function (m, t) { return Math.max(m, t.duration); }, 0);
+      summaryEl.textContent = 'ロングタスク（50ms超）：' + tasks.length + '件（最大' + max.toFixed(1) + 'ms）';
+      summaryEl.style.color = '#fca5a5';
+    }
+    try {
+      var po = new PerformanceObserver(function (list) {
+        list.getEntries().forEach(function (entry) {
+          window.__eisaiLongTasks.push({ name: entry.name, duration: entry.duration, startTime: entry.startTime });
+          console.warn('[mock-perf] long task ' + entry.duration.toFixed(1) + 'ms @' + entry.startTime.toFixed(0) + 'ms');
+        });
+        renderSummary();
+      });
+      po.observe({ entryTypes: ['longtask'] });
+    } catch (e) {
+      if (summaryEl) summaryEl.textContent = 'ロングタスク監視：このブラウザは未対応（longtask API無し）';
+    }
+    renderSummary();
+  })();
+
+  var thread = document.getElementById('thread');
+  var composer = document.getElementById('prompt-textarea');
+  var sendBtn = document.getElementById('composer-submit-button');
+  var composerForm = document.getElementById('composer-form');
+  var missingBanner = document.getElementById('fixture-missing-banner');
+  var miStatus = document.getElementById('mi-status');
+
+  // v0.4.1.4: 2026-09-29に実機で確認した、もう1つの危険（composer誤認）を再現するテスト専用
+  // モード。composerNoId=1の時、#prompt-textareaというidを外し、実機の別画面パターン
+  // （div.ProseMirror[contenteditable="true"][aria-label="ChatGPT に聞く"]。form内）に
+  // 近づける。さらに、main内・入力欄（form。mainの外）よりDOM順で必ず先に来る位置に、
+  // 書き物キャンバスらしい要素（contenteditable="true"・aria-label="書き始める"）を置く。
+  // 拡張機能が「DOM順で最初に見つかったcontenteditable」を入力欄と誤認しないこと
+  // （findComposerElement）を確認するために使う（要素そのものは差し替えず属性だけ変える
+  // ため、composer変数・以後のイベント登録はそのまま動く）。
+  var composerNoIdMode = params.get('composerNoId') === '1';
+  if (composerNoIdMode) {
+    composer.removeAttribute('id');
+    composer.removeAttribute('role');
+    composer.classList.add('ProseMirror');
+    composer.setAttribute('aria-label', 'ChatGPT に聞く');
+    composer.setAttribute('data-mock-composer', 'true');
+
+    var decoyCanvas = document.createElement('div');
+    decoyCanvas.className = 'ProseMirror';
+    decoyCanvas.setAttribute('contenteditable', 'true');
+    decoyCanvas.setAttribute('aria-label', '書き始める');
+    decoyCanvas.setAttribute('data-testid', 'writing-block-container-decoy');
+    decoyCanvas.style.cssText = 'border:1px dashed #f59e0b;padding:8px;margin:6px 0;';
+    decoyCanvas.textContent = '（テスト用のダミー書き物キャンバス。入力欄として誤認してはいけない）';
+    thread.insertBefore(decoyCanvas, thread.firstChild);
+  }
+
+  var fixtureText = '';
+  var fixtureReady = false;
+  var streaming = false;
+
+  function showFixtureMissing(reason) {
+    missingBanner.style.display = 'block';
+    miStatus.textContent = 'fixtureなし' + (reason ? '（' + reason + '）' : '');
+    miStatus.style.color = '#fca5a5';
+  }
+
+  function loadFixture() {
+    if (!fixtureName) {
+      showFixtureMissing('?fixture= 未指定');
+      return Promise.resolve();
+    }
+    return fetch('fixtures/' + encodeURIComponent(fixtureName) + '.txt', { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(function (text) {
+        fixtureText = text;
+        fixtureReady = true;
+        missingBanner.style.display = 'none';
+        miStatus.textContent = '読込OK（' + fixtureText.length + '文字）';
+        miStatus.style.color = '#86efac';
+      })
+      .catch(function (e) {
+        showFixtureMissing(e && e.message ? e.message : String(e));
+      });
+  }
+
+  // サムネイル指示（「画像用の指示を作る」）の応答用fixture。記事のfixtureとは別に、
+  // ページ読み込み時に一度だけ読み込む。読み込めなくても送信自体は失敗させず、簡易な
+  // ダミー文で代用する。
+  var imgPromptFixtureText = '';
+  var imgPromptFixtureReady = false;
+  function loadImgPromptFixture() {
+    return fetch('fixtures/img-prompt-sample.txt', { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(function (text) {
+        imgPromptFixtureText = text;
+        imgPromptFixtureReady = true;
+      })
+      .catch(function (e) {
+        console.warn('[mock] fixtures/img-prompt-sample.txt の読み込みに失敗しました:', e);
+      });
+  }
+
+  // v0.4.1.0: 送信された文章から依頼番号（「依頼番号：xxxxxx」）を読み取る。
+  // buildMarkerInstructionBlock／buildRequestIdLineが必ず1回はこの形で書くため、拡張機能側の
+  // 実装を変えない限りここだけで確実に取れる。
+  function extractRequestId(text) {
+    var m = String(text || '').match(/依頼番号[：:]\s*([a-z0-9]{4,12})/i);
+    return m ? m[1] : '';
+  }
+
+  var mockMsgSeq = 0;
+
+  // v0.4.1.0: heavy=1の間、main内の要素数を実機並み（数千〜数万）にする。新方式は
+  // TreeWalkerでmain内の全テキストノードを毎tick連結するため、要素数・テキスト量が
+  // 性能に響く。ここでの狙いは「大きなDOMでもロングタスクが出ないこと」の確認。
+  function buildHeavySidebarFiller(container) {
+    for (var i = 0; i < 3000; i++) {
+      var item = document.createElement('div');
+      item.className = 'mock-sidebar-item';
+      item.textContent = '過去の会話' + i + '：算数の宿題と面談メモ（ダミー）';
+      container.appendChild(item);
+    }
+  }
+
+  function buildHeavyPastTurn(container, index) {
+    var wrap = document.createElement('div');
+    wrap.className = 'turn mock-heavy-turn';
+    var body = document.createElement('div');
+    body.style.cssText = 'background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;margin-bottom:12px;';
+
+    var sentence = '（過去の会話' + index + '）学習指導や教室運営についての雑談的なやり取りを再現するダミー文章です。実機のDOMサイズを再現するための本文で、記事の完了判定には使われません。';
+    for (var p = 0; p < 30; p++) {
+      var para = document.createElement('p');
+      para.textContent = sentence + sentence.slice(0, 40) + p;
+      body.appendChild(para);
+    }
+    var ul = document.createElement('ul');
+    for (var li = 0; li < 20; li++) {
+      var liEl = document.createElement('li');
+      liEl.textContent = 'ポイント' + li + '：ダミーの箇条書き項目です（過去ターン' + index + '）。';
+      ul.appendChild(liEl);
+    }
+    body.appendChild(ul);
+    var table = document.createElement('table');
+    for (var r = 0; r < 10; r++) {
+      var tr = document.createElement('tr');
+      for (var c = 0; c < 5; c++) {
+        var td = document.createElement('td');
+        td.textContent = 't' + index + '-r' + r + 'c' + c;
+        tr.appendChild(td);
+      }
+      table.appendChild(tr);
+    }
+    body.appendChild(table);
+    wrap.appendChild(body);
+    container.appendChild(wrap);
+  }
+
+  function buildHeavyFillerDom() {
+    if (!heavyMode) return;
+    var t0 = performance.now();
+    var filler = document.createElement('div');
+    filler.id = 'mock-heavy-filler';
+    buildHeavySidebarFiller(filler);
+    for (var i = 0; i < 40; i++) {
+      buildHeavyPastTurn(filler, i);
+    }
+    thread.parentElement.insertBefore(filler, thread);
+    var elapsed = performance.now() - t0;
+    console.log('[mock-perf] heavy filler構築: ' + elapsed.toFixed(1) + 'ms, 要素数=' +
+      document.querySelectorAll('*').length);
+  }
+
+  // ---------------------------------------------------------
+  // layout=random用の疑似乱数（mulberry32相当・seedで再現可能）とランダム木構築。
+  // 与えられた文字列を、ランダムな深さの入れ子div/span＋複数のテキストノードに分解して
+  // 描画する。目印文字列（[[EISAI-START-…]]等）がテキストノード境界・要素境界の両方で
+  // 分断される状態を作るのが目的（拡張機能のcollectMainTextIndexが、これを1本の文字列として
+  // 正しく連結・検索できることを確認する）。
+  // ---------------------------------------------------------
+  function makeRng(s) {
+    var state = s >>> 0 || 1;
+    return function () {
+      state |= 0; state = (state + 0x6D2B79F5) | 0;
+      var t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  var RANDOM_TAGS = ['span', 'div', 'b', 'i', 'em'];
+  function renderRandomInto(root, text, rng) {
+    while (root.firstChild) root.removeChild(root.firstChild);
+    function place(parent, str, level) {
+      if (!str.length) return;
+      if (level <= 0 || str.length <= 3) {
+        parent.appendChild(document.createTextNode(str));
+        return;
+      }
+      var cut = 1 + Math.floor(rng() * (str.length - 1));
+      var left = str.slice(0, cut);
+      var right = str.slice(cut);
+      [left, right].forEach(function (part) {
+        if (!part) return;
+        if (rng() < 0.5) {
+          var tag = RANDOM_TAGS[Math.floor(rng() * RANDOM_TAGS.length)];
+          var el = document.createElement(tag);
+          parent.appendChild(el);
+          place(el, part, level - 1);
+        } else {
+          place(parent, part, level - 1);
+        }
+      });
+    }
+    place(root, text, 6);
+  }
+
+  function addUserTurn(text) {
+    if (layoutMode === 'v2dom') return addUserTurnV2Dom(text);
+    var turn = document.createElement('div');
+    turn.className = 'turn';
+    turn.setAttribute('data-message-author-role', 'user');
+    if (layoutMode === 'random') {
+      renderRandomInto(turn, text, makeRng(seed * 7919 + mockMsgSeq));
+    } else {
+      turn.textContent = text;
+    }
+    thread.appendChild(turn);
+    return turn;
+  }
+
+  // ---------------------------------------------------------
+  // layout=v2dom：role属性・conversation-turn系のdata-testidが一切無い画面の再現。
+  // ユーザー・AIどちらの発言も、実機同様に単なるdivの積み重ねとして表示する。
+  // 停止ボタンは一切出さない。送信すると会話URLが/c/mock-testから/c/mock-v2に変わる
+  // （拡張機能側の送信確認「URLが/c/…に変わった」条件の確認用）。
+  // echo=1：ユーザー発言を改行ごとの<p>に分割して表示する（実際のChatGPTの見え方に近づける）。
+  // ---------------------------------------------------------
+  function addUserTurnV2Dom(text) {
+    mockMsgSeq++;
+    var group = document.createElement('div');
+    group.className = 'group flex min-w-0 flex-col turn';
+    group.style.cssText = 'background:#e5e7eb;border-radius:10px;padding:10px 14px;margin-left:12%;';
+    if (echoMode) {
+      String(text).split('\n').forEach(function (line) {
+        var p = document.createElement('p');
+        p.textContent = line;
+        group.appendChild(p);
+      });
+    } else {
+      group.textContent = text;
+    }
+    thread.appendChild(group);
+    return group;
+  }
+
+  function addAssistantTurnV2Dom() {
+    mockMsgSeq++;
+    var group = document.createElement('div');
+    group.className = 'group flex min-w-0 flex-col turn';
+    var body = document.createElement('div');
+    body.style.cssText = 'background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;';
+    group.appendChild(body);
+    thread.appendChild(group);
+    return body;
+  }
+
+  function addAssistantTurn() {
+    var turn = document.createElement('div');
+    turn.className = 'turn';
+    turn.setAttribute('data-message-author-role', 'assistant');
+    var markdown = document.createElement('div');
+    markdown.className = 'markdown';
+    turn.appendChild(markdown);
+    thread.appendChild(turn);
+    return markdown;
+  }
+
+  function addStopButton() {
+    removeStopButton();
+    var btn = document.createElement('button');
+    btn.id = 'stop-button';
+    btn.type = 'button';
+    btn.setAttribute('data-testid', 'stop-button');
+    btn.setAttribute('aria-label', 'Stop generating');
+    btn.textContent = '■ 生成を停止';
+    composerForm.appendChild(btn);
+  }
+  function removeStopButton() {
+    var existing = document.getElementById('stop-button');
+    if (existing) existing.remove();
+  }
+
+  function getComposerText() {
+    return (composer.textContent || '').trim();
+  }
+  function clearComposer() {
+    composer.textContent = '';
+  }
+  function scrollToBottom() {
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  // ---------------------------------------------------------
+  // layout=writing-block（既定）：div[data-testid="writing-block-container"] > .ProseMirror。
+  // ---------------------------------------------------------
+  function addAssistantTurnWritingBlock() {
+    var turn = document.createElement('div');
+    turn.className = 'turn';
+    turn.setAttribute('data-message-author-role', 'assistant');
+    var markdown = document.createElement('div');
+    markdown.className = 'markdown';
+    turn.appendChild(markdown);
+
+    var container = document.createElement('div');
+    container.setAttribute('data-testid', 'writing-block-container');
+    container.style.cssText = 'border:1px solid #e5e7eb;border-radius:10px;margin:6px 0;background:#fbfbfc;overflow:hidden;';
+    markdown.appendChild(container);
+
+    var bodyWrap = document.createElement('div');
+    bodyWrap.style.cssText = 'padding:10px 14px;';
+    container.appendChild(bodyWrap);
+
+    var prose = document.createElement('div');
+    prose.className = 'ProseMirror';
+    // v0.4.1.4: 2026-09-29に実機で確認：writing block（書き物キャンバス）の本文要素は実際には
+    // contenteditable="true"・aria-label="書き始める"を持つ（formの外）。以前の拡張機能は
+    // [contenteditable="true"]を一律「入力欄」として除外していたため、この要素の本文・目印を
+    // 読み飛ばしていた（旧コードでこのモックが不合格になることをrun-matrix.mjsで確認済み）。
+    prose.setAttribute('contenteditable', 'true');
+    prose.setAttribute('aria-label', '書き始める');
+    bodyWrap.appendChild(prose);
+
+    thread.appendChild(turn);
+    return prose;
+  }
+
+  // 拡張機能のcollectMainTextIndexはテキストノードを出現順に連結するだけなので、
+  // 1行=1子要素（<p>）にしても単純にtextContentで流し込んでも、どちらでも読める。
+  // ここでは元のProseMirrorの見た目（1行=1子要素）を維持する。
+  function renderProseMirrorLines(prose, partialBodyText) {
+    while (prose.firstChild) prose.removeChild(prose.firstChild);
+    partialBodyText.split('\n').forEach(function (line) {
+      var p = document.createElement('p');
+      p.textContent = line;
+      prose.appendChild(p);
+    });
+  }
+
+  // ---------------------------------------------------------
+  // layout=stale：実機不具合の再現。.markdownには残骸「<h」だけが残り、本文は.markdown/
+  // .ProseMirrorのどちらも付かない別のdivに入る。
+  // ---------------------------------------------------------
+  function addAssistantTurnStale() {
+    var turn = document.createElement('div');
+    turn.className = 'turn';
+    turn.setAttribute('data-message-author-role', 'assistant');
+
+    var staleMarkdown = document.createElement('div');
+    staleMarkdown.className = 'markdown';
+    staleMarkdown.style.display = 'none';
+    staleMarkdown.textContent = '<h';
+    turn.appendChild(staleMarkdown);
+
+    var bodyWrap = document.createElement('div');
+    bodyWrap.className = 'flex w-full';
+    var body = document.createElement('div');
+    body.className = 'fbskMG_root LR5Y_W_content';
+    body.style.cssText = 'background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;';
+    bodyWrap.appendChild(body);
+    turn.appendChild(bodyWrap);
+
+    thread.appendChild(turn);
+    return body;
+  }
+
+  // ---------------------------------------------------------
+  // 汎用ヘルパー：layoutの値を問わず、そのlayoutの「本文を差し込む先」を1つ返す。
+  // ---------------------------------------------------------
+  function addAssistantTurnGeneric() {
+    if (layoutMode === 'v2dom') return { kind: 'plain', el: addAssistantTurnV2Dom() };
+    if (layoutMode === 'stale') return { kind: 'plain', el: addAssistantTurnStale() };
+    if (layoutMode === 'markdown') return { kind: 'plain', el: addAssistantTurn() };
+    if (layoutMode === 'random') return { kind: 'random', el: addAssistantTurn() };
+    return { kind: 'writing-block', el: addAssistantTurnWritingBlock() };
+  }
+
+  function setGenericTurnText(ref, text, rngSeed) {
+    if (ref.kind === 'writing-block') {
+      renderProseMirrorLines(ref.el, text);
+    } else if (ref.kind === 'random') {
+      renderRandomInto(ref.el, text, makeRng(rngSeed));
+    } else {
+      ref.el.textContent = text;
+    }
+  }
+
+  // v0.4.1.0: 記事・サムネ指示どちらでも使う汎用ストリーミング。sourceTextは既に
+  // 目印（[[EISAI-START-<id>]]〜[[EISAI-END-<id>]]）で包まれた完成形。
+  function startStreamingGenericText(sourceText) {
+    streaming = true;
+    var ref = addAssistantTurnGeneric();
+    var showStop = layoutMode !== 'v2dom'; // v2domは実機同様、停止ボタンを一切出さない
+    if (showStop) addStopButton();
+    var shown = '';
+    var i = 0;
+    var rngSeed = seed * 104701 + (++mockMsgSeq);
+
+    function applyHiddenFreeze() {
+      // hideDuringMode: 裏にある間はDOM反映を止める（実機の再現）。目印の手前で止める。
+      var frozenLen = Math.min(shown.length, 4);
+      setGenericTurnText(ref, shown.slice(0, frozenLen), rngSeed);
+    }
+
+    return new Promise(function (resolve) {
+      var frozen = false;
+      function onVisibilityChange() {
+        if (!document.hidden && frozen) {
+          frozen = false;
+        }
+      }
+      if (hideDuringMode) document.addEventListener('visibilitychange', onVisibilityChange);
+
+      var timer = setInterval(function () {
+        // v0.4.1.2: renderHiddenMode指定時は、hideDuringMode（裏でDOM反映が止まる再現）より
+        // 優先し、裏でも本文の描画を止めずに最後まで書き終える（実機で確認した別パターンの再現）。
+        if (hideDuringMode && document.hidden && !renderHiddenMode) {
+          if (!frozen) { frozen = true; applyHiddenFreeze(); }
+          return;
+        }
+        if (i >= sourceText.length) {
+          clearInterval(timer);
+          setGenericTurnText(ref, sourceText, rngSeed);
+          if (showStop) removeStopButton();
+          streaming = false;
+          if (hideDuringMode) document.removeEventListener('visibilitychange', onVisibilityChange);
+          scrollToBottom();
+          resolve(ref);
+          return;
+        }
+        shown += sourceText.slice(i, i + CHUNK_SIZE);
+        i += CHUNK_SIZE;
+        setGenericTurnText(ref, shown, rngSeed);
+        scrollToBottom();
+      }, speedMs);
+    });
+  }
+
+  // 画像そのもの（640×427・単色のcanvas由来data URL。拡張機能側の判定は
+  // naturalWidth>500だけなので、実機の1536幅を再現する必要はない。小さくすることで
+  // toDataURL()の符号化コストを抑え、ロングタスク（50ms超）を避ける）。何度呼んでも同じ画像を使う。
+  // ページ読み込み時に一度だけ先読みしておく（warmMockImageDataUrl）ので、実際の画像生成
+  // ステップではキャッシュから即座に返る。
+  var mockImageDataUrlCache = null;
+  function buildMockImageDataUrl() {
+    if (mockImageDataUrlCache) return mockImageDataUrlCache;
+    try {
+      var canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 427;
+      var ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#F5811F';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#12294D';
+        ctx.font = 'bold 28px sans-serif';
+        ctx.fillText('mock thumbnail 640x427', 24, 56);
+      }
+      mockImageDataUrlCache = canvas.toDataURL('image/png');
+    } catch (e) {
+      mockImageDataUrlCache = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+    }
+    return mockImageDataUrlCache;
+  }
+
+  // v0.4.1.3: 実機で観察した挙動（大きい画像がまず「プレビュー」表示のまま十数秒出て、
+  // その後DOMごと本番表示（プレビューのラベルが消えて画像1枚だけ）に差し替わる）を再現する。
+  // 拡張機能側（watchGeneratedImage・isNearImagePreviewLabel）が、このプレビュー段階を
+  // 完成と誤検出しないことをrun-matrix.mjsで確認するために使う。
+  var MOCK_IMAGE_PREVIEW_MS = 10000;
+  function appendPreviewThenFinalImage(container) {
+    var wrap = document.createElement('div');
+    wrap.className = 'mock-image-wrap';
+    var label = document.createElement('div');
+    label.className = 'mock-image-preview-label';
+    label.textContent = 'プレビュー';
+    var img = document.createElement('img');
+    img.src = buildMockImageDataUrl();
+    img.alt = 'mock generated thumbnail preview';
+    wrap.appendChild(label);
+    wrap.appendChild(img);
+    container.appendChild(wrap);
+
+    setTimeout(function () {
+      // 本番段階：DOMを差し替え、プレビューのラベルを消して画像1枚だけにする
+      while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+      wrap.className = 'mock-image-final-wrap';
+      var finalImg = document.createElement('img');
+      finalImg.src = buildMockImageDataUrl();
+      finalImg.alt = 'mock generated thumbnail final';
+      wrap.appendChild(finalImg);
+      scrollToBottom();
+    }, MOCK_IMAGE_PREVIEW_MS);
+  }
+
+  // 「画像を1枚生成してください」の応答を再現する。mode省略時は成功（プレビュー→本番差し替え）。
+  // mode='imgFail'は失敗の言い回し＋下書きimgの両方（プレビュー無し）。
+  // mode='imgNone'は失敗の言い回しのみ・imgなし。
+  function startStreamingImageResult(mode) {
+    streaming = true;
+    var ref = addAssistantTurnGeneric();
+    var showStop = layoutMode !== 'v2dom';
+    if (showStop) addStopButton();
+
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        if (mode === 'imgNone') {
+          setGenericTurnText(ref, '画像を生成できませんでした。もう一度お試しください。', seed);
+        } else if (mode === 'imgFail') {
+          setGenericTurnText(ref, '画像を生成できませんでした。表示中の画像でよければご利用ください。', seed);
+          var img = document.createElement('img');
+          img.src = buildMockImageDataUrl();
+          img.alt = 'mock generated thumbnail';
+          ref.el.appendChild(img);
+        } else {
+          setGenericTurnText(ref, '', seed);
+          appendPreviewThenFinalImage(ref.el);
+        }
+        if (showStop) removeStopButton();
+        streaming = false;
+        scrollToBottom();
+        resolve();
+      }, Math.max(300, speedMs * 5));
+    });
+  }
+
+  // v0.4.1.0: 送信文の内容から、記事生成用プロンプト／サムネ指示の依頼文／画像生成の依頼文の
+  // どれかを判定する。判定に使う文字列は、拡張機能側の実際の送信文と一致させる。
+  function classifyOutgoingMessage(text) {
+    if (text.indexOf('【画像生成リクエスト】') !== -1) return 'thumbnail-request';
+    if (text.indexOf('次の内容で画像を1枚生成してください') !== -1) return 'image-request';
+    return 'article-request';
+  }
+
+  function wrapWithMarkers(id, bodyText) {
+    return '[[EISAI-START-' + id + ']]\n' + bodyText + '\n[[EISAI-END-' + id + ']]';
+  }
+
+  function handleArticleRequestSend(sentText) {
+    var id = extractRequestId(sentText);
+    if (!fixtureReady || !fixtureText) {
+      showFixtureMissing('送信は成功しましたが応答は再現されません');
+      streaming = false;
+      return;
+    }
+    if (!id) {
+      console.warn('[mock] 送信文から依頼番号を読み取れませんでした。目印無しで本文だけ返します。');
+      startStreamingGenericText(fixtureText);
+      return;
+    }
+    startStreamingGenericText(wrapWithMarkers(id, fixtureText));
+  }
+
+  function handleThumbnailRequestSend(sentText) {
+    var id = extractRequestId(sentText);
+    var body = (imgPromptFixtureReady && imgPromptFixtureText)
+      ? imgPromptFixtureText
+      : ('[[EISAI_IMG_PROMPT]]\nダミーの画像生成プロンプトです。fixtures/img-prompt-sample.txt' +
+        'が見つからないため、この簡易文で代用しています。\n[[/EISAI_IMG_PROMPT]]\n' +
+        '[[EISAI_IMG_TEXT]] メイン：ダミー');
+    if (!id) {
+      console.warn('[mock] サムネ指示依頼から依頼番号を読み取れませんでした。目印無しで返します。');
+      startStreamingGenericText(body);
+      return;
+    }
+    startStreamingGenericText(wrapWithMarkers(id, body));
+  }
+
+  function handleImageRequestSend() {
+    var mode = imgNoneMode ? 'imgNone' : (imgFailMode ? 'imgFail' : '');
+    startStreamingImageResult(mode);
+  }
+
+  function handleSend() {
+    if (failSend) return; // 送信ボタン／Enterキーが反応しない状態を再現（fail=send）
+    if (streaming) return; // 生成中は多重送信しない（本物のChatGPTと同様）
+    if (sendBtn.disabled) return; // アップロード中など（実機でも押せない）
+    var typed = getComposerText();
+    // v0.4.1.7: 添付（長すぎる貼り付け）の中身も、ChatGPTには届く（会話には展開されない）
+    var attachText = pastedAttachments.map(function (e) { return e.text; }).join('\n');
+    if (!typed && !attachText) return;
+    var text = attachText ? (typed + '\n' + attachText) : typed;
+
+    addUserTurn(attachText ? (typed + '\n📄 貼り付けたテキスト.txt（添付）') : typed);
+    clearComposer();
+    pastedAttachments.forEach(function (e) { e.el.remove(); });
+    pastedAttachments = [];
+    scrollToBottom();
+
+    // layout=v2domでは、送信すると会話URLが/c/mock-testから/c/mock-v2に変わる実機の挙動を
+    // 再現する（拡張機能側の「URLが/c/…に変わったら送信成功とみなす」確認用）。
+    if (layoutMode === 'v2dom') {
+      history.replaceState(null, '', '/c/mock-v2' + location.search);
+    }
+
+    var kind = classifyOutgoingMessage(text);
+    if (kind === 'thumbnail-request') {
+      handleThumbnailRequestSend(text);
+      return;
+    }
+    if (kind === 'image-request') {
+      handleImageRequestSend();
+      return;
+    }
+    handleArticleRequestSend(text);
+  }
+
+  if (!failSend) {
+    sendBtn.addEventListener('click', handleSend);
+    composer.addEventListener('keydown', function (ev) {
+      // v0.4.1.5: lateSendBtn=1では、実機の「送信ボタンがまだ出ていない一瞬」を再現する
+      // ため、Enterキーでは送れない（拡張機能が送信ボタンを探し直すことを確認するテスト
+      // 専用モード。実機でもEnterキーでは送信されない画面だった）。
+      if (lateSendBtnMode) return;
+      if (ev.key === 'Enter' && !ev.shiftKey) {
+        ev.preventDefault();
+        handleSend();
+      }
+    });
+  } else {
+    // fail=send：送信ボタンを無効化し、拡張機能側のクリック検出・
+    // キーボードEnterフォールバックのどちらでも送信できない状態にする
+    sendBtn.disabled = true;
+  }
+
+  // v0.4.1.5: 2026-09-29に実機で確認：タブが裏にあるとChatGPT側の描画が遅れ、入力欄に
+  // 文字が入ってもしばらく送信ボタンが現れない（≒無効な）ことがある。lateSendBtn=1で、
+  // 入力を検知してから裏にある間だけLATE_SEND_BTN_DELAY_MS（既定2秒）送信ボタンを
+  // 無効化し、その間は拡張機能が探し直す（CHATGPT_ADAPTER.send）ことを確認できるようにする。
+  if (lateSendBtnMode) {
+    composer.addEventListener('input', function () {
+      if (!document.hidden) return; // 表にある間は遅延しない（実機どおり）
+      if (sendBtn.disabled) return; // 既に無効化タイマー中
+      sendBtn.disabled = true;
+      setTimeout(function () {
+        sendBtn.disabled = false;
+      }, LATE_SEND_BTN_DELAY_MS);
+    });
+  }
+
+  // v0.4.1.7: 実機（2026-09-29計測）の入力欄の性質を再現する（既定で有効）。
+  //  (1) execCommand('insertText'／'insertHTML')は文字数の2乗に近い割合で重い
+  //      （実機：3,000字で約1秒、15,000字で約17秒。その間ページ全体が固まる）。
+  //      slowInsert=0で無効化できる。
+  //  (2) 貼り付け（pasteイベント）は一瞬で入る。ただしpasteAttachAt字（既定9,000字）を超えると
+  //      本文には入らず「貼り付けたテキスト（n）.txt」の添付になる（実機：8,000字は本文、
+  //      10,000字以上は添付）。添付直後はアップロード中として送信ボタンを約1.2秒無効化する。
+  // (3) 焦点が無い時の navigator.clipboard.writeText() は、実機で「失敗もせず返ってこない」
+  //     ことがあった（その後ろの画像生成の送信が永久に始まらなかった）。clipHang=0 以外では
+  //     writeText を永久に返らない約束に置き換え、拡張機能がコピーで止まらないことを確かめる。
+  if (params.get('clipHang') !== '0') {
+    try {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: function () { return new Promise(function () {}); } }
+      });
+    } catch (e) { /* noop */ }
+  }
+  var slowInsertMode = params.get('slowInsert') !== '0';
+  var pasteAttachAtParam = parseInt(params.get('pasteAttachAt'), 10);
+  var PASTE_ATTACH_AT = Number.isFinite(pasteAttachAtParam) && pasteAttachAtParam > 0 ? pasteAttachAtParam : 9000;
+  var pastedAttachments = [];
+  var attachmentBar = document.createElement('div');
+  attachmentBar.id = 'mock-attachment-bar';
+  composerForm.insertBefore(attachmentBar, composerForm.firstChild);
+
+  function busyWait(ms) {
+    var end = performance.now() + ms;
+    while (performance.now() < end) { /* 実機の重さの再現 */ }
+  }
+  (function wrapExecCommand() {
+    var nativeExec = document.execCommand.bind(document);
+    document.execCommand = function (cmd, ui, value) {
+      if (slowInsertMode && (cmd === 'insertText' || cmd === 'insertHTML') &&
+          typeof value === 'string' && value.length >= 300) {
+        busyWait(Math.min(20000, Math.pow(value.length / 3000, 2) * 1000));
+      }
+      return nativeExec(cmd, ui, value);
+    };
+  })();
+
+  composer.addEventListener('paste', function (ev) {
+    var dt = ev.clipboardData;
+    var pasted = dt ? dt.getData('text/plain') : '';
+    if (!pasted) return;
+    ev.preventDefault();
+    if (pasted.length > PASTE_ATTACH_AT) {
+      var idx = pastedAttachments.length + 1;
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.setAttribute('aria-label', '貼り付けたテキスト（' + idx + '）.txt を削除');
+      chip.textContent = '📄 貼り付けたテキスト（' + idx + '）.txt ✕';
+      chip.style.cssText = 'margin:0 6px 6px 0;font-size:12px;';
+      var entry = { text: pasted, el: chip };
+      chip.addEventListener('click', function () {
+        pastedAttachments = pastedAttachments.filter(function (e) { return e !== entry; });
+        chip.remove();
+      });
+      pastedAttachments.push(entry);
+      attachmentBar.appendChild(chip);
+      if (!failSend) {
+        sendBtn.disabled = true;
+        setTimeout(function () { sendBtn.disabled = false; }, 1200);
+      }
+      return;
+    }
+    var sel = window.getSelection();
+    var range = (sel && sel.rangeCount) ? sel.getRangeAt(0) : null;
+    if (range && composer.contains(range.commonAncestorContainer)) {
+      range.deleteContents();
+      var node = document.createTextNode(pasted);
+      range.insertNode(node);
+      range.setStartAfter(node);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      composer.textContent = (composer.textContent || '') + pasted;
+    }
+    composer.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  buildHeavyFillerDom();
+  loadFixture();
+  loadImgPromptFixture();
+})();
+</script>
+
+<!--
+  拡張機能を @grant none のまま素の <script src> で読み込む。
+-->
+<script src="../blog-generator-chatgpt.user.js"></script>
+<!--
+  拡張機能は chatgpt.com の「/」「/c/…」「/g/…」でだけ起動ボタンを出す。
+  模擬ページのURLのままだと出ないため、拡張機能の読み込み後に表示上のパスだけ /c/mock-test に置き換える
+  （fixtureとスクリプトは読み込み済み。再読み込み時は元のURLで開き直すこと）。
+-->
+<script>history.replaceState(null, '', '/c/mock-test' + location.search);</script>
+</body>
+</html>

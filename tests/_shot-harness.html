@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>_shot-harness - パネルUI撮影用ページ</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #f7f7f8; }
+  #mockFrame { display: block; border: none; }
+</style>
+</head>
+<body>
+<iframe id="mockFrame"></iframe>
+<script>
+(function () {
+  'use strict';
+
+  // v0.4.0: パネルUI（editor-icons.htmlではなくblog-generator-chatgpt.user.jsのパネル）を
+  // 決まった4状態（a初期／bかんたんメモ入力／cしっかりモード／d生成完了後）にしてから、
+  // 外部（Node + Chrome DevTools Protocol）がスクリーンショットを撮れるようにする撮影専用ページ。
+  // ?state=a|b|c|d で状態を選ぶ。準備ができたら window.__SHOT_READY__=true と
+  // window.__SHOT_CLIP__={x,y,width,height} をセットする（CDP側がポーリングする）。
+  var params = new URLSearchParams(location.search);
+  var state = params.get('state') || 'a';
+  var iframe = document.getElementById('mockFrame');
+
+  var W = window.innerWidth || 900;
+  var H = window.innerHeight || 1400;
+  iframe.style.width = W + 'px';
+  iframe.style.height = H + 'px';
+
+  window.__SHOT_READY__ = false;
+  window.__SHOT_ERROR__ = '';
+  window.__SHOT_CLIP__ = null;
+
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function waitFor(fn, timeoutMs, intervalMs) {
+    timeoutMs = timeoutMs || 20000;
+    intervalMs = intervalMs || 150;
+    var deadline = Date.now() + timeoutMs;
+    return new Promise(function (resolve, reject) {
+      (function poll() {
+        var value;
+        try { value = fn(); } catch (e) { value = null; }
+        if (value) return resolve(value);
+        if (Date.now() > deadline) return reject(new Error('waitFor timeout'));
+        setTimeout(poll, intervalMs);
+      })();
+    });
+  }
+
+  function fireInput(el, value) {
+    el.value = value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function findButtonByText(doc, text) {
+    var buttons = doc.querySelectorAll('button');
+    for (var i = 0; i < buttons.length; i++) {
+      if (buttons[i].textContent.trim() === text) return buttons[i];
+    }
+    return null;
+  }
+
+  var SAMPLE_MEMO = '9/6にテスト前の無料対策会やった。40人来た！前回32人だったから増えた\n' +
+    '中3のHくん 社会の暗記が苦手だったが、先生の説明でわかったと話していた';
+
+  function computeClip(panel) {
+    var rect = panel.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.round(rect.left)),
+      y: Math.max(0, Math.round(rect.top)),
+      width: Math.round(rect.width),
+      height: Math.round(Math.min(rect.height, H - rect.top)),
+      scale: 1
+    };
+  }
+
+  async function run() {
+    // dだけテストモード（教室情報が自動で埋まる）で開く。a/b/cは「未設定」の初期状態を見せるため付けない。
+    var qs = 'fixture=higashioozima-chatgpt&speed=10';
+    if (state === 'd') qs += '&eisai_test=1';
+    iframe.src = 'mock-chatgpt.html?' + qs;
+
+    await new Promise(function (resolve) { iframe.onload = resolve; });
+    var win = iframe.contentWindow;
+    var doc = iframe.contentDocument;
+
+    // 拡張機能は ensureButton() を1秒間隔で呼ぶので、起動ボタンが出るまで待つ
+    var launcher = await waitFor(function () {
+      return doc.querySelector('button[id^="eisai-chatgpt-btn-v"]');
+    }, 15000);
+    launcher.click();
+
+    var panel = await waitFor(function () {
+      var p = doc.querySelector('div[id^="eisai-chatgpt-tool-v"]');
+      return (p && !p.classList.contains('collapsed')) ? p : null;
+    }, 5000);
+    await sleep(250);
+
+    if (state === 'a') {
+      // 初期状態：教室情報未設定・かんたんモード・入力なし。何もしない。
+    } else if (state === 'b') {
+      var memo = panel.querySelector('textarea.eisai-input');
+      fireInput(memo, SAMPLE_MEMO);
+      await sleep(150);
+    } else if (state === 'c') {
+      var segButtons = panel.querySelectorAll('.eisai-segmented button');
+      var detailedBtn = null;
+      segButtons.forEach(function (b) {
+        if (b.textContent.indexOf('しっかり') >= 0) detailedBtn = b;
+      });
+      if (!detailedBtn) throw new Error('しっかりモードのボタンが見つかりません');
+      detailedBtn.click();
+      await sleep(200);
+    } else if (state === 'd') {
+      var memo2 = panel.querySelector('textarea.eisai-input');
+      fireInput(memo2, SAMPLE_MEMO);
+      await sleep(200);
+      var genBtn = findButtonByText(doc, 'ChatGPTで記事を作る');
+      if (!genBtn) throw new Error('送信ボタンが見つかりません');
+      genBtn.click();
+      // 生成完了（HTMLをコピー（エディタへ）ボタンが表示される）まで待つ
+      await waitFor(function () {
+        var cb = findButtonByText(doc, 'HTMLをコピー（エディタへ）');
+        return (cb && win.getComputedStyle(cb).display !== 'none') ? cb : null;
+      }, 60000, 400);
+      await sleep(400);
+    } else {
+      throw new Error('unknown state: ' + state);
+    }
+
+    window.__SHOT_CLIP__ = computeClip(panel);
+    window.__SHOT_READY__ = true;
+  }
+
+  run().catch(function (e) {
+    window.__SHOT_ERROR__ = (e && e.message) ? e.message : String(e);
+    window.__SHOT_READY__ = true; // エラーでも待ちっぱなしにしない
+  });
+})();
+</script>
+</body>
+</html>
