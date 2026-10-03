@@ -358,3 +358,13 @@ test('buildThumbnailPromptRequest: 必須の指示（創作禁止・多層の文
   [/創作の禁止/, /4〜6層/, /ラベル/, /サブ帯/, /タグ/, /白衣/, /スーツ/, /横並び/, /向かい合/, /正面向きで見せない/, /細かい文字/, /\[\[EISAI_IMG_PROMPT\]\]/, /\[\[EISAI_IMG_TEXT\]\]/, /画像は生成しないでください/, /依頼番号：must01/]
     .forEach(re => assert.match(prompt, re));
 });
+
+test('v0.4.4：主役を記事ごとに1人に決めさせ、顔に文字を重ねさせない', () => {
+  const raw = fs.readFileSync(path.join(FIXTURES_DIR, 'sc_yanokuchi-chatgpt.txt'), 'utf8');
+  const prompt = buildRealThumbnailPromptRequest({ sourceBlogHtml: raw, sourceBlogTitle: 't', sourceArticleFacts: 'f', requestId: 'subj01' });
+  [/主役を1人に決める/, /生徒が主役/, /先生（白衣）が主役/, /室長（ダークスーツ）が主役/, /顔（目・口・鼻）に、文字・帯・バッジを絶対に重ねない/, /主役（生徒／先生／室長／人物なし）/].forEach(re => assert.match(prompt, re));
+  assert.ok(prompt.length <= 7500, `${prompt.length}字`);
+  const msg = buildImageGenerateMessage('img001', '', 'p');
+  assert.match(msg, /顔に文字・帯・バッジを重ねない/);
+  assert.match(msg, /横並び（向かい合わない）/);
+});
