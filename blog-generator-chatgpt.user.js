@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.4.2
+// @version      0.4.3
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -98,7 +98,7 @@ ${buildRequestIdLine(requestId)}
     return;
   }
 
-  const CURRENT_VERSION = '0.4.2';
+  const CURRENT_VERSION = '0.4.3';
   // v0.4.0.5: パネル見出しの版表示だけ、Tampermonkey等が渡す GM_info.script.version があれば
   // それを使う（テスト版インストール時は 0.4.0.N のようなテスト版番号が出る）。
   // @grant none環境やGM_info未対応環境でも落ちないよう、try/typeofで守る。
@@ -355,12 +355,14 @@ ${buildRequestIdLine(requestId)}
     return input;
   }
 
+  // v0.4.3: 湯浅さん指示「基本は非テストモード。テストモードは、こちら（開発側）が仮の文章を入れて
+  // 出来を見るためのもの」。テストモードは、URLに eisai_test=1 が付いている時（開発用のテスト画面）だけ
+  // 有効にし、それ以外は毎回オフに戻す（以前オンにしたままの職員のパソコンも、自動でオフになる）。
   function syncTestModeFlagFromLocation() {
     const href = location.href || '';
     if (href.indexOf('eisai_test=1') >= 0) {
       localStorage.setItem(TEST_MODE_STORAGE_KEY, 'true');
-    }
-    if (href.indexOf('eisai_test=0') >= 0) {
+    } else {
       localStorage.removeItem(TEST_MODE_STORAGE_KEY);
     }
   }
@@ -3806,32 +3808,8 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
 
     const headerRight = createEl('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } }, header);
 
-    const testModeBtn = createEl('button', {
-      style: {
-        fontSize: '10px',
-        padding: '3px 6px',
-        borderRadius: '4px',
-        border: isTestModeEnabled() ? '1px solid #f5a623' : '1px solid rgba(255,255,255,0.35)',
-        background: isTestModeEnabled() ? '#ffd453' : 'transparent',
-        color: isTestModeEnabled() ? '#7a4a00' : '#e7ebf3',
-        cursor: 'pointer',
-        whiteSpace: 'nowrap',
-        fontWeight: '700'
-      }
-    }, headerRight, isTestModeEnabled() ? 'テストOFF' : 'テストON');
-    testModeBtn.title = 'テストモードを切り替えます（もう一度押すと切替）';
-    // v0.4.0: confirm()の代わりに2回押し確認にする（1回目で「もう一度押すと切替」に変わる）
-    armTwoStepButton(testModeBtn, 'もう一度で切替', () => {
-      const nextEnabled = !isTestModeEnabled();
-      setTestModeEnabled(nextEnabled);
-      setChatAvoidance(false);
-      panel.remove();
-      toggleBtn.remove();
-      buildPanel({ forceOpen: true });
-      showToast(nextEnabled
-        ? 'テストモードをONにしました。架空教室情報とサンプル入力ボタンが使えます。'
-        : 'テストモードをOFFにしました。');
-    });
+    // v0.4.3: 「テストON/OFF」ボタンはパネルから外した（職員が触る必要が無く、紛らわしいため）。
+    // テストモードは開発用のテスト画面（URLに eisai_test=1）でだけ使う。
 
     const updateBtn = createEl('button', {
       style: {
@@ -4668,10 +4646,16 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
     const copyBtn = createEl('button', { id: 'eisai-copy-html-btn', className: 'eisai-primary-btn', style: { display: 'none', marginTop: '0' } }, actionRow, 'HTMLをコピー（エディタへ）');
 
     // v0.4.0（design.md 5.結果パネル）：コピーしたHTMLをエディタで装飾するための入口
-    const openEditorBtn = createEl('button', { id: 'eisai-open-editor-btn', className: 'eisai-secondary-btn', style: { display: 'none' } }, actionRow, 'エディタを開く');
-    openEditorBtn.onclick = () => {
-      window.open('https://tools.eisai.org/blogs/editor-icons.html', '_blank');
-    };
+    // v0.4.3: 湯浅さん指示「エディタは必ず新規タブで開いて（ChatGPTに戻れなくなる）」。
+    // ボタン＋window.openではなく、target="_blank"の本物のリンクにする（ブラウザが必ず新しいタブで開く）。
+    const openEditorBtn = createEl('a', {
+      id: 'eisai-open-editor-btn',
+      className: 'eisai-secondary-btn',
+      style: { display: 'none', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }
+    }, actionRow, 'エディタを開く（新しいタブ）');
+    openEditorBtn.href = 'https://tools.eisai.org/blogs/editor-icons.html';
+    openEditorBtn.target = '_blank';
+    openEditorBtn.rel = 'noopener';
 
     // v0.4.0.4: クリップボードへの自動コピーが失敗した時だけ出す、最小限の手動コピー用テキスト欄
     // （このパネルには生成HTMLの表示欄が他に無いため、失敗時にここへ流し込んで代用する）。
