@@ -82,3 +82,11 @@ test('parseCtaData：改行なしで1行につながっていても、項目ご�
   assert.equal(d['相談ポイント2'], '優先順位');
   assert.equal(d['締めの言葉'], 'まずは一緒に。');
 });
+
+test('v0.4.2：手順には中身が分かるタイトル（data-title）を付けさせ、教室情報に対象校を出さない', () => {
+  const p = buildBlogPromptV3({ type: 'ba', mode: 'easy', memo }, { ...cls, schools: '第一中, 第二中' }, 'id0008');
+  assert.match(p, /<ol class="eisai-steps" data-title="/);
+  assert.match(p, /data-title に、その手順の中身が分かる12字以内のタイトル/);
+  const schoolInfo = (p.match(/<div class="eisai-school-info">[\s\S]*?<\/div>/) || [''])[0];
+  assert.doesNotMatch(schoolInfo, /対象校/);
+});
