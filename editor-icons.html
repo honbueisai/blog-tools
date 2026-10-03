@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- 英才ブログエディタ Ver.0.13.1 -->
+<!-- 英才ブログエディタ Ver.0.13.2 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>英才ブログエディタ - アイコン版 Ver.0.13.1</title>
+  <title>英才ブログエディタ - アイコン版 Ver.0.13.2</title>
   <style>
     /* === デザイントークン（v0.11.0 P1 D1-1: ツールChrome用） === */
     :root {
@@ -10862,7 +10862,12 @@
               && liEls.every((li) => (li.textContent || '').trim().length <= 60);
             if ((el.classList && el.classList.contains('eisai-steps')) || looksLikeStepsWithoutClass) {
               const stepItems = liEls.map(li => li.innerHTML);
-              return tagWithTheme(buildListHtmlFromItems(theme, 'STEP', stepItems, 'Step'));
+              // v0.13.2: 湯浅さん指摘「Step STEP と重複している」。タイトルを固定の「STEP」にせず、
+              // 拡張機能（v0.4.2〜）が付ける data-title（手順の中身が分かる短いタイトル）を使う。
+              // 無い時（古い出力）は「進め方」にする（英字ラベル「Step」と重ならないように）。
+              const rawTitle = (el.getAttribute && el.getAttribute('data-title')) || '';
+              const stepsTitle = escapeHtmlAttr(rawTitle.trim().slice(0, 30)) || '進め方';
+              return tagWithTheme(buildListHtmlFromItems(theme, stepsTitle, stepItems, 'Step'));
             }
             // 順序付きリスト → 番号を保持するため<ol>のまま出力し、テーマのinkカラーで色付けする
             const items = Array.from(el.children).filter(c => c.tagName === 'LI').map(li => `<li>${li.innerHTML}</li>`).join('');
