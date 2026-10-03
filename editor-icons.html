@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- 英才ブログエディタ Ver.0.13.0 -->
+<!-- 英才ブログエディタ Ver.0.13.1 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>英才ブログエディタ - アイコン版 Ver.0.13.0</title>
+  <title>英才ブログエディタ - アイコン版 Ver.0.13.1</title>
   <style>
     /* === デザイントークン（v0.11.0 P1 D1-1: ツールChrome用） === */
     :root {
@@ -618,6 +618,11 @@
       border-left: 4px solid var(--orange);
       border-bottom: 1px solid var(--line);
       flex-shrink: 0;
+    }
+    .article-title-bar #btn-copy-title,
+    .article-title-bar #btn-copy-body {
+      flex-shrink: 0;
+      white-space: nowrap;
     }
     .article-title-label {
       font-size: var(--fs-xs);
@@ -1670,8 +1675,8 @@
       <div class="topbar-right">
         <a id="btn-legacy-editor" href="editor-icons-legacy.html" target="_blank" rel="noopener" class="btn-tertiary" title="以前のエディタ（Ver.0.11）を開く" aria-label="旧バージョンのエディタを開く（新しいタブ）">旧バージョン</a>
         <button id="btn-preview" class="btn-tertiary" title="プレビュー" aria-label="プレビュー">プレビュー</button>
-        <button id="btn-copy-title" class="btn-secondary" title="表題のテキストをコピー">タイトル</button>
-        <button id="btn-copy-body" class="btn-primary" title="本文HTMLをコピー">本文</button>
+        <button id="btn-copy-title" class="btn-primary" title="表題のテキストをコピー">📋 タイトルをコピー</button>
+        <button id="btn-copy-body" class="btn-primary" title="本文HTMLをコピー">📋 本文（HTML）をコピー</button>
         <span class="topbar-divider"></span>
         <button id="btn-toggle-history" class="topbar-icon-btn" title="履歴パネルの表示切替" aria-label="履歴パネルの表示切替" aria-pressed="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 0 .5-4"/><path d="M3 4v4h4"/></svg>
@@ -9210,6 +9215,17 @@
         `;
         panel.insertBefore(titleBar, editorArea);
       }
+      // v0.13.1: 湯浅さん指摘「HTMLコピーとタイトルコピーのボタンが無くなっている」。v0.12.0で
+      // 右上のトップバーへ移したため見つけにくくなっていた。旧版（0.11）と同じく、表題の横（本文の
+      // すぐ上）に戻す。要素ごと移すので、bindTitleAndBodyCopy()のid経由の紐付けはそのまま使える。
+      (function moveCopyButtonsNextToTitle() {
+        const bar = document.getElementById('article-title-bar');
+        if (!bar) return;
+        ['btn-copy-title', 'btn-copy-body'].forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn && btn.parentElement !== bar) bar.appendChild(btn);
+        });
+      })();
 
       // タイトル候補（拡張機能が埋め込んだ3案）を選ぶ行
       if (!document.getElementById('article-title-candidates')) {
