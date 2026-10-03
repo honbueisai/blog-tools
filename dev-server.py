@@ -11,6 +11,15 @@ import socketserver
 PORT = 8090
 
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
+    # 日本語のHTML/JS/テキストが文字化けしないよう、UTF-8を明示する
+    extensions_map = {
+        **http.server.SimpleHTTPRequestHandler.extensions_map,
+        '.html': 'text/html; charset=utf-8',
+        '.js': 'text/javascript; charset=utf-8',
+        '.txt': 'text/plain; charset=utf-8',
+        '.md': 'text/markdown; charset=utf-8',
+    }
+
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         self.send_header('Pragma', 'no-cache')
@@ -18,6 +27,7 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 if __name__ == '__main__':
-    with socketserver.TCPServer(('127.0.0.1', PORT), NoCacheHandler) as httpd:
+    socketserver.ThreadingTCPServer.allow_reuse_address = True
+    with socketserver.ThreadingTCPServer(('127.0.0.1', PORT), NoCacheHandler) as httpd:
         print(f'🚀 No-cache server: http://localhost:{PORT}/editor-icons.html')
         httpd.serve_forever()

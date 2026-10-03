@@ -1,0 +1,78 @@
+# エディター（editor-icons.html / editor-icons-legacy.html）を、mainに入った時点で
+# 本番（tools.eisai.org/blogs/）へ自動でアップロードする。
+#
+# 最初に1回だけ、GitHubのリポジトリ設定 → Secrets and variables → Actions に次を登録する：
+#   FTP_SERVER      … FTPサーバー名
+#   FTP_USERNAME    … FTPのユーザー名
+#   FTP_PASSWORD    … FTPのパスワード
+#   FTP_SERVER_DIR  … アップロード先のフォルダ（最後は「/」で終える）
+#   FTP_PROTOCOL    … 任意。ftps（既定）または ftp
+# 登録していない間は、この処理は「未設定」と表示して何もせずに終わる（失敗にはしない）。
+name: エディターを本番へ反映
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'editor-icons.html'
+      - 'editor-icons-legacy.html'
+      - '.github/workflows/deploy-editor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-editor
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 設定の確認
+        id: check
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
+        run: |
+          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_SERVER_DIR" ]; then
+            echo "::warning::FTPの設定（Secrets）が未登録のため、本番への反映はスキップしました。"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 反映するファイルだけを集める
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          mkdir -p deploy
+          cp editor-icons.html editor-icons-legacy.html deploy/
+          grep -o '英才ブログエディタ Ver\.[0-9.]*' editor-icons.html | head -1 > expected-version.txt
+          echo "反映するバージョン：$(cat expected-version.txt)"
+
+      - name: FTPでアップロード
+        if: steps.check.outputs.ready == 'true'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
+          local-dir: ./deploy/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+
+      - name: 本番に反映されたか確認
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          expected="$(cat expected-version.txt)"
+          for i in 1 2 3 4 5 6; do
+            live="$(curl -fsSL "https://tools.eisai.org/blogs/editor-icons.html?check=$(date +%s)" | grep -o '英才ブログエディタ Ver\.[0-9.]*' | head -1 || true)"
+            echo "本番：${live:-（取得できず）} ／ 期待：${expected}"
+            if [ "$live" = "$expected" ]; then echo "✅ 本番に反映されました"; exit 0; fi
+            sleep 10
+          done
+          echo "::error::本番のバージョンが期待と一致しません（キャッシュの可能性もあります）。"
+          exit 1
