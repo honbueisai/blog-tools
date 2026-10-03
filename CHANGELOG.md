@@ -119,6 +119,197 @@
 
 ---
 
+## [Userscript (ChatGPT) 0.4.1] - 2026-09-29
+### Changed
+- 記事の型に「ビフォー・アフター型（生徒の変化・成果）」を追加し、**標準の型**にした（湯浅さん指示：情報提供の流れではなく、生徒の変化をメインにする）。
+  - 導入で結果（例：60点→92点）を先に見せ、本論の見出し3つを「以前の状態 → 教室でやったこと → 変化・結果」の順で書く。点数の変化は表、本人の言葉は吹き出し、最後に「ご家庭でできること」をまとめる。
+  - タイトル1案目には必ず「前→後」の変化を入れる。
+  - 「おまかせ」は、生徒の変化・成果ならビフォー・アフター型、イベント報告ならストーリー型で書く（悩み解決型は選ばない）。悩み解決型（情報提供）は、自分で選んだ時だけ使う。
+  - v0.4.0以前に保存した入力の下書きは、型をビフォー・アフター型に切り替える。
+- 本物のChatGPTで、小6算数（60点→92点）のメモからビフォー・アフター型の記事が出ることを確認。
+### Fixed
+- **（重要）ChatGPTの新しい画面で「考えています」のまま止まる不具合を修正**（2026-10-03、本物のChatGPTで確認）。画面に<main>が2つあり、先頭は空の「どこから始めましょうか？」、会話は2つ目に入っていた。v0.4.0は先頭の<main>だけを読んでいたため、回答が見つからなかった。読み取りの範囲を「会話が入っている<main>（文字数がいちばん多いもの）」に変更。テスト用の画面も既定でこの形にし、v0.4.0がこの形で止まることを確認済み。
+- 申込枠の文章（CTA_DATA）が、改行なしで1行につながって読まれても、項目ごとに分けて読めるようにした（実機で確認した形）。
+- **記事の一番最後の申込枠「まずはお気軽にご相談ください」が付かなくなっていた**のを復活（v0.4.0で、本文に申込ボタンがある時は付けない作りにしていたため）。文章（説明文・無料学習相談でできること4つ・無料体験授業でできること4つ・締めの言葉）は、記事に合わせてChatGPTが書く。AIが本文に書いた最後のCTAは重なるので取り除く。電話番号が未設定なら電話ボタンは出さない。
+- Codexレビューの指摘を反映：おまかせでストーリー型を選んだ時にビフォー・アフター専用の指示がかからないよう条件付きに／依頼文を短くまとめ直し（教室固有データの項）／しっかりモードで型が「おまかせ」のまま残る不具合／型を変えた時にすぐ保存／見出しの「おまかせが既定」を「標準：ビフォー・アフター」に／SPECのバージョン表記。
+
+## [Userscript (ChatGPT) 0.4.0] - 2026-09-23
+
+設計書 `reference/chatgpt-extension-v0.4-design.md` に基づく全面改修。
+
+### 追加
+- 記事入力を「誰に（学年・対象校・時期）」「悩み3つ」「家庭でできること3つ」「教室の事実」「事例・当日の様子（任意）」「つなげたい行動」「締切・特典」「文字数」「関連記事×3」「写真」に再編し、記事の型を**悩み解決型（solve）／ストーリー型（story）の2択**に整理（旧5タイプの入力画面は廃止）
+- プロトタイプv3の `buildPrompt()` を文言そのまま移植（`buildBlogPromptV3`）。教室設定を校舎名／室長名／地域・駅名／近隣対象校／申込URL／電話／LINE URL／住所／アクセス／受付時間まで拡張（既存キーは互換維持）
+- 記事入力の自動保存（`eisai_chatgpt_article_draft_v040`）・「入力をクリア」ボタン・必須未入力の具体的な事前表示
+- 「📋 プロンプトをコピー」ボタン（自動送信が壊れた時の逃げ道。コピー後にChatGPTへ貼って送信するよう案内）
+- 送信成功確認（送信後8秒以内に「ユーザー発言が増えた」「入力欄が空になった」「停止ボタンが出た」のいずれかを確認、無ければ1回だけ再送）と、生成中／完了／失敗をパネルに常時表示する状態表示を追加（サイレント失敗をなくす）
+- 完了判定に新語彙（`EISAI_CHECK`）・旧語彙（`CTA_DATA_END`）どちらでも対応。送信ボタンのセレクタに `#composer-submit-button` を追加
+- 生成後、新語彙（`eisai-cta`）がある出力ではAIが書いた `cta-btn`/`cta-sub` の href を教室設定の値で差し替える処理（`applyClassroomCtaLinks`）を追加。旧語彙のみの出力は従来の `buildCtaHtml` のまま後方互換
+- 結果パネルにタイトル3案（クリックでコピー・33字超警告）、`EISAI_CHECK` の自己チェック表示、拡張機能側の実測（本文字数・h2数・CTA数と中間CTA位置％・写真枠数・感嘆符/絵文字数）、**要確認**（本文の「」内の文言／曜日表記／数字＋単位のうち入力に無いものを前後15字付きで一覧表示。純粋関数 `findUnverifiedClaims`）を追加
+- `tests/mock-chatgpt.html` を追加：chatgpt.comの必要最小限のDOM（入力欄・送信ボタン・ユーザー発言・AI応答・停止ボタン）を再現し、拡張機能を素の`<script>`として読み込んで手動確認できるようにした（`tests/fixtures/*.txt` を流し込み再生、`fixture`/`fail`/`speed` パラメータ対応、外部通信なし）。使い方は `tests/README.md` 参照
+- **入力モード（かんたん／しっかり）を追加**（パネル上部で切り替え・選択は保存）。室長が必須項目の多さで書けなくなるのを防ぐため、必須項目を減らして自由記入でも記事を作れるようにした
+  - **かんたん（自由記入）**：必須は「メモ（書きたいこと・教室でやったこと）」1つだけ。記事の型に**おまかせ（メモから判断）**を追加（かんたんモードの既定）。学年・対象校・時期・つなげたい行動（既定：無料学習相談）・文字数・関連記事・写真は任意
+  - **しっかり（項目別）**：今までのフォームのまま。必須を「学年」と「教室でやっている事実」だけに縮小し、悩み3つ・家庭でできること3つ・対象校・時期は任意化
+  - `buildBlogPromptV3` をDOMを読まない純粋関数に整理し、`module.exports` に追加してNodeから直接呼べるようにした（フォーム側は値を集めて渡すだけ）
+  - かんたんモードでは【入力】にメモをそのまま載せ、「メモから事実を拾って使う・メモに無い事実は作らない・学年等が空欄ならメモから読み取れる範囲で書き、読み取れなければ特定しない」という指示を追加。記事の型が「おまかせ」の時は、ストーリー型／悩み解決型の本論指示を両方併記してAIに選ばせる
+  - 悩み3つが空欄の時は「よく聞くお悩み」のセリフ引用ではなく、「こんなお悩みはありませんか？」という問いかけの形に切り替え（empathy-boxのラベルも合わせる）。入力がある時は従来どおりセリフ引用のまま
+  - 家庭でできること3つが空欄の時は、記事の内容から一般的な学習方法の範囲で手順を3つ考えてよい（教室の実績・数字・日付は作らない）という指示に切り替え。入力がある時は従来のまま
+  - `findUnverifiedClaims`（要確認）の照合用テキストは、かんたんモードでもメモ全文を含む（`buildArticleFactsSummary` が全フィールドを対象にしているため追加対応不要）
+  - `tests/gen-prompts.js` と `tests/prompts/*.txt`（かんたん・おまかせ・メモのみ／かんたん・おまかせ・短いメモ／しっかり・必須項目だけ の3パターン）を追加し、`buildBlogPromptV3` の出力を確認できるようにした
+
+### 変更
+- `@version` / `CURRENT_VERSION` を `0.3.4` → `0.4.0` に更新
+
+### 修正
+- 2026-09-23に実機のchatgpt.comで確認：ChatGPTが長文を「文書カード（writing block、`div[data-testid="writing-block-container"]`）」で表示する場合、`getResponseText` が `[data-testid]` 付き要素を一括削除していたためwriting-block-containerごと本文が消え、生成完了を検出できなかった問題を修正。削除対象を `button`/`svg`/`.sr-only`とヘッダー（`writing-block-header*`）・提案ボタン（`writing-block-suggested-followups`）に限定し、writing block検出時は `.ProseMirror` の子要素（1行=1子要素）を `textContent` で `\n` 連結して本文を復元するように変更
+- 2026-09-23に実機のchatgpt.com（ログイン済み）で確認：`.markdown`に書き出し途中の残骸（「<h」の2文字）だけが残り、本文自体は`.markdown`も`.ProseMirror`も付かない別のdiv（クラス名がハッシュ化）に入っていたため、「最初に見つかった`.markdown`を使う」固定選択のせいで生成完了を検出できなかった問題を修正。ターン内の候補（writing blockの`.ProseMirror`／すべての`.markdown`／ターン全体）をそれぞれ整形し、`<h1`を含むものを優先・その中で最長のものを採用するように`getResponseNodes`/`getResponseText`を変更（`tests/mock-chatgpt.html`に`layout=stale`を追加して再現・確認）
+- 生成結果の整形に `trimToArticleBounds` を追加し、最初の `<h1` より前（writing blockヘッダーのタイトル文字等）と、最後の `EISAI_CHECK`（無ければ`EISAI_TITLES`、それも無ければ`CTA_DATA_END`）の `-->` より後（提案ボタンの文言等）をコピー用HTMLから確実に切り落とすように修正
+- `findUnverifiedClaims`（要確認）の数字判定で、人数（名／人／人組）・学年（中3／中学3年／中学校3年／3年生／3年。小・高も同様）・回数（回／回目）の表記ゆれを入力と同じ事実として扱うように修正し、入力の言い換えを誤って要確認に出していた誤検出を減らした
+- `buildBlogPromptV3` の冒頭あいさつで、地域が未入力のときに「◯◯の個別指導塾」と出力していたのを、「個別指導塾、英才個別学院 …」（「◯◯の」を出さない）に修正
+- `genBtn`（ChatGPTへ送信して記事生成）のクリック処理を try/catch で囲み、送信〜完了検知の間に想定外の例外が発生してもボタンが無効のまま固まらず、パネルにも失敗理由を表示するように修正（コンソールだけのサイレント失敗をなくす）
+- `tests/mock-chatgpt.html` を、既定で上記writing block DOM（ヘッダー・`ProseMirror`・提案ボタン）を再現するように変更し、`layout=markdown` で旧構造（`.markdown` 直下に直接テキスト）も選べるようにした。`tests/README.md` に `layout` パラメータの説明を追加
+- 2026-09-23に実機のchatgpt.com（ログイン済み・思考型モデル）で確認した3点を修正：
+  1. `alert()`/`confirm()` を全廃止（`showToast`によるパネル内の一時メッセージ・`armTwoStepButton`による2回押し確認に置き換え）。保存・テストモード切替・入力クリア・更新確認・入力欄未検出などのブラウザ標準ダイアログはページ全体を止め、自動送信・生成待ちの処理も一緒に止まってしまうため
+  2. 思考型モデルは送信後しばらく（送信例で43秒間）停止ボタンだけが出て回答欄が無いにもかかわらず、16秒ほどで「⚠️ ChatGPTの回答欄をまだ検出できません…」が出てしまう問題を修正。停止ボタンが出ている間は「🧠 ChatGPTが考えています…（n秒）」と表示し、警告は停止ボタンも回答欄も無い状態が続いた時だけに限定。タイムアウトも300秒→480秒（8分）に延長（`watchBlogResponseAndEnableCopy`・`watchThumbnailPrompt`）
+  3. `findUnverifiedClaims` の数字＋単位（日）判定で、入力「2026.09.06」・本文「9月6日」のように日付の表記ゆれ（`2026.09.06`／`2026/9/6`／`9/6`／`9月6日`／`9.6`）があるだけで誤って要確認に出ていた問題を修正。`collectMonthDayKeys` で入力・本文の日付表記を「月-日」に正規化して比較し、同じ月日なら要確認にしないように変更（月日が異なる場合は従来どおり要確認に出す）
+- パネル画面の作り直し（ロジック・プロンプト・完了検知・後処理・要確認・サムネ生成の処理は変更なし。見た目・画面構成・文言のみ）：
+  - ブランド配色（紺 `#12294D`・オレンジ `#F5811F`、背景は白／薄いグレー）、角丸10px、8/12/16/24の余白段階に統一。ヘッダーは紺地に「英才ブログ生成」＋バージョン＋テストモード時だけ目立つ黄色バッジ
+  - ヘッダー直下に①教室→②入力→③生成→④仕上げ→⑤サムネの5ステップ表示を追加（教室設定・送信中・生成結果・サムネ表示の既存状態から都度判定。済んだ段階はチェックマーク）
+  - 教室情報カードを、未設定時は開いた状態で必須（校舎名・申込URL）だけピル表示、保存済みは1行要約＋「編集」に変更
+  - 入力モードをセグメント型（かんたん｜しっかり）に変更し、選択中のモードの説明を1行表示。かんたんモードのメモ欄を拡大（160px）し、文字数表示・「例を入れる」ボタン・記事の型や関連記事等をまとめた「詳しく指定（任意）」の折りたたみを追加。しっかりモードは「誰に」「悩み」「家庭でできること」「教室でやっている事実」「事例・当日の様子」「CTA・関連記事・写真」のカードに整理し、必須項目には「必須」ピルを表示
+  - 送信の「次へ」「戻る」の画面切り替えを廃止し、1画面の縦スクロールに統一。下部に固定のアクションバー（状態表示→不足項目案内→主ボタン「ChatGPTで記事を作る」＋副「プロンプトをコピー」、生成後は主ボタン「HTMLをコピー（エディタへ）」＋副「エディタを開く」に切替）を追加。必須項目が不足している間は「あと◯項目：…」を表示し、タップで該当欄（教室情報／記事入力）へスクロール
+  - 生成後のタイトル案・自己チェック・要確認をカード形式に整理（タイトル案は33字超で文字数を赤表示）。サムネイル作成を「1 設定／2 画像用の指示を作る／3 画像を生成する」の番号付きステップに整理
+  - 装飾目的の絵文字を削減し、状態表示（送信中・生成中・完了・失敗）のアイコンのみ残した
+  - `tests/_shot-harness.html`（パネルを4状態：初期／かんたんメモ入力／しっかりモード／生成完了後、にしてスクリーンショットを撮るための撮影専用ページ）を追加
+- 2026-09-23に本物のChatGPT（ログイン済み）で試した結果、4点を修正：
+  1. サムネ画像に文字が入らない問題を修正。サムネ用のメタプロンプト（画像生成用プロンプトを作成する送信文）に、出力の最後へ機械的に読める行 `[[EISAI_IMG_TEXT]] メイン：…／サブ1：…／サブ2：…` を必ず付けさせるように変更し（サムネイルテキスト設定に入力があればそれを最優先で使わせる）、「文字を重ねる余白を確保」のような文字を画像に描き込まない前提の表現を禁止して「文字は画像の中に描き込む」ことを明記させた。画像生成の送信文（`generateMessage`）では、この行を`extractImgTextMeta`で解析し、`buildForcedImageTextInstruction`で「画像の中に次の日本語の文字を、はっきり読める大きさで必ず描き込んでください：メイン『…』／サブ『…』『…』。文字の誤字・欠け・別の文字への置き換えは不可。」という指示を先頭に追加。行が読み取れなかった時は、選ばれたタイトルをメイン文字として使う
+  2. 画像の完成を検知しない問題を修正。画像生成の依頼を送信した後、そのターンに`naturalWidth>0`のimgが現れたら「✅ 画像ができました。ChatGPTの画像をクリックして開き、保存してください（右上のダウンロード）」と表示し、サムネのステップ表示を完了扱いにする`watchGeneratedImage`を追加。8分（480秒）経っても現れなければタイムアウト表示にする
+  3. コピー後のお知らせ文言を「✅ HTMLをコピーしました。英才ブログエディタの原稿欄に貼り付けてください。」に変更。また、クリップボードへの書き込みが失敗しても、サムネ欄を開く処理とステップ更新は必ず行うように修正（失敗時は「コピーできませんでした。下のHTML表示から手動でコピーしてください」を表示し、手動コピー用の最小限のテキスト欄`eisai-manual-copy-box`を新設して表示する）
+  4. 生成直後に一瞬「⏳ 生成完了を確認しています…（2文字）」のような紛らわしい表示が出る問題を修正。完了判定のロジック（`isReadyToFinalize`）自体は変えず、停止ボタンが消えた直後で本文がまだ`<h1`を含まない（ChatGPT側の表示反映待ち）間だけ、表示を「⏳ ChatGPTの表示を待っています…」に切り替えるようにした
+- 実機確認用のテスト版 `tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt` を本体から作り直し（`@name`を「Eisai Blog Generator for ChatGPT【TEST v0.4.0.4】」、`@version`を`0.4.0.4`、`@namespace`を`eisai-test-v040`に変更、`@updateURL`/`@downloadURL`を削除。本体以外の内容は本体と同一）。作り直し手順と次回以降のバージョン番号の付け方（`0.4.0.N`のNを1ずつ上げる）を`tests/README.md`に追記。本体の`@version`は`0.4.0`のまま変更なし
+- 2026-09-27に実機で確認：ChatGPTのタブが裏（`document.hidden`）にあると、ChatGPTが書いた文章をDOMに反映しない（回答ターンに「<h」だけが残る）ため、記事は書けているのに「生成完了を検出できませんでした（タイムアウト）」になっていた問題を修正。すべての監視（`watchBlogResponseAndEnableCopy`・`watchThumbnailPrompt`・`watchGeneratedImage`・`confirmSendSucceeded`）で、裏にある間は経過時間・タイムアウト・無反応カウントを進めないようにし（`isTabHidden`）、`visibilitychange`で表に戻った瞬間に次の確認を即座に実行するように変更。裏にある間は「⏸ ChatGPTのタブが裏にあります。書き終わりは、このタブに戻ったときに自動で仕上げます（別のタブを見ていて大丈夫です）」を表示し、表に戻った直後の描画待ち（最大60秒・見えている時間で計測）はタイムアウトに数えないようにした。送信直後の状態表示にも「待っている間、別のタブを見ていて大丈夫です」を追記
+- 時間切れ・読み取り失敗（HTML検出失敗・本文不足）のとき、主ボタンを「読み取り直す」に切り替える機能を追加。押すと、その時点のChatGPTの最後の回答ターンを読み直して通常の完成処理（後処理・結果表示）を実行し、成功すれば通常の完成状態に戻る。回答ターンが無い・`<h1`が無い時はその旨を表示する。副ボタン「📋 プロンプトをコピー」を強調表示する。完了時の後処理・結果表示は`finalizeBlogFromNode`として関数化し、通常監視の完了時と「読み取り直す」の両方から呼べるようにした。旧ボタン名「ChatGPTへ送信して記事生成」の表示文言の残りを、現行ボタン名「ChatGPTで記事を作る」にすべて統一
+- 教室情報の必須項目（校舎名・室長名・申込URL）を`REQUIRED_CLASSROOM_FIELDS`という単一の定義から作るように統一（必須ピル・`isClassroomComplete()`・`collectMissingLabels()`が同じ定義を参照）。室長名の入力欄にも「必須」ピルを表示し、見出しを「教室情報（必須：校舎名・室長名・申込URL）」に変更
+- サムネ画像の完成検知を修正。`naturalWidth>500`のimgが現れたら完成扱いにするように変更（読み込み完了前のプレースホルダ・小さいアイコン画像の誤検出防止のため下限を設けた）。ChatGPTが「画像を生成できませんでした」等の失敗の言い回しを出しつつ下書きimgが残っている場合は「⚠️ ChatGPTが仕上げに失敗しました。表示中の画像で良ければ保存してください。作り直すときは『もう一度作る』を押してください」、imgが無く失敗の言い回しだけの場合は「⚠️ 画像を作れませんでした。『もう一度作る』を押してください」を表示するように分岐。2回目以降は画像生成ボタンの表示名を「もう一度作る」に切り替える。裏タブ対応（`watchGeneratedImage`のタブ非表示対応）も同時に修正したため、実機で発生していた「imgはあるのに『依頼しました』のまま変わらない」不具合も解消される見込み
+- かんたんモードで「詳しく指定（任意）」がたたまれていても、入力済みの値（学年・型・対象校・時期・行動・文字数・関連記事・写真）を「詳しく指定（任意）」見出し横に1行の要約（例「学年：中2／型：悩み解決型」）で表示するように変更（`buildDetailedSummaryText`/`updateDetailedSummaryRecap`）。空欄の項目は表示しない。「入力をクリア」は詳しく指定の値も含めて全項目がクリアされることを確認済み（既存動作を維持）
+- テストモード（`TEST_CLASSROOM`）の学校名・地域名が記事タイトルに出た時に不自然（例：【架空中・…】）だった問題を修正。「架空中」「架空エリア」等を、記事に出ても違和感のない自然な架空名（校舎名「英才テスト校」、地域「テスト市」、近隣の対象校「テスト市立第一中学校, テスト市立第二中学校」）に変更。テスト用サンプル入力（`ARTICLE_TEST_SAMPLES`）の対象校名も同じ命名に統一
+- パネル見出しの版表示（`v0.4.0`等）を、Tampermonkeyの`GM_info.script.version`があればそれを使うように変更（`getDisplayVersion`。テスト版インストール時は`0.4.0.N`が表示される）。`@grant none`環境や`GM_info`未対応環境でも落ちないようtry/typeofで保護。ストレージキー等（`STORAGE_KEY`・`VERSION_ID`等）は`CURRENT_VERSION`のまま変更なし
+- `findUnverifiedClaims`（要確認）の対象からEISAI_TITLES（タイトル案）のテキストを確実に除くように保険を追加（本文だけを対象にする）。タイトル3案生成プロンプトに「33字を超えたら短く言い換えてから出力する（全角1字＝1字、記号も数える）」を明記
+- `confirmSendSucceeded`（送信成功確認）の裏タブ対応の実装ミスを開発中に発見・修正：裏にある間は判定条件のチェック自体をスキップしていたため、送信自体は成功しているのに永久に確認できないまま止まる不具合があった。判定条件は裏でも毎回チェックし、期限（8秒）だけを裏にいた分だけ後ろにずらすように修正
+- 実機確認用のテスト版を`0.4.0.4`→`0.4.0.5`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし。模擬ページ`tests/mock-chatgpt.html`に`hideDuring=1`パラメータを追加し、タブが裏にある間はChatGPTの回答が「<h」で止まったままになる実機の不具合を再現できるようにした（表に戻ると裏で進んでいた分をまとめて反映する）
+- 2026-09-27に別アカウントの実機で確認：記事は画面に全部出ているのに「⚠️ ChatGPTの回答欄をまだ検出できません」になり、さらに送信確認が失敗したと判断して入力欄にプロンプトをもう一度入れてしまう（送信はされず入力欄に残る）不具合を修正。原因は、この画面のDOMに`[data-message-author-role]`も`[data-testid^="conversation-turn"]`も一切無く（`data-content-search-turn-key`・`data-chatgpt-selection-message-id`でターンが識別されるDOM）、`getResponseNodes`/`getResponseText`が回答ターンを一件も検出できなかったこと
+  - ターン検出を候補セレクタの優先リスト（`[data-message-author-role="assistant"]` → `[data-content-search-turn-key]` → `[data-chatgpt-selection-message-id]` → `[data-testid^="conversation-turn"]`）に変更し、どれも使えない画面向けの保険（`main`内で`<h1`を含み、プロンプト冒頭を含まない最小の要素を文書順で最後まで拾う）も追加。role属性を持たないセレクタはユーザー発言にもマッチしうるため、本文にプロンプト冒頭（`あなたは英才個別学院の教室ブログ専門ライター`）を含むターンは常に除外する。`getResponseNodes`/`getResponseText`/完了監視/「読み取り直す」/サムネ指示監視/画像監視はすべて同じ仕組み（`findAllChatgptTurns`）を使うように統一
+  - 完了判定は、停止ボタンが見つからない画面でも「本文が完了マーカー（`EISAI_CHECK`／`CTA_DATA_END`）を含み、テキストが一定回数変わらない」だけで完了とみなせるように（元からの`isReadyToFinalize`の作りがこれを満たしていたため、実質はターン検出の修正で解決）
+  - `confirmSendSucceeded`（送信成功確認）に「会話URLが`/`から`/c/…`に変わった」「入力欄以外の画面にプロンプト冒頭の文が現れた」の2条件を追加し、role属性・送信ボタン・停止ボタンのセレクタに一切依存しない確認手段を用意。タブが裏（`document.hidden`）にある間は再送しないようにし（表に戻るまで待つ）、再送の前にもう一度だけ確認して「実は送れていた」場合は再送しない。再送してもChatGPTが送信中等で送れなかった場合は、入力欄に残ったプロンプトを空に戻すようにした（二重入力の混乱防止）
+  - 模擬ページ`tests/mock-chatgpt.html`に`layout=v2dom`を追加し、上記DOM（role属性なし・停止ボタンなし・ユーザー発言もプロンプト本文をそのまま表示・送信で会話URLが`/c/mock-v2`に変わる）を再現できるようにした
+- 実機確認用のテスト版を`0.4.0.5`→`0.4.0.6`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし
+- **緊急修正**：2026-09-27に実機のchatgpt.com（本物のタブ）で、拡張機能がタブを完全に固まらせる不具合を修正（DevToolsの評価すら45秒応答なしになった）。原因は、セレクタでターンを一件も検出できない画面向けの保険`findFallbackChatgptTurnNodes`が、`main.querySelectorAll('*')`で全要素を取り、要素ごとに`el.textContent`（子孫すべてのテキスト連結）を取得し、さらに候補同士の入れ子判定を`candidates.some(other => el.contains(other))`（候補数の2乗）で行っていたこと。`climbToFullChatgptTurn`も親を1段上がるごとに`textContent`を取っており、要素数が数千〜数万あるページでこれが1秒ごとの監視のたびに走ってメインスレッドを長時間ブロックしていた。
+  - `findFallbackChatgptTurnNodes`を、`document.createTreeWalker(root, NodeFilter.SHOW_TEXT)`でテキストノードのうち「`<h1`」を直接含むものだけを拾う実装に変更（本文以外の大量の要素の`textContent`を取らない。入力欄・自分のパネル内は除外）。`climbToFullChatgptTurn`には上限（12段）を追加
+  - 保険は「記事や画像の完成を監視している間」だけ動かすように変更（`armChatgptFallbackScan`／`isChatgptFallbackScanArmed`）。監視していない間（起動ボタンの定期チェック`ensureButton`・パネル構築・`refreshDynamicUi`など）は、セレクタで見つからなければ空配列を返し、保険を一切走らせない（呼び出し経路を確認し、これらの関数が`getResponseNodes`を呼んでいないことも確認済み）。呼び忘れ・解除漏れがあっても8分（監視のタイムアウトと同程度）で自動的に無効へ戻る
+  - 保険の結果は500msキャッシュするように変更（`findFallbackChatgptTurnNodesCached`）
+  - `isPromptVisibleOutsideComposer`（送信確認用）を、`main`全体の`cloneNode(true)`をやめ、TreeWalkerでテキストノードを走査してプロンプト冒頭を含むものが見つかった時点で早期終了する実装に変更
+  - `tests/mock-chatgpt.html`に`heavy=1`パラメータを追加：サイドバー風の要素3,000個＋過去の会話ターン40個（各ターン約124要素・テキスト合計約30万字）を最初に描画し、main内の要素数を実機並み（数千〜数万）にする。heavy=1の間は、新規送信分・過去のダミー分を問わずすべてのターンから拡張機能側の候補セレクタ（`data-message-author-role`等）を取り除き、「セレクタで一件も見つからず保険に必ず頼る」実機の最悪ケースを確実に再現する。`layout=v2dom`と組み合わせて確認（詳細は`tests/README.md`）
+  - 性能確認：`heavy=1&layout=v2dom`（要素数7,596〜33,306で確認）で、ページ読み込み〜パネル表示、送信〜完成までの全区間でPerformanceObserverの`longtask`（50ms超）が0件（`window.__eisaiLongTasks`）。旧実装と新実装を同じ最悪ケースDOM上で直接比較したところ、旧`main.querySelectorAll('*')+textContent`方式は要素数33,306件で約27〜29ms、新TreeWalker方式は同条件で約14〜15ms（約2倍高速。実機はDOMの入れ子がさらに深く要素数も多いため、実際の改善幅はこれより大きいと見込まれる）。機能面は`layout`4種（writing-block/markdown/stale/v2dom）＋`hideDuring=1`で完成・「読み取り直す」・二重入力なしを確認済み
+  - 実機確認用のテスト版を`0.4.0.6`→`0.4.0.7`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし
+- 2026-09-27に別アカウントの実機（role属性の無いDOM）で確認：ChatGPTの回答は画面に正しく出ている（`<h1>【中3・75点アップ】…</h1>`＋`EISAI_CHECK`）のに、拡張機能が**送信したプロンプトそのものをユーザー発言側から読み取り、記事の本文と誤認**する不具合を修正。原因は、`isPromptEchoText`が冒頭文（`あなたは英才個別学院の教室ブログ専門ライター`）を含むかどうかだけを見ていたため、ユーザー発言が改行ごとに複数の子要素へ分割されるDOMで、冒頭文を含まない子要素（例：「応答は `<h1>` から始め、前置き…」の行）だけが単独の候補として残ってしまい除外できなかったこと。また、完了判定・トリム処理が裸の「`<h1`」の存在だけを見ていたため、プロンプト本文自身に含まれる`EISAI_CHECK`という語（自己点検の指示文言）と組み合わさって「完了」と誤判定されていた
+  - 「記事らしさ」の判定を`isArticleLikeText`（必須：閉じた見出し`<h1>…</h1>`を持つ＝`hasClosedArticleHeading`。除外：`buildBlogPromptV3`にしか出てこない決まり文句を含む＝`containsPromptOnlyMarker`）に一本化し、セレクタ候補（`findChatgptTurnsBySelectors`）・保険（`findFallbackChatgptTurnNodes`／`climbToFullChatgptTurn`）・トリム（`trimToArticleBounds`）・完了判定（`looksCompleteBlogHtml`／`hasEnoughArticleHtml`）・最終チェック（`finalizeBlogFromNode`）のすべてで共有するように統一
+  - 決まり文句の判定対象を、冒頭文1つ（`PROMPT_ECHO_PREFIX`）から`PROMPT_ONLY_MARKERS`（`あなたは英才個別学院の教室ブログ専門ライター`／`応答は <h1> から始め`／`EISAI_CHECK は出力前の自己点検`／`【使ってよいHTML`／`【出力の末尾に必ず付けるもの`）に拡張。候補要素自身のテキストだけでなく、その要素を含む「ターン」（`[data-content-search-turn-key]`／`[data-message-author-role]`／`[data-testid^="conversation-turn"]`／`section`等を祖先方向へ上限12段まで辿った先）のテキストも見て、どちらかに決まり文句が含まれていれば除外するように変更（`isElementInsidePromptOnlyTurn`）
+  - `trimToArticleBounds`の切り出し起点を「最初の裸の`<h1`」から「閉じた見出し`<h1>…</h1>`の開始位置」に変更。閉じた見出しが本文より前に混入したプロンプト断片を、本文の開始位置と誤認しないようにした（閉じた見出しが1つも無い時だけ、従来どおり裸の`<h1`から切り出す）
+  - 複数の候補ターンから最後の回答を選ぶ処理（`getLatestResponseNodeAfterBaseline`・「読み取り直す」ボタン）を`pickBestArticleNode`に統一。候補が複数ある時は、閉じた見出し＋`EISAI_CHECK`のJSON（`EISAI_CHECK:\s*\{`）を含むものを優先し、無ければ文書順で最後のものを使う
+  - `trimToArticleBounds`は既存どおりNode単体テストから呼べるようにするため、これらの共有定数・純粋関数（`PROMPT_ECHO_PREFIX`・`PROMPT_ONLY_MARKERS`・`CLOSED_H1_RE`・`hasClosedArticleHeading`・`containsPromptOnlyMarker`・`isArticleLikeText`）を、Node実行時の早期returnより前に配置
+  - 模擬ページ`tests/mock-chatgpt.html`に`echo=1`パラメータ（`layout=v2dom`限定）を追加し、上記の実機不具合を再現できるようにした：`data-content-search-turn-key`をユーザー発言側にだけ付け、AI発言側（本当の回答）には候補セレクタを一切付けない。ユーザー発言（送信したプロンプト全文）は改行ごとに個別の`<p>`へ分割して表示する（詳細は`tests/README.md`）
+  - 性能確認：`heavy=1&layout=v2dom&echo=1`でもPerformanceObserverの`longtask`（50ms超）は0件のまま。`layout`各種（writing-block/markdown/stale/v2dom）＋`echo=1`＋`hideDuring=1`のすべてで、保存される`blogHtml`が実際の記事（`<h1>【…`で始まる）になり、要確認に決まり文句が出ないことを確認済み
+  - 実機確認用のテスト版を`0.4.0.7`→`0.4.0.8`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし
+- 2026-09-27に別アカウントの実機（role属性の無いChatGPT）で確認：サムネの「画像用の指示を作る」の回答（`[[EISAI_IMG_PROMPT]]`＋指示文＋`[[EISAI_IMG_TEXT]]`行はあるが、記事のような閉じた見出し`<h1>…</h1>`は無い）が「⚠️ ChatGPTの回答欄をまだ検出できません」のまま検出されない不具合を修正。原因は、0.4.0.8で候補セレクタが一切効かない画面向けの保険（`findFallbackChatgptTurnNodes`）を「記事らしさ（閉じた`<h1>`）」専用に絞ったため、見出しの無いサムネ指示の回答が保険からも外れてしまっていたこと。さらに、ユーザーが送った依頼文（`【画像生成リクエスト】`で始まり、`[[EISAI_IMG_PROMPT]]`や`[[EISAI_IMG_TEXT]] メイン：（最終的に決めたメイン文字）…`という説明文を含む）が画面に残っていても、記事プロンプト用の決まり文句（`PROMPT_ONLY_MARKERS`）には含まれておらず除外できていなかった
+  - `getResponseNodes`／`findAllChatgptTurns`／保険（`findFallbackChatgptTurnNodes`）を目的別（`RESPONSE_PURPOSE.ARTICLE`／`THUMBNAIL`／`IMAGE`）に分離。記事は従来どおり閉じた見出し必須（`findFallbackArticleTurnNodes`）、サムネ指示は`[[EISAI_IMG_PROMPT]]`開始マーカーを直接TreeWalkerで探す（`findFallbackThumbnailTurnNodes`）、画像はテキストに依存せず`root`内の`img`要素から祖先ターンを辿る（`findFallbackImageTurnNodes`）方式に変更。完了監視（`watchBlogResponseAndEnableCopy`／`watchThumbnailPrompt`／`watchGeneratedImage`）・送信前のベースライン取得・「読み取り直す」・サムネ指示送信後の読み取りのすべてで、対応する目的を渡すように統一
+  - 「画像用の指示を作る」の依頼文にしか出てこない決まり文句（`【画像生成リクエスト】`／`以下のブログ記事の内容に基づき`／プレースホルダ`（最終的に決めたメイン文字）`等）を`THUMBNAIL_REQUEST_ONLY_MARKERS`として定数化し、記事プロンプトの決まり文句（`PROMPT_ONLY_MARKERS`）と合わせて`containsAnyRequestOnlyMarker`で一括除外するように変更（ユーザー自身が送ったどちらの依頼文も、要素自身とその祖先ターンの両方で判定し、AI発言と誤認しないようにした）
+  - `pickBestArticleNode`と同様の考え方で`pickBestThumbnailNode`を追加し、`[[EISAI_IMG_PROMPT]]`を含み依頼文の決まり文句を含まない（`isThumbnailInstructionText`）ものを優先して選ぶように変更
+  - `extractImagePromptText`／`extractImgTextMeta`に保険を追加：依頼文にしか出てこない決まり文句・プレースホルダそのものが値として渡ってきた場合は採用しない（依頼文をサムネ指示として誤読しない）
+  - 画像だけの回答（本文テキストが無い）が候補セレクタの絞り込みで除外されないよう、`findChatgptTurnsBySelectors`の「本文テキストが空なら除外」を「本文テキストが空かつimgも無いなら除外」に修正（記事・サムネ・画像のどのDOMバリアントでも一貫して動くようにした）
+- 2026-09-27に別アカウントの実機で確認：ページ再読み込み後に「読み取り直す」を使うと、要確認にメモにある数字・発言まで出てしまう不具合を修正。原因は、要確認の比較用テキストが記憶していたモジュール変数`lastArticleFacts`を参照していたため、ページ再読み込み後（`genBtn`を押していない状態）はこれが空文字のままだったこと。`finalizeBlogFromNode`が比較用テキストを呼び出し時点の画面の入力（＝保存済みドラフトを反映する`articleInput`）から`buildArticleFactsSummary()`で毎回作るように変更し、通常の完了監視（`watchBlogResponseAndEnableCopy`）・「読み取り直す」（`rereadBtn`）の両方から渡すように統一（既存の24時間保存の生成コンテキストにも、記憶値ではなくこの時点のテキストを保存するように変更）
+- 模擬ページ`tests/mock-chatgpt.html`にサムネの流れを追加：記事生成の後にユーザーが「【画像生成リクエスト】…」を送ると`tests/fixtures/img-prompt-sample.txt`を応答として返し、続けて「次の内容で画像を1枚生成してください…」が送られると1536×1024の画像（canvas由来のdata URL）を応答として返すようにした（`layout`4種すべてに対応。ターン生成そのものは既存の`addAssistantTurn*`を再利用するため`heavy=1`／`echo=1`の効果もそのまま引き継がれる）。`imgFail=1`で失敗の言い回し＋下書きimgの両方、`imgNone=1`で失敗の言い回しのみ（imgなし）も再現できるようにパラメータを追加
+- 実機確認用のテスト版を`0.4.0.8`→`0.4.0.9`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし
+- **2026-09-27：ChatGPTとのやり取り層を「合言葉（依頼番号）方式」に根本から作り替え**。理由：これまでは回答を「ChatGPTの画面の作り」（`data-message-author-role`・`data-testid^="conversation-turn"`・`data-content-search-turn-key`・停止ボタン等）で探していたが、ChatGPTのDOMはアカウント・A/Bテストで異なり頻繁に変わるため、1つ直すと別の場面が壊れる修正を繰り返していた（0.4.0.6〜0.4.0.9だけでも：role属性の無いDOM、送ったプロンプトを記事と誤認、記事判定を厳しくしたらサムネ指示を拾えない等）。
+  - 送信ごとに短いランダムID（依頼番号・小文字英数字6文字）を発行し、プロンプトの末尾で「回答の最初の行に開始目印`[[EISAI-START-<ID>]]`、最後の行に終了目印`[[EISAI-END-<ID>]]`を書く」よう指示する（`makeRequestId`／`buildMarkerInstructionBlock`）。指示文自体には目印の完成形を1字も連続して書かない（部品ごとに引用符で区切って説明する）。依頼番号は「（依頼番号：ID）」の形で1回だけ平文でも書く（`buildRequestIdLine`。送信確認・失敗文言のスコープ判定に使う）。記事用プロンプト（`buildBlogPromptV3`）・サムネ用メタプロンプト（`imgGenBtn`の依頼文）の両方に付ける
+  - 読み取りは、main（無ければbody）内のテキストノードを自パネル・入力欄を除いてTreeWalkerで1本の文字列に連結し（`collectMainTextIndex`）、その文字列の中だけで目印を検索する（`getMarkerState`）。開始目印は最後の出現、終了目印はその後で最初の出現を使う。目印がテキストノード・要素をまたいで分割されていても確実に見つかる。範囲はDOM Rangeで切り出し、`<p>`/`<li>`の境目と`<br>`にだけ改行を入れて文字列化する（`extractIndexRangeAsBlockText`／`serializeBlockText`。`<div>`等は境目とみなさない＝改行を追加しない。任意の位置で分割されても`<h1>`のようなタグ文字列を誤って分断しないための設計。`layout=random`のテストで、`<div>`も境目に含めると「たまたま`<h1`の途中に境目が来て文字列が壊れる」不具合を発見し、`<p>`/`<li>`のみに絞った）
+  - 完了判定：終了目印が見つかり、切り出した本文が2回連続（＝2秒）で変わらなければ完成。終了目印が無く開始目印だけなら「生成中（n文字）」、どちらも無ければ「考え中（n秒）」。役割属性・停止ボタンは一切見ない（`startMarkerWatch`が記事監視`watchBlogResponseAndEnableCopy`・サムネ指示監視`watchThumbnailPrompt`の共通エンジンになった）
+  - 送信確認（`confirmSendSucceeded`）も「入力欄以外に依頼番号が現れた」「会話URLが`/c/`に変わった」「入力欄が空になった」の3条件だけに単純化（ユーザー発言数・停止ボタンの参照を撤廃）
+  - 画像そのもの（合言葉を出力できない）は、送信前のmain内`img`一覧をベースラインに記録し、新しく現れた`naturalWidth>500`のimgで完成を判定する方式に変更（`collectMainImages`／`watchGeneratedImage`）。失敗文言の判定は、今回の依頼の「依頼番号：ID」より後のテキストに限定する（`textAfterRequestId`。前回の依頼や無関係な会話の言い回しと混同しない）
+  - 最後の逃げ道として「ChatGPTの回答を貼り付けて読み込む」欄（テキストエリア＋読み込むボタン）をパネルに常設（`eisai-paste-fallback`）。目印が付いていなくても、記事は閉じた見出し`<h1>…</h1>`から（`extractArticleFallbackFromMainText`／`trimToArticleBounds`）、サムネ指示は`[[EISAI_IMG_PROMPT]]`から読み取れる。記事生成の失敗・タイムアウト時は自動でこの欄を開く
+  - **削除した死んだコード**：`CHATGPT_TURN_SELECTORS`・`findChatgptTurnsBySelectors`・`findFallbackChatgptTurnNodes`系一式（記事／サムネ／画像の目的別保険）・`climbToFullChatgptTurn`・`pickBestChatgptTurnText`／`cleanChatgptClone`／`chatgptCandidateFinalText`（writing-block／markdown／stale判定）・`pickBestArticleNode`／`pickBestThumbnailNode`・`looksCompleteBlogHtml`・`isArticleLikeText`・`PROMPT_ONLY_MARKERS`／`THUMBNAIL_REQUEST_ONLY_MARKERS`／`IMAGE_REQUEST_ONLY_MARKERS`とその判定関数群・`CHATGPT_ADAPTER.getResponseNodes`／`getResponseText`／`isGenerating`／`getUserMessageCount`・`RESPONSE_PURPOSE`・保険の発動ゲート（`armChatgptFallbackScan`）一式。合計で本体が約330行減少
+  - 自動テスト：`tests/mock-chatgpt.html`を合言葉方式に対応させ、送信文から依頼番号を読み取ってfixture本文を目印で包んで返すようにした。既存の`layout`（writing-block/markdown/stale/v2dom&echo=1）に加え`layout=random`（`seed=`で再現可能な乱数により、ランダムな深さの入れ子div/span＋テキストノードの任意分割。目印もまたいで分割される）を追加。`tests/run-matrix.mjs`（Node組み込みWebSocketでCDPを直接操作するヘッドレスChromeテスト）を新規追加し、{記事→コピー→サムネ指示→画像}の一連の流れを、layout×{表のまま/裏→表}×{heavyなし/heavy=1}の全組み合わせ＋「貼り付けて読み込む」1ケースで実行。結果は`node tests/run-matrix.mjs`のログ・本PRの動作確認欄を参照
+  - 実機確認用のテスト版を`0.4.0.9`→`0.4.1.0`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`）。今回はやり取り層自体の作り替えのため、テスト版のバージョン系列を`0.4.0.N`から`0.4.1.0`に進めた。本体の`@version`は`0.4.0`のまま変更なし（従来の運用どおり、本体バージョンはテスト検証が一巡してから上げる）
+- **2026-09-27：`node tests/run-matrix.mjs`の「貼り付けて読み込む」ケースが不合格になる不具合を修正**。原因は`tests/run-matrix.mjs`側にあり、`blog-generator-chatgpt.user.js`の抽出処理自体は元々正しく動いていた：`tests/mock-chatgpt.html`が読み込み直後に`history.replaceState(...)`でページのURLを本物のchatgpt.comの会話URLに似せて書き換えるため、`runPasteFallbackCase`が相対パス（`fetch('fixtures/....txt')`）でfixtureを取りに行くと書き換え後のパスを起点に解決されて404になり、404エラーページのHTML（`<h2>`が0個・約115文字）がそのまま「ChatGPTの回答」として貼り付け欄に入り、`hasEnoughArticleHtml`に（正しく）弾かれていた。`tests/run-matrix.mjs`にnavigate前のBASE_URL基準の絶対URL（`PASTE_FIXTURE_URL`）を追加してfetch先を固定し解消（`extractPastedArticleText`／`trimToArticleBounds`／`finalizeBlogFromText`側の抽出・除去ロジックは変更不要だったことを、実際の本文入り`tests/fixtures/higashioozima-chatgpt.txt`で確認済み）
+  - 上記の調査を踏まえ、「貼り付けて読み込む」の対象を目印あり（`[[EISAI-START-…]]`〜`[[EISAI-END-…]]`。文書カードの見出し文字・提案ボタンの文言が前後に付いたままのコピーを含む）／目印なし・素の全文（先頭の余分な空行・空白つき）／目印なし・Markdownコードブロック（` ```html`〜` ``` `）の3形に増やし、`tests/run-matrix.mjs`の`PASTE_VARIANTS`としてどれも合格することを確認
+  - 失敗文言（`⚠️ ブログ本文が途中までしか取得できませんでした`）の言い回しを、当時の実装（赤字コピーの抑止）を指す古い表現「赤いコピーは出さずに止めています」から、「何が読み取れなかったか」＋「次に何をすればよいか（貼り直す／もう一度『ChatGPTで記事を作る』／『📋 プロンプトをコピー』）」に直した
+  - 実機確認用のテスト版を`0.4.1.0`→`0.4.1.1`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし
+- **2026-09-27：タブが裏にある間、ChatGPTが本文を最後まで描画し終えて終了目印まで出ているのに、パネルが完成処理へ進まない不具合を修正**。原因は`startMarkerWatch`（記事・サムネ指示の監視エンジン）と`watchGeneratedImage`（画像監視）の各tickが、タブが裏にある間は`isTabHidden()`で即returnしており、目印・新しい画像の確認そのものをしていなかったこと（v0.4.0.5で入れた「裏にある間は数えない」対応が、確認自体もスキップする実装になっていた）
+  - `startMarkerWatch`：裏にある間も毎tick`getMarkerState`を確認するように変更。終了目印がまだ無い間だけ`TAB_HIDDEN_STATUS_TEXT`を表示し、タイムアウトの秒数（`pollCount`）を進めない。終了目印が見つかった後は、裏でも表と同じ「⏳ 生成完了を確認しています…」を表示し、安定確認（`MARKER_WATCH_STABLE_TARGET`）が取れれば裏のままでも完成処理（`onDone`）に進む
+  - `watchGeneratedImage`：裏にある間も毎tick新しい画像（`naturalWidth>500`）の出現だけは確認し、見つかれば裏のままでも完成扱いにする。タイムアウトの秒数と、失敗文言だけで打ち切る判定は表にある時だけ行う
+  - `TAB_HIDDEN_STATUS_TEXT`の文言を「⏸ ChatGPTのタブが裏にあります。書き終わりは、このタブに戻ったときに自動で仕上げます（別のタブを見ていて大丈夫です）」から「⏸ ChatGPTのタブが裏にあります。書き終わると自動で仕上げます。仕上がらないときは、このタブを一度開いてください」に変更（裏のままでも仕上がる実態に合わせた）
+  - `confirmSendSucceeded`（送信成功確認）は見直した結果、元から毎ループ条件を確認し期限だけを裏の分だけ延ばす作りだったため変更不要と判断（コメントで明記）。`waitUntilTabVisible`（再送前に表に戻るまで待つ処理）は「完成の検知」ではなく「もう一度送信してよいか」の判断のため、二重送信を避ける目的で意図的にそのまま残した（理由をコメントに追記）
+  - `tests/mock-chatgpt.html`に`renderHidden=1`パラメータを追加（既定の裏時挙動に加え、`hideDuring=1`と同時指定した場合はこちらを優先し、裏でも本文描画を止めずに最後まで書き終える再現ができるようにした）
+  - `tests/run-matrix.mjs`に「ずっと裏のまま（表に戻さない）」で記事→サムネ指示→画像のすべてが完成することを確認する専用ケース（`runStayHiddenCase`）を追加。`node tests/run-matrix.mjs`で全32ケース合格を確認済み
+  - 実機確認用のテスト版を`0.4.1.1`→`0.4.1.2`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし
+- **2026-09-28に実機で確認：`findUnverifiedClaims`（要確認）の誤検出3件を修正**。
+  1. 吹き出し（`bubble-left`/`bubble-right`）内の発言は、冒頭の話者ラベル（`<strong>Bくん：</strong>`等）を含めたまま入力と照合していたため、発言そのものは入力にある（例：入力「本人の言葉『中1からやり直したら、問題文が読めるようになった』」）のに、ラベル込みの文字列が入力に無いとして誤って要確認に出ていた。比較・表示の対象から冒頭の`<strong>…</strong>`（話者ラベル）ごと除くように修正
+  2. 数字＋単位（例：点）が、入力にある同じ単位の数字2つの差（例：入力「62点」「81点」→本文「19点アップ」＝81-62）を言い換えているだけの場合まで、入力に無い数字として誤って要確認に出ていた。入力テキストから単位ごとの数字集合を作り（`collectNumbersByUnit`）、本文側の数字が同じ単位の入力の数字2つの組み合わせの差または和と一致する時は要確認から除くように修正（`matchesInputNumberDiffOrSum`。単位をまたいだ比較はしない・入力に実在する数字どうしの組み合わせのみが対象のため、入力に無い数字（例「30点アップ」）や単位違いの数字は従来どおり要確認に出る）
+  - `tests/unverified.test.mjs`（Node組み込みテストランナー。`node tests/unverified.test.mjs`で実行）を新規追加し、上記3件の誤検出が出ないこと、入力に無い数字・入力に無い発言（吹き出し・「」）は引き続き検出されること、話者ラベルの全角・半角コロンや単位違いの数字を混同しないことを確認
+  - `node tests/run-matrix.mjs`で全ケース合格を確認済み
+  - 実機確認用のテスト版を`0.4.1.2`→`0.4.1.3`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし
+- **2026-09-28に実機で確認：`watchGeneratedImage`が、ChatGPTの「プレビュー」表示の段階で「✅ 画像ができました」と誤って表示する不具合を修正**。原因は、naturalWidth>500の大きい画像が現れた時点で即完成とみなしていたが、ChatGPTは大きい画像を「プレビュー」ラベル付きで十数秒表示し続けた後、DOMごと本番表示（ラベルが消え、操作アイコンが出る）に差し替える挙動があり、`[data-testid="stop-button"]`も最初から最後まで出ないため止めるボタンでも判定できなかったこと。完成判定を2段階に変更：(1) 大きい画像の近く（祖先を数段さかのぼった入れ物の中。新設`isNearImagePreviewLabel`）に「プレビュー」/「Preview」の表示がある間は完成にせず「🎨 画像を仕上げています…」を表示して待つ、(2) プレビュー表示が無い状態で大きい画像の組（src一覧）が5秒（新設`IMAGE_STABLE_MS`）続けて変わらなければ完成とみなす。プレビューが一度も出ないまま完成するケース（`IMAGE_STABLE_MS`分の安定待ちのみ）も従来どおり完成にする。8分のタイムアウト・裏にある間の扱い（v0.4.1.2）・失敗文言の判定は変更なし
+  - `tests/mock-chatgpt.html`の画像生成モック（`startStreamingImageResult`）を実機に近づけ、まず「プレビュー」ラベル付きの画像を出し、約10秒後（新設`appendPreviewThenFinalImage`／`MOCK_IMAGE_PREVIEW_MS`）にDOMを差し替えてラベルなしの本番画像1枚だけにするように変更（`imgFail`/`imgNone`の失敗系モードは従来どおりプレビュー無し）
+  - `tests/run-matrix.mjs`の完成判定を、DOMに大きい画像があるだけ（`bigImage`。プレビュー段階でも真になってしまい今回の不具合を検出できない）ではなく、拡張機能が実際に完成と判定した時の表示文言（新設`IMAGE_DONE_RE`）で見るように修正。あわせて、画像生成を送った直後は大きい画像はあるがまだ完成と表示されないこと（プレビュー段階）を確認するステップを追加し、既存の全32ケース（`layout`×`表のまま/裏→表`×`heavyなし/heavy=1`の28ケース＋「貼り付けて読み込む」3ケース＋「ずっと裏のまま」1ケース）が合格することを`node tests/run-matrix.mjs`で確認済み
+  - 実機確認用のテスト版`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`は、まだユーザーに渡していないため`0.4.1.3`のまま中身だけ本体から作り直し（バージョン番号は変更なし）。本体の`@version`は`0.4.0`のまま変更なし
+- **サムネイル画像を、本部の実例（西浦和校のブログ一覧）に寄せた「作り込み型」に強化**。ユーザーから、今のサムネがメイン＋サブ2行だけで要素が少なく「さみしい」、教室・人物の服装や向きが指定されていない、との指摘を受けて対応。
+  1. サムネ生成プロンプトの文字設計を、メイン1＋サブ0〜2の少ない構成から、役割の違う文字を4〜6層重ねる構成に変更（「■ 文字設計（作り込み型・広告バナー風・複数レイヤー）」節）：左上ラベル（角丸バッジ・2〜10字）／特大メイン（8〜12字・2色づかい・白フチ＋濃い縁取り・一部強調）／サブ帯（色帯に白文字・最大2個・各6〜14字）／補足（小さめ1〜2行・〜14字）／下部タグ（チップ状1〜3個・各〜12字）／小物（成績表・グラフ・矢印・表彰の掲示など、記事にある数字の範囲だけ）。事実のみ・創作禁止、紙の向き・細かい文字を描かない等の既存ルールは維持
+  2. `[[EISAI_IMG_TEXT]]`の出力形式を`ラベル：…／メイン：…／サブ1：…／サブ2：…／補足：…／タグ：…,…`に拡張。`extractImgTextMeta`が新形式（`{label, main, sub1, sub2, note, tags}`）・旧形式（メイン／サブ1／サブ2のみ）の両方を読めるように修正。`buildForcedImageTextInstruction`が、各要素の置き場所（左上の角丸ラベル／特大のメイン文字／色帯の上のサブ文字／小さめの補足／下部のタグ）を明記した「必ず描き込む」強制指示を組み立てるように拡張
+  3. `TUTORING_STYLE`（授業の場面）の「服装は指定しない」をやめ、先生は白衣（white lab coat）、生徒は制服または私服と明記（横並び・向かい合わせにしないは維持）。面談用に`MEETING_STYLE`（新設。机をはさんで向かい合う。室長はダークスーツ＋ネクタイ、保護者・生徒は私服）を追加。Node実行時の未初期化参照を避けるため、いずれも関数宣言（`classroomDescriptionText`／`tutoringSceneStyleText`／`meetingSceneStyleText`）に変更
+  4. `CLASSROOM_DESCRIPTION`／`TUTORING_STYLE`が定義だけされサムネ生成プロンプト本文に一度も入っておらず、「写真が無い時は下記の描写を使う」という案内が空振りしていた不具合を修正。新設`buildSceneDescriptionSection()`が「■ 教室と場面の描写（写真が無いとき必ず使う）」節（場面の選び方＋授業／面談それぞれの描写）を組み立て、サムネ生成プロンプトに実際に埋め込むように変更
+  5. 画像生成の送信文（`imgExecBtn`クリック時）に、「人物がいる場合：授業場面は先生と生徒が横並び、先生は白衣。面談場面は向かい合わせ、室長はスーツ。」という場面ルールを毎回付けるように変更。送信文の組み立てを新設`buildImageGenerateMessage(requestId, forcedTextInstruction, imgPrompt)`として関数化（Nodeから単体テスト可能に）
+  - `tests/thumbnail-text-and-scene.test.mjs`（新規）を追加し、`extractImgTextMeta`／`buildForcedImageTextInstruction`の新形式・旧形式、`buildSceneDescriptionSection`に「白衣」「スーツ」「横並び」「向かい合」が入っていること、`buildImageGenerateMessage`の送信文に場面ルールが入っていることを確認（13件）。既存`tests/unverified.test.mjs`（9件）も回帰確認
+  - `node tests/run-matrix.mjs`をフォアグラウンドで最後まで実行し、既存の全32ケースが合格することを確認済み
+  - `SPEC.md`にサムネイルの文字設計・教室と場面の描写の節を追加。あわせて、前回（プレビュー誤検出修正）の`watchGeneratedImage`の完成判定の記述も実際の2段判定に更新
+  - 実機確認用のテスト版`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`は、まだユーザーに渡していないため`0.4.1.3`のまま中身だけ本体から作り直し（バージョン番号は変更なし）。本体の`@version`は`0.4.0`のまま変更なし
+- **【重大】2026-09-29に実機で確認：ChatGPTが記事を「書き物キャンバス（writing block）」に書くと、パネルが止まったまま進まない不具合を修正**。原因は、本文・開始/終了の目印（`[[EISAI-START-…]]`／`[[EISAI-END-…]]`）が入る`div.ProseMirror[contenteditable="true"][aria-label="書き始める"]`（`form`の外）を、旧`isInsideOwnToolOrComposer`が`[contenteditable="true"]`の一律除外で「入力欄」と誤認して除外していたため、`getMarkerState`が永久に`hasStart=false`のままになっていたこと（通常の回答`.markdown`で書かれた時だけ動く、という不安定さの正体）。もう1点、`CHATGPT_ADAPTER.getComposer`の候補`'div.ProseMirror[contenteditable="true"]'`が、`#prompt-textarea`が無い画面でDOM順に先へ来る書き物キャンバスを入力欄と誤認し、プロンプトを記事キャンバスへ書き込んでしまう危険もあった
+  - 「入力欄」を新設`findComposerElement()`という1か所だけで決めるように統一（`#prompt-textarea` → `form`内の`contenteditable`／`textarea` → aria-labelが入力欄らしいもの「ChatGPT に聞く」「Ask ChatGPT」「Message」「メッセージ」の優先順位。aria-labelが「書き始める」等キャンバス系のもの、`[data-testid*="writing-block"]`の中にあるものは新設`isWritingCanvasElement`で絶対に選ばない。複数候補は画面最下部＝`getBoundingClientRect().bottom`最大のものを選ぶ`pickBottomMostElement`）。`CHATGPT_ADAPTER.getComposer`もこれに一本化した
+  - 除外判定`isInsideOwnToolOrComposer`を、「自パネル」と「入力欄の入れ物」（入力欄の`closest('form')`。無ければ入力欄自身）に実際に含まれるか（`contains`）だけで行うように変更（`[contenteditable="true"]`の一律除外を廃止）。入力欄の入れ物（`computeComposerContainer`）は`collectMainTextIndex`／`collectMainImages`の呼び出しごとに1回だけ計算するようにした（テキストノードごとに探し直すと重いため）
+  - `tests/mock-chatgpt.html`のwriting-blockレイアウトの本文要素に、実機どおり`contenteditable="true"`・`aria-label="書き始める"`を付け、旧コードでこのモックの既存4ケース（writing-block×表裏×heavy）が不合格になることを先に確認（`🧠 ChatGPTが考えています…`のままタイムアウト）。新設`composerNoId=1`パラメータで、`#prompt-textarea`を外し入力欄を`form`内の`div.ProseMirror[contenteditable="true"][aria-label="ChatGPT に聞く"]`だけにし、`main`内・入力欄よりDOM順で先に書き物キャンバスのデコイ（`aria-label="書き始める"`）を置く画面も再現。旧`getComposer`（セレクタ優先リスト）がこのデコイを入力欄と誤認し記事生成が完了しないことも先に確認済み
+  - `tests/run-matrix.mjs`に「composer誤認防止」ケース（新設`runComposerMisdetectionCase`）を追加：`composerNoId=1`でプロンプトが正しく入力欄に送られ（記事生成が完了する）、書き物キャンバスのデコイの文字が変わっていないことを確認する。既存の全32ケース＋この新規ケース、合計33ケースが`node tests/run-matrix.mjs`のフォアグラウンド実行で全件合格
+  - `node --check`、既存の単体テスト2本（`tests/unverified.test.mjs`／`tests/thumbnail-text-and-scene.test.mjs`）も回帰確認済み
+  - `TROUBLESHOOTING.md`に本不具合の節（11）を追加。実機確認用のテスト版を`0.4.1.3`→`0.4.1.4`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし
+- **2026-09-29にv0.4.1.4を実機で試した際に確認：タブが裏にあると、送信ボタンの描画が遅れて送信できず、パネルが「📨 送信中…」で止まる不具合を修正**。プロンプトは入力欄（form内の`div.ProseMirror[contenteditable="true"][aria-label="ChatGPT に聞く"]`）に全文入るが送信されず、URLは`/`のまま。原因は`CHATGPT_ADAPTER.send`が入力欄に文字を入れた250ms後に1回だけ送信ボタンを探していたが、裏にあるとChatGPT側の描画が遅れその時点ではまだボタンが無く、Enterキーのkeydownに落ちたがその画面ではEnterでは送れず、その後`confirmSendSucceeded`の失敗を受けて`waitUntilTabVisible()`で表に戻るまで永久に待っていたこと
+  1. `CHATGPT_ADAPTER.send`を、送信ボタンを最大5秒・250msおきに探し直すように変更（新設`findSendButtonNear`。入力欄の入れ物＝`closest('form')`の中を優先し、無ければ画面全体）。見つかった時だけclickし、5秒探しても無い時だけ最後の手段としてEnterキー（`keydown`・`keypress`・`keyup`の3つとも）を送るように変更
+  2. 送信を確認できなかった時の再送を、`waitUntilTabVisible()`（表に戻るまで永久に待つ）から、新設`canSafelyRetrySendWhileHidden`の条件判定に変更。入力欄に今回のプロンプト（依頼番号「依頼番号：<ID>」を含む文言）がまだそのまま残っていて、かつその依頼番号が入力欄の外にまだ一切見えていない場合だけ「まだ確実に送れていない」と確定できるので、入力欄への打ち直しはせず送信ボタンをもう一度押すだけの再試行を裏でもそのまま行う（二重送信にならない理由：入力欄の内容は変えていないため、実は既に届いていた場合は次の`confirmSendSucceeded`が検知できる）。条件を満たさない時は打ち直し・再送をせず確認だけをやり直す（無限待ちはしない）。これに伴い`waitUntilTabVisible`は不要になり削除
+  3. 「📨 送信中…」のまま2秒経っても確認が付かない場合、「📨 送信しています…（ChatGPTの画面が後ろにあると少し時間がかかります）」に文言を切り替え、止まっていないことが分かるようにした
+  - `tests/mock-chatgpt.html`に`lateSendBtn=1`を追加：タブが裏にある間、入力後`LATE_SEND_BTN_DELAY_MS`（既定2秒）だけ送信ボタンを無効化し、Enterキーでも送信されない画面を再現。旧コード（250ms後に1回だけ確認・`waitUntilTabVisible`で永久待ち）でこのモックがタイムアウトで不合格になることを先に確認済み
+  - `tests/run-matrix.mjs`に「ずっと裏のまま・送信ボタン遅延」ケース（新設`runLateSendButtonCase`）を追加し、ずっと裏のままでも送信から記事の完成まで進むことを確認。既存の全33ケース＋この新規ケース、合計34ケースが`node tests/run-matrix.mjs`のフォアグラウンド実行で全件合格
+  - `node --check`、既存の単体テスト2本（`tests/unverified.test.mjs`／`tests/thumbnail-text-and-scene.test.mjs`）も回帰確認済み
+  - `TROUBLESHOOTING.md`に本不具合の節（12）を追加。実機確認用のテスト版を`0.4.1.4`→`0.4.1.5`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし
+- **2026-09-29にv0.4.1.5を実機で試した結果：記事は裏のまま送信〜完成まで成功したが、次のサムネ指示（`[[EISAI-START-…]]`〜`[[EISAI_IMG_TEXT]]…`〜`[[EISAI-END-…]]`がChatGPT側では最後まで書かれていた）でパネルが「🎯 画像生成用プロンプトを作成しています…」のまま止まる不具合を修正**。原因は2つ：(1) サムネ指示・画像生成の送信は`setComposerAndSend`→すぐ完成監視という作りで、記事にだけあった送信確認・再送が無かったため、送信できていなくても完成監視だけが永久に待ってしまう。(2) `setComposerAndSend`の完了を待ってから完成監視を始める作りだったため、ChromeのIntensive Throttling等で送信側の待ちが伸びると、実際には送信が届いていて（あるいは人が手で送信していて）ChatGPT側は完了していても、完成監視そのものが始まっておらず気付けない
+  1. 送信〜確認〜（裏でも安全な時だけ）再送を新設`sendAndConfirm(text, requestId, statusDiv, opts)`に統一し、記事・サムネ指示・画像生成の3か所すべてで使うように変更（画像生成の送信文にも依頼番号の行があるため同じ判定が使える）
+  2. **完成監視は送信の成否にかかわらず、依頼番号を発行した直後に（送信確認より先に）並行して始める**ように3か所すべてを変更。`sendAndConfirm`側の待ちがどれだけ伸びても、人が手で送信した場合でも、既に動いている監視が拾える
+  3. 送信ボタンの探し方（`send()`）・送信確認の待ち方（`confirmSendSucceeded`）を、sleepの繰り返しから新設`waitForDomCondition`（MutationObserver優先＋保険のタイマー）に変更。DOM変化はMutationObserverのコールバックで検知できるため、setTimeoutの間引き（Intensive Throttling）の影響を受けにくい
+  4. 記事・サムネ指示・画像生成の各クリックハンドラ全体をtry/catchで囲み、想定外の例外でもパネルに次にすることを出し、フラグ（`isGeneratingPrompt`等）が立ったまま固まらないようにした
+  5. 入力欄への書き込みにかかった実時間を`console.debug('[Eisai] composer insert: n文字 / m ms')`で残すようにした
+  - **サムネ生成プロンプトの軽量化（同じ実機報告のもう1つの原因）**：`promptRequest`が記事HTMLを丸ごと入れていたため17,133字あり、裏にある状態で入力欄に入れた直後、ページがCDP・表示のどちらにも数分反応しなくなっていた。新設`buildThumbnailArticleSummary`で記事HTMLをタグを除いた本文テキスト（見出し■・段落改行区切り、最大2,500字程度。見出し→数字を含む文→残りの本文の優先順で切り詰め、確定ファクトは全部使う）に軽量化。サムネ生成プロンプト全体の組み立ても`imgGenBtn.onclick`から新設`buildThumbnailPromptRequest`（純粋関数）に切り出した
+  - **字数の実測（`tests/thumbnail-text-and-scene.test.mjs`）**：記事本文は実際の記事fixtureで2,500字以内に収まることを確認。依頼文全体は、記事の長さに比例して伸びる問題は解消したが、記事に依存しない固定の指示文＋選択肢一覧だけで約9,800字あり、実際の記事fixtureでは依頼文全体が約15,000字になる（実機で確認した17,133字は明確に下回るが、目安の「8,000字以下」には固定の指示文自体を削らない限り届かない。固定の指示文の圧縮は今回の対応範囲外とし、既知の制限として`TROUBLESHOOTING.md`に記録）
+  - **モックでの再現**：`tests/mock-chatgpt.html`に`throttle=1`（拡張機能自身が呼んだ`setTimeout`／`setInterval`の遅延だけを大きく伸ばす近似。呼び出し元のスタックトレースで判定し、mock自身の内部タイマーは対象外にした）を追加。旧コードでは「ずっと裏のまま・送信ボタン遅延」ケースが不合格になることを確認したうえで、`lateSendBtn=1`を記事だけでなくサムネ指示・画像生成まで進める3段階のケースに拡張し、`throttle=1`＋`lateSendBtn=1`の専用ケース（新設`runThrottledLateSendButtonCase`）も追加。本物のIntensive Throttling（ページの実際の占有・可視状態に基づくブラウザ内部の仕組み）は`document.hidden`のプロパティ上書きだけでは再現できないため、この近似での確認には限界がある旨を`TROUBLESHOOTING.md`に明記した
+  - `node tests/run-matrix.mjs`をフォアグラウンドで最後まで実行し、既存の全33ケース＋新規2ケース、合計35ケースが全件合格。既存の単体テスト（`tests/unverified.test.mjs`）・新規の`buildThumbnailArticleSummary`／`buildThumbnailPromptRequest`テスト（`tests/thumbnail-text-and-scene.test.mjs`。合計21件）・`node --check`も全て合格
+  - `SPEC.md`に「送信の統一（`sendAndConfirm`）」「送信ボタンの探し方・待ち方（MutationObserver優先）」「サムネ指示の軽量化」の節を追加。`TROUBLESHOOTING.md`に本不具合・既知の制限の節（13）を追加。実機確認用のテスト版を`0.4.1.5`→`0.4.1.6`に作り直し（`tests/blog-generator-chatgpt.TEST.user.js` / `tests/TEST-script-for-copy.txt`。本体から機械的に作り直しただけで内容は本体と同一）。本体の`@version`は`0.4.0`のまま変更なし
+- **v0.4.1.7（テスト版）：入力欄への書き込みでページが固まる根本原因の修正**（2026-09-29、本物のChatGPTで計測して判明）
+  - 原因：入力欄（ProseMirror）への`execCommand('insertText')`は文字数の2乗に近い割合で重く、3,000字で約1秒、15,000字（当時のサムネ指示）で約17秒、ページ全体が固まっていた（裏タブでは数分に伸び、送信処理も止まって見えた）。これまでの「送信中のまま止まる」「ページが反応しない」の根本原因。
+  - 対応1：書き込みを、貼り付け（`paste`イベント）を第一の方法に変更（実機で8,000字でも約0.04秒）。貼り付けが処理されない画面だけ従来の方法に戻す。
+  - 対応2：サムネ指示の依頼文を約15,000字→約4,800字に書き直し（創作の禁止・4〜6層の文字設計・授業=横並び白衣／面談=向かい合いスーツ・紙の向き・出力形式はすべて維持）。記事の要約は最大1,800字。ChatGPTは10,000字以上の貼り付けを添付ファイルに変えるため、全ての依頼文を7,500字以内に収めることを単体テストで確認。
+  - 対応3：それでも添付になった場合は、依頼番号入りの短い案内文（「添付の指示に従って回答」）を入力欄に入れ、アップロード完了を待って送る。送信失敗時は自分が付けた添付だけを外す。
+  - 対応4：`waitForDomCondition`が、DOM変化のたびに保険タイマーを消さずに増やし、重い確認を何重にも走らせていた不具合を修正（タイマーは常に1本・DOM変化での確認は最短150msに1回）。
+  - テスト：`tests/mock-chatgpt.html`に実機の入力欄の性質（`insertText`の重さ・貼り付けの速さ・9,000字超の貼り付けは添付・アップロード中は送信不可）を既定で再現。修正前のコードはこのモックで20秒固まり不合格になることを確認。`run-matrix.mjs`は500msを超える重い処理が1回でもあれば不合格にするよう変更し、「依頼文が添付になる」2ケースを追加。
+  - Chromeの省エネ機能で裏のタブ自体が一時停止される場合は、拡張機能では防げないため、`TROUBLESHOOTING.md`（14）に設定方法を追記。
+- **v0.4.1.8（テスト版）：クリップボードへのコピーで画像生成の送信が止まる不具合の修正**（2026-09-29、本物のChatGPTで確認）
+  - 原因：「このプロンプトで画像を生成する」は、送信の前に画像プロンプトをクリップボードへコピーして、その完了を待っていた。ページにキーボードの焦点が無い時（別のアプリを見ている等）、`navigator.clipboard.writeText()`が失敗もせず返ってこず、送信が永久に始まらなかった。
+  - 対応：クリップボードへの書き込みを`writeClipboardWithTimeout`（1.5秒で打ち切り）に統一。画像生成の送信はコピーを待たずに進める。「HTMLをコピー」「プロンプトをコピー」は、返ってこなければ失敗として手動コピーの案内を出す。拡張機能の中で待っている処理（`await`）は、すべて時間の上限があることを確認した。
+  - テスト：`tests/mock-chatgpt.html`で`writeText`を既定で「永久に返らない」ようにした（`clipHang=0`で無効）。修正前（0.4.1.7）はこのモックで画像生成の送信前に止まり不合格になることを確認。
+
 ## [Editor 0.11.0] - 2026-09-16
 
 ### 追加

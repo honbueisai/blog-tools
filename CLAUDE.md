@@ -184,6 +184,7 @@ CHANGELOGエントリは **どちらのツールの変更か明記**：
 ├── blog-generator.user.js   # 拡張機能（Tampermonkey用 / Gemini連携）
 ├── editor-icons.html         # エディター（装飾ツール / 単体HTML・新バージョン）
 ├── editor-icons-legacy.html  # エディター旧バージョン（Ver.0.11.0固定 / 単体HTML）
+├── tests/                    # ChatGPT版拡張機能のモック環境テスト（mock-chatgpt.html / fixtures）
 ├── README.md                 # 概要・インストール・使い方
 ├── SPEC.md                   # 仕様書
 ├── TROUBLESHOOTING.md        # 既知の問題と対処
