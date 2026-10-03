@@ -149,7 +149,7 @@ const STATE_EXPR = `(() => {
   const copyBtn = document.getElementById('eisai-copy-html-btn');
   const rereadBtn = document.getElementById('eisai-reread-btn');
   const imgExecBtn = document.getElementById('eisai-img-exec-btn');
-  const root = document.querySelector('main') || document.body;
+  const root = Array.from(document.querySelectorAll('main')).sort((a, b) => (b.textContent || '').length - (a.textContent || '').length)[0] || document.body;
   const imgs = Array.from(root.querySelectorAll('img'));
   const tasks = window.__eisaiLongTasks || [];
   return JSON.stringify({
@@ -819,7 +819,9 @@ async function main() {
 
     // EISAI_ONLY=文字列 で、名前にその文字列を含む表のケースだけを実行する（調査用）。
     const only = process.env.EISAI_ONLY || '';
-    const matrix = buildMatrix().filter(c => !only || c.name.indexOf(only) !== -1);
+    // EISAI_SPECIAL_ONLY=1 で、表のケースを飛ばして特別ケース（貼り付け・ずっと裏のまま等）だけを実行する（調査用）。
+    const specialOnly = process.env.EISAI_SPECIAL_ONLY === '1';
+    const matrix = specialOnly ? [] : buildMatrix().filter(c => !only || c.name.indexOf(only) !== -1);
     for (const testCase of matrix) {
       process.stdout.write(`実行中: ${testCase.name} ... `);
       const result = applyLongtaskGate(await runFullFlowCase(port, testCase));

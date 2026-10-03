@@ -346,6 +346,16 @@
   // 拡張機能が「DOM順で最初に見つかったcontenteditable」を入力欄と誤認しないこと
   // （findComposerElement）を確認するために使う（要素そのものは差し替えず属性だけ変える
   // ため、composer変数・以後のイベント登録はそのまま動く）。
+  // v0.4.1: 2026-10-03に実機で確認：ChatGPTの画面に<main>が2つあり、先頭は空の「どこから
+  // 始めましょうか？」、会話は2つ目の<main>に入っていた。既定でこの形を再現する（twoMains=0で無効）。
+  // 拡張機能が document.querySelector('main')（先頭の空の方）だけを読むと、回答が見つからず止まる。
+  if (params.get('twoMains') !== '0') {
+    var emptyMain = document.createElement('main');
+    emptyMain.id = 'mock-empty-main';
+    emptyMain.textContent = 'どこから始めましょうか？';
+    var realMain = document.querySelector('main');
+    realMain.parentNode.insertBefore(emptyMain, realMain);
+  }
   var composerNoIdMode = params.get('composerNoId') === '1';
   if (composerNoIdMode) {
     composer.removeAttribute('id');

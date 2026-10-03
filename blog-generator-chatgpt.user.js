@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.4.0
+// @version      0.4.1
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -90,12 +90,15 @@ ${buildRequestIdLine(requestId)}
       buildSceneDescriptionSection,
       buildImageGenerateMessage,
       buildThumbnailArticleSummary,
-      buildThumbnailPromptRequest
+      buildThumbnailPromptRequest,
+      // v0.4.1: 最後の申込枠の復活（AIが書いた最後のCTAの除去・CTA_DATAの読み取り）
+      removeFinalEisaiCta,
+      parseCtaData
     };
     return;
   }
 
-  const CURRENT_VERSION = '0.4.0';
+  const CURRENT_VERSION = '0.4.1';
   // v0.4.0.5: パネル見出しの版表示だけ、Tampermonkey等が渡す GM_info.script.version があれば
   // それを使う（テスト版インストール時は 0.4.0.N のようなテスト版番号が出る）。
   // @grant none環境やGM_info未対応環境でも落ちないよう、try/typeofで守る。
@@ -162,11 +165,17 @@ ${buildRequestIdLine(requestId)}
 
   // v0.4.0: 記事タイプは「悩み解決型」「ストーリー型」の2択（旧5タイプは廃止）。
   // v0.4.0（入力モード追加）: かんたんモードでは「おまかせ（メモから判断）」も選べる。
+  // v0.4.1: 「ビフォー・アフター型（成果・変化）」を追加し、標準の型にした（湯浅さん指示
+  // 2026-09-29：情報提供の流れではなく、生徒の変化＝ビフォー・アフターをメインにする）。
+  // 悩み解決型（情報提供）は、自分で選んだ時だけ使う。
   const ARTICLE_TYPES = {
+    BA: 'ba',
     SOLVE: 'solve',
     STORY: 'story',
     AUTO: 'auto'
   };
+  // 保存済みの下書きにこの印が無い（v0.4.0以前の下書き）時は、型をビフォー・アフター型に切り替える。
+  const ARTICLE_TYPE_SCHEME = 2;
 
   // v0.4.0: 入力モード（かんたん＝メモ1つだけ必須／しっかり＝項目別・今のフォーム）。選択は保存する。
   const INPUT_MODES = {
@@ -192,7 +201,7 @@ ${buildRequestIdLine(requestId)}
   }
 
   let currentInputMode = loadInputMode();
-  let currentArticleType = currentInputMode === INPUT_MODES.EASY ? ARTICLE_TYPES.AUTO : ARTICLE_TYPES.SOLVE;
+  let currentArticleType = ARTICLE_TYPES.BA;
 
   syncTestModeFlagFromLocation();
   console.log(`🚀 英才ブログ生成ツール ChatGPT版 v${CURRENT_VERSION} 起動`);
@@ -483,7 +492,8 @@ ${buildRequestIdLine(requestId)}
 
   function saveArticleDraft(data) {
     try {
-      localStorage.setItem(ARTICLE_DRAFT_STORAGE_KEY, JSON.stringify(data));
+      // v0.4.1: 型の印（ARTICLE_TYPE_SCHEME）を付けて保存する（印の無い古い下書きは標準の型に切り替えるため）
+      localStorage.setItem(ARTICLE_DRAFT_STORAGE_KEY, JSON.stringify(Object.assign({}, data, { typeScheme: ARTICLE_TYPE_SCHEME })));
     } catch (e) {
       console.error('Save Article Draft Error:', e);
     }
@@ -521,6 +531,9 @@ ${buildRequestIdLine(requestId)}
     const isEasyMode=(articleData && articleData.mode)==='easy';
     const isAuto=(articleData && articleData.type)==='auto';
     const isStory=(articleData && articleData.type)==='story';
+    const isSolve=(articleData && articleData.type)==='solve';
+    // v0.4.1: 型の指定が無い・不明な時は、ビフォー・アフター型にする（標準の型）。
+    const isBA=!isAuto&&!isStory&&!isSolve;
     // v0.4.1: 文字数が未選択の時は「本文 字。」にならないよう、既定値（1,800〜2,200字）にする
     //         （フォームの既定値も defaultArticleInput() 側で同じ値にしている）。
     const len=v('length')||'1800-2200';
@@ -571,15 +584,28 @@ ${buildRequestIdLine(requestId)}
       ? `入力の写真「${v('photos')}」を場面ごとに割り振る`
       : `写真は、${photoDefaultDesc}を指示する`;
     const step3Story=`3. 本論（ストーリー型）：<h2> をちょうど3つ、出来事の流れで書く（例：当日の様子／生徒の変化・事例／終わってから・次に向けて、という3幕構成。見出し文はこの例をそのまま使わず記事に合わせて作る）。教室固有の仕組み・データ用に新しい<h2>を追加しない（5.参照）。学校ごとの教科数が揃わない時は、3つ目以降の教科を<h3>で本論の中に足してよい（<h2>は増やさない）。見出しの文頭に①②③・数字・STEPは付けない（エディタが自動で 01/02/03 を付けます）。見出しの中では「家庭でできる手順」は書かない。日時・人数・対象などのデータは、当てはまる見出しの中で <table>（各行 <tr><th>項目</th><td>内容</td></tr> の「項目＝th／内容＝td」）にまとめる。事例は入力の事例・事実から1件ずつ書き、必ず「学年・イニシャル・教科・担当講師名」を明記する。入力（facts・事例）に生徒の反応や変化が書いてあれば、それを落とさずに書く（書いていなければ新しく作らない。表情・動作・セリフを想像で加えない）。写真プレースホルダー（<p data-photo-placeholder="true"><strong>■ 写真：何を撮るか</strong></p>）は、その場面を書いた直後に置く（${photoAssignInstruction}）。<h2>3つの本論が終わったところで、家庭でできること3つを1つにまとめて書く${homeStepsNoteStory}：<div class="eisai-point-list"><strong>ご家庭でできること</strong><ul><li>…</li></ul></div>。中間CTA（次項）は本論2つ目の見出しの後のまま。`;
+    // v0.4.1: ビフォー・アフター型（標準）。生徒の変化（前→後）を主役にし、家庭でできることは本論の後に1つにまとめる。
+    const step3BA=`3. 本論（ビフォー・アフター型）：<h2> をちょうど3つ、この順で書く。①ビフォー：以前はどんな状態だったか（点数・成績・つまずき・困っていたこと。入力にあることだけ）②教室でやったこと：変化のために何をしたか（取り組みの中身・担当講師名・期間や回数。進め方は <ol class="eisai-steps"><li>…</li></ol> で）③アフター：どう変わったか（結果の数字、できるようになったこと、本人・保護者の言葉、次の目標。入力にあることだけ）。見出し文は「ビフォー」「アフター」という言葉をそのまま使わず、記事の中身が分かる文にする（例：「文章題で式が立てられなかった6月」「線を引いて『何を求めるか』を先に書く練習」「92点、文章題がこわくなくなった」）。見出しの文頭に①②③・数字・STEPは付けない（エディタが自動で 01/02/03 を付けます）。教室固有の仕組み・データ用に新しい<h2>を追加しない（5.参照）。点数・成績の変化がある時は、③の中に <table><tr><th>回</th><th>点数</th></tr>…</table>（列見出し形式）で前後を並べ、変化の幅（例：+32点）も本文に書く。入力に本人・保護者の言葉があれば、③で吹き出し（入力の文言のまま）にする。複数の教科・生徒の変化がある時は、③の中で教科（または生徒）ごとに<h3>で分け、同じ粒度で書く（<h2>は増やさない）。写真プレースホルダー（<p data-photo-placeholder="true"><strong>■ 写真：何を撮るか</strong></p>）は、その場面を書いた直後に置く（${photoAssignInstruction}）。<h2>3つの本論が終わったところで、同じ悩みを持つ家庭が今日からできることを3つ、1つにまとめて書く${homeStepsNoteStory}：<div class="eisai-point-list"><strong>ご家庭でできること</strong><ul><li>…</li></ul></div>。`;
     const step3Solve=`3. 本論：<h2> をちょうど3つ。教室固有の仕組み・データ用に新しい<h2>を追加しない（5.参照）。学校ごとの教科数が揃わない時は、3つ目以降の教科を<h3>で本論の中に足してよい（<h2>は増やさない）。見出しの文頭に①②③・数字・STEPは付けない（エディタが自動で 01/02/03 を付けます）。各見出しの中に「家庭で今日からできる手順」${homeStepsNoteSolve}と「教室ではこうしている」（入力の事実から）を対にして書く。手順は <ol class="eisai-steps"><li>…</li></ol>、要点は <div class="eisai-point-list"><strong>家庭でできること</strong><ul><li>…</li></ul></div> のように、<strong> には中身が分かるタイトルを入れる（「ポイント」だけにしない）。`;
     // v0.4.0: 記事の型「おまかせ」の時は、メモの内容から型を判断させ、両方の型の本論指示を併記して選ばせる。
+    // v0.4.1（Codexレビュー対応・依頼文の長さ）：おまかせの時だけ使う、ストーリー型の短い版。
+    // 見出しのルール・写真・表・家庭でできることの書き方は、上のビフォー・アフター型と同じものを使わせる。
+    const step3StoryShort=`3. 本論（ストーリー型）：<h2> をちょうど3つ、出来事の流れで書く（例：当日の様子／生徒の変化・事例／終わってから・次に向けて。見出し文は記事に合わせて作る）。日時・人数などは表、事例は「学年・イニシャル・教科・担当講師名」を明記。見出しの付け方・新しい<h2>を足さないこと・写真プレースホルダー・最後の「ご家庭でできること」のまとめ方は、ビフォー・アフター型と同じにする。`;
+    // v0.4.1: 「おまかせ」は、生徒の変化・成果ならビフォー・アフター型、イベントの報告ならストーリー型
+    //         （迷ったらビフォー・アフター型）。悩み解決型（情報提供）は、おまかせでは選ばない。
     const step3=isAuto
-      ? `3. 本論：メモの内容が、イベント・事例の報告ならストーリー型、悩みの解決・勉強法の相談ならば悩み解決型で書く（どちらか一方を選ぶ）。\n【ストーリー型で書く場合】${step3Story}\n【悩み解決型で書く場合】${step3Solve}`
-      : (isStory?step3Story:step3Solve);
+      ? `3. 本論：メモの内容が、生徒の変化・成果（点数・成績・できるようになったこと・取り組みの前後）ならビフォー・アフター型、イベント（対策会・講習・行事）の報告が中心ならストーリー型で書く（どちらか一方を選ぶ。迷ったらビフォー・アフター型）。\n【ビフォー・アフター型で書く場合】${step3BA}\n【ストーリー型で書く場合】${step3StoryShort}`
+      : (isStory?step3Story:(isSolve?step3Solve:step3BA));
     const typeSummaryLabelLong=isAuto
-      ? 'おまかせ（メモの内容がイベント・事例の報告ならストーリー型、悩みの解決・勉強法ならば悩み解決型で判断して書く）'
-      : (isStory?'ストーリー型（イベント報告・事例・体験）':'悩み解決型（情報提供）');
-    const typeSummaryLabelShort=isAuto?'おまかせ':(isStory?'ストーリー型':'悩み解決型');
+      ? 'おまかせ（生徒の変化・成果ならビフォー・アフター型、イベント報告ならストーリー型。迷ったらビフォー・アフター型）'
+      : (isStory?'ストーリー型（イベント報告・事例・体験）':(isSolve?'悩み解決型（情報提供）':'ビフォー・アフター型（生徒の変化・成果）'));
+    const typeSummaryLabelShort=isAuto?'おまかせ':(isStory?'ストーリー型':(isSolve?'悩み解決型':'ビフォー・アフター型'));
+    // v0.4.1: ビフォー・アフター型（おまかせ含む）の導入は、最初に結果を一言で見せる。
+    const baIntroCore='室長のあいさつのすぐ後で、この記事の結果（変化）を一言で先に見せる（数字があれば「60点→92点」のように前後を必ず書く。無ければ「できなかった○○が、できるようになった」の形で。入力にあることだけ）';
+    // v0.4.1（Codexレビュー対応）：おまかせでストーリー型を選んだ時に、ビフォー・アフター専用の指示がかからないよう条件付きにする。
+    const baIntroLead=isBA
+      ? baIntroCore+'。そのうえで、'
+      : (isAuto?'（ビフォー・アフター型で書く場合は、'+baIntroCore+'）。そのうえで、':'');
     // v0.4.0: かんたんモードは【入力】をメモ中心にする（悩み・家庭でできること・事実の項目別入力は使わない）。
     const inputBodyLines=isEasyMode
       ? [
@@ -630,13 +656,13 @@ ${buildRequestIdLine(requestId)}
 - 本部の評価軸：①タイトル ②サムネ ③構成 ④教室の中身が見える ⑤⑥視認性 ⑦問い合わせとの連動 ⑧記事単体で読者にメリット。
 
 【記事の型（この順番で書く。今回の型：${typeSummaryLabelLong}）】
-1. 導入：「${v('area')?v('area')+'の':''}個別指導塾、英才個別学院 ${v('kosha')} 室長の${v('shichou')}です！」で始め、${introTimingPhrase}、${empathyInstruction}。入力にない場面・状況設定（「面談で」「来校時に」「送迎の時に」など、誰から・どこで聞いた話かの設定）を作らない。
-2. 原因の言い換え：悩みの裏にある本当の原因を一段深く言い換える（一般論で終わらせない）。目次は、本文をひととおり書き終えてから文字数を数え、2,000字を超えていた場合だけここに置く（先に入れるかどうかを決めてから書き始めない）：<div class="eisai-toc"><strong>目次</strong><ol><li>見出しの文</li>…</ol></div>（リンクは付けない）。
+1. 導入：「${v('area')?v('area')+'の':''}個別指導塾、英才個別学院 ${v('kosha')} 室長の${v('shichou')}です！」で始め、${baIntroLead}${introTimingPhrase}、${empathyInstruction}。入力にない場面・状況設定（「面談で」「来校時に」「送迎の時に」など、誰から・どこで聞いた話かの設定）を作らない。
+2. 原因の言い換え：${isBA?'ビフォーの状態（つまずき）の裏にある本当の原因を、入力の事実から一段深く言い換える（一般論で終わらせない）':(isAuto?'ビフォー・アフター型ならビフォーの状態（つまずき）の裏にある本当の原因を、ストーリー型なら悩みの裏にある本当の原因を、入力の事実から一段深く言い換える（一般論で終わらせない）':'悩みの裏にある本当の原因を一段深く言い換える（一般論で終わらせない）')}。目次は、本文をひととおり書き終えてから文字数を数え、2,000字を超えていた場合だけここに置く（先に入れるかどうかを決めてから書き始めない）：<div class="eisai-toc"><strong>目次</strong><ol><li>見出しの文</li>…</ol></div>（リンクは付けない）。
 ${step3}
 4. 中間CTA：本論(3.)の2つ目の<h2>のまとまりの後に1つ。そこまでの本文が全体の40%に届かない場合は、3つ目の<h2>の途中（最初の段落の後）に置く。必ずこの形：<div class="eisai-cta" data-kind="mid"><p>記事固有でハードル低めの一文（例：範囲表を持って、対策会で一緒に計画を立てませんか？）</p><a class="cta-btn" href="${v('ctaUrl')}">20字以内の短いボタン文言（例：無料相談を申し込む）</a></div>　cta-btnの文言は20字以内にする（2行に折れる長さは不可）。締切・特典があっても、ボタンではなく直前の<p>に書く。
-5. 教室固有の仕組み・事例・データ${isStory?'（③に書いた事例・データと重複させない。③に含めていない残りの事実があれば補う。無ければこの項は省略してよい）':''}：新しい<h2>は追加しない。本論(3.)の<h2>3つのどれかの中に書くか、本論の3つが終わったあとに<h3>で続けて置く。入力の事実と事例を、日付・人数・数字・実際の言葉を落とさずに書く。日程や条件は <table> で、各行を <tr><th>日時</th><td>（入力にある日時をそのまま）</td></tr> のように「項目＝th／内容＝td」にする（曜日を新しく作らない）。点数の推移だけは <tr><th>回</th><th>点数</th></tr> の列見出し形式にする。写真は <p data-photo-placeholder="true"><strong>■ 写真：何を撮るか</strong></p> で「何を撮った写真か」まで指示する（${v('photos')||photoDefaultDescPlain}）。複数の学校・教科のデータがある時は、学校（または教科）ごとに<h3>で見出しを分け、同じ粒度で書く（<h2>は増やさない）。1つの見出しに複数校・複数教科の事実を詰め込まない。facts内の列挙（①〜④等）は本文でも数を揃える。
+${(isStory||isBA||isAuto)?'5. 教室固有の仕組み・データ：③に書いていない残りの事実（日付・人数・数字・実際の言葉）があれば、本論の後に<h3>で補う（無ければ省略。新しい<h2>は追加しない）。日程や条件は <table> で「項目＝th／内容＝td」（曜日を新しく作らない）。facts内の列挙（①〜④等）は本文でも数を揃える。':`5. 教室固有の仕組み・事例・データ：新しい<h2>は追加しない。本論(3.)の<h2>3つのどれかの中に書くか、本論の3つが終わったあとに<h3>で続けて置く。入力の事実と事例を、日付・人数・数字・実際の言葉を落とさずに書く。日程や条件は <table> で、各行を <tr><th>日時</th><td>（入力にある日時をそのまま）</td></tr> のように「項目＝th／内容＝td」にする（曜日を新しく作らない）。点数の推移だけは <tr><th>回</th><th>点数</th></tr> の列見出し形式にする。写真は <p data-photo-placeholder="true"><strong>■ 写真：何を撮るか</strong></p> で「何を撮った写真か」まで指示する（${v('photos')||photoDefaultDescPlain}）。複数の学校・教科のデータがある時は、学校（または教科）ごとに<h3>で見出しを分け、同じ粒度で書く（<h2>は増やさない）。1つの見出しに複数校・複数教科の事実を詰め込まない。facts内の列挙（①〜④等）は本文でも数を揃える。`}
 6. まとめ：<div class="eisai-summary"><strong>まとめ</strong><ul><li>要点1</li><li>要点2</li><li>要点3</li></ul></div>（直前に要約の一文を <p> で）。
-${rel.length?'7. 関連記事：<div class="eisai-related"><strong>あわせて読みたい</strong><a href="URL">タイトル</a></div> の形で次のリンクを入れる。\n'+rel.join('\n')+'\n':'7. 関連記事：入力が無いので省略。\n'}8. 教室情報と本CTA：${schoolInfoHtml} のあとに、必ずこの形で本CTAを置く：<div class="eisai-cta" data-kind="final"><p>不安を下げる一文${v('offer')?`（締切・特典「${v('offer')}」があればここに書く）`:''}</p><a class="cta-btn" href="${v('ctaUrl')}">20字以内の短いボタン文言</a>${v('tel')?`<a class="cta-sub" href="tel:${v('tel').replace(/[^0-9+]/g,'')}">電話で相談する</a>`:''}${v('line')?`<a class="cta-sub" href="${v('line')}">LINEで相談する</a>`:''}</div>　cta-btnの文言は20字以内にする（2行に折れる長さは不可）。
+${rel.length?'7. 関連記事：<div class="eisai-related"><strong>あわせて読みたい</strong><a href="URL">タイトル</a></div> の形で次のリンクを入れる。\n'+rel.join('\n')+'\n':'7. 関連記事：入力が無いので省略。\n'}8. 教室情報：${schoolInfoHtml} を置く（本CTAは本文に書かない。記事の一番最後に、拡張機能が「まずはお気軽にご相談ください」の申込枠を付ける。その中の文章は、下の CTA_DATA にこの記事に合わせて書く${v('offer')?`。締切・特典「${v('offer')}」は説明文1か2に入れる`:''}）。
 
 【使ってよいHTML（これ以外のclassは使わない。装飾はエディタ側で付きます）】
 <h1> <h2> <h3> <p> <strong> <br> <table><tr><th><td> ／ <div class="eisai-empathy-box"><strong>ラベル</strong><ul><li>…</li></ul></div> ／ <div class="eisai-toc"> ／ <div class="eisai-point-list"><strong>タイトル</strong><ul>…</ul></div> ／ <ol class="eisai-steps"> ／ <p class="eisai-highlight"><strong>…</strong></p> ／ <div class="bubble-right"><strong>Aさん：</strong>…</div> <div class="bubble-left"><strong>${v('shichou')}：</strong>…</div> ／ <div class="eisai-manager-note"><strong>室長より</strong><p>…</p></div> ／ <p data-photo-placeholder="true"><strong>■ 写真：…</strong></p> ／ <div class="eisai-cta" data-kind="mid|final"> ／ <div class="eisai-summary"> ／ <div class="eisai-related"> ／ <div class="eisai-school-info">`);
@@ -655,7 +681,7 @@ ${rel.length?'7. 関連記事：<div class="eisai-related"><strong>あわせて�
 
 【タイトル3案（各33文字以内。数字か学校名のどちらかを必ず含む）】
 ※33字を超えたら、そのまま出力せずに短く言い換えてから出力する（全角1字＝1字、句読点・記号・カギ括弧も1字として数える）。
-1案目：【学校名／地域】＋入力の facts・事例の中でいちばん強い具体的な数字・実績（参加人数・点数・学校別データ・日付・開催回数など）を必ず使う（SEO・ペルソナ起点）　例：【総勢40名参加！】テスト直前の無料対策会レポート／【稲城三中・四中】9月中間テスト、学校別の出題傾向
+${isBA?'※1案目に必ず「前→後」の変化（例：60点→92点、+32点）を入れる。\n':(isAuto?'※ビフォー・アフター型で書く場合は、1案目に必ず「前→後」の変化（例：60点→92点、+32点）を入れる。\n':'')}1案目：【学校名／地域】＋入力の facts・事例の中でいちばん強い具体的な数字・実績（参加人数・点数・学校別データ・日付・開催回数など）を必ず使う（SEO・ペルソナ起点）　例：【総勢40名参加！】テスト直前の無料対策会レポート／【稲城三中・四中】9月中間テスト、学校別の出題傾向
 2案目：悩みのセリフ引用＋否定の切り返し／問いかけ　例：「勉強したのに解けなかった」で終わらせない3つの振り返り
 3案目：季節・時期トリガー＋学校名か数字　例：9月から算数が難しい…小学生に増える3つのつまずきとは？
 ※「3つの〜」のような手順の数だけをタイトルの数字にする案は、1〜3案のうち最大1つまで。かつ facts内に参加人数・点数・学校別データ・日付・回数などの強い数字が無い場合に限る。強い数字がある時は、必ずどこかの案でその数字自体をタイトルに使う。
@@ -667,10 +693,19 @@ ${inputSection}
 【出力の末尾に必ず付けるもの（この順）】
 <!--CTA_DATA_START-->
 中間CTA文言：（記事固有の一文）
-本CTAボタン：（20字以内。例「無料相談を申し込む」）
-本CTA説明文：（不安を下げる一文）
-電話文言：（例「電話で相談する」）
+説明文1：（この記事の内容に合わせた、保護者の不安を解消する一文）
+説明文2：（相談・体験へのハードルを下げる、この記事に合わせた一文）
+相談ポイント1：（無料学習相談でできること。この記事の学年・教科・悩みに合わせて、各25字以内）
+相談ポイント2：
+相談ポイント3：
+相談ポイント4：
+体験ポイント1：（無料体験授業でできること。この記事に合わせて、各25字以内）
+体験ポイント2：
+体験ポイント3：
+体験ポイント4：
+締めの言葉：（この記事の内容に合わせて、行動を後押しする一文）
 <!--CTA_DATA_END-->
+（CTA_DATAの文章も、入力にない実績・数字・特典は作らない。教室の仕組みとして入力に無いもの（例：自習室の無料開放）も書かない）
 <!--EISAI_TITLES: ["1案目","2案目","3案目"]-->
 <!--EISAI_CHECK: {"title":"○","structure":"○","classroom":"○","visibility":"○","cta":"○","benefit":"○","facts_only":"○","chars":2000,"notes":["直した点や自信のない点を短く"]}-->
 EISAI_CHECK は出力前の自己点検です。○△×で正直に付け、△×があれば先に本文を直してから出力してください。facts_only は「入力にない事実（数字・固有名だけでなく、『面談で』『来校時に』のような入力に無い状況設定、「」で囲んだ発言、生徒・保護者の表情・動作、曜日も含む）を書いていないか」です。classroom は「室長名を入力のまま書いているか、facts内の列挙（①〜④等）が本文でも同じ数だけ書かれているか」も含めて点検してください。`);
@@ -897,8 +932,27 @@ EISAI_CHECK は出力前の自己点検です。○△×で正直に付け、△
   // 連結し、1本の文字列と「どのテキストノードのどの位置がどのオフセットに対応するか」の
   // 対応表を作る。目印検索・依頼番号の可視確認・失敗文言の位置スコープ判定など、この後の
   // すべての読み取りがこれを使う。
+  // v0.4.1: 2026-10-03に実機で確認：ChatGPTの画面に<main>が2つあり、先頭の<main>は空の
+  // 「どこから始めましょうか？」の画面、会話は2つ目の<main>に入っていた。querySelector('main')は
+  // 先頭の空の方を返すため、回答の目印が永久に見つからず「生成中」のまま止まる恐れがあった。
+  // 読み取りの範囲は「会話が入っている<main>」＝文字数がいちばん多い<main>にする。
+  // ページ全体（body）にすると、画面の端にある別の文言（メニュー等）まで拾い、画像の失敗判定などを
+  // 取り違える恐れがあるため、範囲は会話のエリアに絞る。<main>が無い画面だけbody全体を読む。
+  function getReadRoot() {
+    const mains = Array.from(document.querySelectorAll('main'));
+    if (!mains.length) return document.body;
+    if (mains.length === 1) return mains[0];
+    let best = mains[0];
+    let bestLen = -1;
+    mains.forEach(m => {
+      const len = (m.textContent || '').length;
+      if (len > bestLen) { best = m; bestLen = len; }
+    });
+    return best;
+  }
+
   function collectMainTextIndex() {
-    const root = document.querySelector('main') || document.body;
+    const root = getReadRoot();
     if (!root) return { root: null, text: '', nodeSpans: [] };
     // v0.4.1.4: 入力欄の入れ物は、このテキストノード走査1回につき1回だけ計算する
     // （テキストノードごとに入力欄を探し直すと重いため）。
@@ -1047,7 +1101,7 @@ EISAI_CHECK は出力前の自己点検です。○△×で正直に付け、△
 
   // v0.4.1.0: 画像そのものの完成監視用。main内（自パネル・入力欄を除く）のimg要素一覧。
   function collectMainImages() {
-    const root = document.querySelector('main') || document.body;
+    const root = getReadRoot();
     if (!root) return [];
     try {
       const composerContainer = computeComposerContainer();
@@ -2709,6 +2763,9 @@ ${buildMarkerInstructionBlock(requestId)}`;
 
     if (!dataText) return null;
     const data = {};
+    // v0.4.1: 実機で、CTA_DATAの各行が改行なしで1行につながって読まれることがあったため、
+    // 決まった項目名（説明文1・相談ポイント1…）の前で必ず改行してから1行ずつ読む。
+    dataText = dataText.replace(/(中間CTA文言|本CTAボタン|本CTA説明文|電話文言|説明文[12]|相談ポイント[1-4]|体験ポイント[1-4]|締めの言葉)\s*[:：]/g, '\n$1：');
     const lines = dataText.trim().split('\n');
     lines.forEach(line => {
       const idx = line.search(/[:：]/);
@@ -2769,7 +2826,8 @@ ${buildMarkerInstructionBlock(requestId)}`;
       '<div style="text-align: center; color: #555; margin: 0 0 28px 0; font-size: 15px;">' + text('締めの言葉') + '</div>' +
       '<div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">' +
       '<a href="' + safeUrl + '" style="display: inline-block; background: #e67e22; color: #fff; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">無料学習相談・体験授業に申し込む</a>' +
-      '<a href="tel:' + safeTel + '" style="display: inline-block; background: #fff; color: #e67e22; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; border: 2px solid #e67e22;">電話で直接申し込む</a>' +
+      // v0.4.1: 電話番号が未設定の時は、電話ボタンを出さない（tel: だけの壊れたリンクを作らない）
+      (safeTel ? '<a href="tel:' + safeTel + '" style="display: inline-block; background: #fff; color: #e67e22; padding: 16px 32px; border-radius: 50px; font-size: 15px; font-weight: bold; text-decoration: none; border: 2px solid #e67e22;">電話で直接申し込む</a>' : '') +
       '</div>' +
       '</div>'
     );
@@ -2779,6 +2837,31 @@ ${buildMarkerInstructionBlock(requestId)}`;
   // buildCtaHtmlは使わず、AIが書いたcta-btn/cta-subのhrefを教室設定の値で差し替える
   // （AIが書いたURL・電話・LINEは信用しない）。設定に無い電話/LINEのcta-subは外し、
   // 本CTA（final）で設定にあるのに無ければ足す。
+  // v0.4.1: AIが本文に書いた最後のCTA（<div class="eisai-cta" data-kind="final">…</div>）を取り除く
+  // （記事の一番最後には、拡張機能が保護CTA＝「まずはお気軽にご相談ください」の申込枠を付けるため）。
+  // 入れ子のdivがあっても対応するよう、開始タグから対応する閉じタグまでを数えて取り除く。
+  function removeFinalEisaiCta(html) {
+    let out = String(html || '');
+    const openRe = /<div\b[^>]*\bclass=["']eisai-cta["'][^>]*\bdata-kind=["']final["'][^>]*>|<div\b[^>]*\bdata-kind=["']final["'][^>]*\bclass=["']eisai-cta["'][^>]*>/i;
+    for (let guard = 0; guard < 5; guard++) {
+      const m = openRe.exec(out);
+      if (!m) break;
+      const start = m.index;
+      const tagRe = /<\/?div\b[^>]*>/gi;
+      tagRe.lastIndex = start + m[0].length;
+      let depth = 1;
+      let end = -1;
+      let t;
+      while ((t = tagRe.exec(out))) {
+        depth += t[0][1] === '/' ? -1 : 1;
+        if (depth === 0) { end = t.index + t[0].length; break; }
+      }
+      if (end < 0) break;
+      out = out.slice(0, start) + out.slice(end);
+    }
+    return out;
+  }
+
   function applyClassroomCtaLinks(html, ctaUrl, tel, line) {
     const safeUrl = escapeAttr(String(ctaUrl || '').replace(/"/g, ''));
     const safeTel = sanitizeTel(tel);
@@ -3288,13 +3371,15 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
 
       // v0.4.0（design.md 4.生成後の処理）：新語彙(eisai-cta)がある出力ではbuildCtaHtmlを使わず、
       // AIが書いたcta-btn/cta-subのhrefを教室設定の値で差し替える。旧語彙のみ従来どおりbuildCtaHtmlを使う。
-      const hasEisaiCta = /class=["']eisai-cta["']/i.test(decoded);
-      let ctaHtml = '';
-      if (hasEisaiCta) {
+      // v0.4.1：湯浅さん指示「必ず一番最後に、ブログに合わせて文章を変えた『まずはお気軽にご相談ください』の
+      // CTAを付ける」。v0.4.0では本文に eisai-cta がある時にこの申込枠を付けなかったため、最後の申込枠が消えていた。
+      // 中間CTA（data-kind="mid"）はリンクを教室設定の値に差し替えて残し、AIが書いた最後のCTA（data-kind="final"）は
+      // 申込枠と重なるので外し、記事の一番最後に必ず buildCtaHtml（CTA_DATAの文章で作る保護CTA）を付ける。
+      decoded = removeFinalEisaiCta(decoded);
+      if (/class=["']eisai-cta["']/i.test(decoded)) {
         decoded = applyClassroomCtaLinks(decoded, ctaUrl, ctaTel, (info.line || '').trim());
-      } else {
-        ctaHtml = buildCtaHtml(ctaUrl, ctaTel, ctaData);
       }
+      const ctaHtml = buildCtaHtml(ctaUrl, ctaTel, ctaData);
 
       // EISAI_CHECK（自己チェック）を抽出し、コピー用HTMLからは除去する（結果パネル表示専用）
       const checkResult = extractEisaiCheck(decoded);
@@ -3952,11 +4037,12 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
         inputModeButtons.forEach(b => b.classList.remove('eisai-segmented-active'));
         btn.classList.add('eisai-segmented-active');
         if (currentInputMode === INPUT_MODES.DETAILED && currentArticleType === ARTICLE_TYPES.AUTO) {
-          currentArticleType = ARTICLE_TYPES.SOLVE;
+          currentArticleType = ARTICLE_TYPES.BA;
         }
         updateSegmentDesc();
         renderTypeButtons();
         renderArticleForm();
+        persistArticleInput();
       };
       inputModeButtons.push(btn);
       return btn;
@@ -3984,18 +4070,23 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
           typeButtons.forEach(b => b.classList.remove('eisai-type-btn-active'));
           btn.classList.add('eisai-type-btn-active');
           renderArticleForm();
+          // v0.4.1（Codexレビュー対応）：型だけ変えて再読み込みしても戻らないよう、すぐ保存する
+          persistArticleInput();
         };
         typeButtons.push(btn);
         return btn;
       }
-      addTypeButton(ARTICLE_TYPES.SOLVE, '悩み解決型（情報提供）');
+      // v0.4.1: ビフォー・アフター型を先頭（標準）にした。
+      const orderedTypes = [ARTICLE_TYPES.BA, ARTICLE_TYPES.STORY, ARTICLE_TYPES.SOLVE];
+      addTypeButton(ARTICLE_TYPES.BA, 'ビフォー・アフター型（生徒の変化・成果）');
       addTypeButton(ARTICLE_TYPES.STORY, 'ストーリー型（事例・イベント・体験）');
+      addTypeButton(ARTICLE_TYPES.SOLVE, '悩み解決型（情報提供）');
       if (currentInputMode === INPUT_MODES.EASY) {
         addTypeButton(ARTICLE_TYPES.AUTO, 'おまかせ（メモから判断）');
+        orderedTypes.push(ARTICLE_TYPES.AUTO);
       }
-      const orderedTypes = [ARTICLE_TYPES.SOLVE, ARTICLE_TYPES.STORY, ARTICLE_TYPES.AUTO];
       const activeIndex = orderedTypes.indexOf(currentArticleType);
-      const activeBtn = typeButtons[activeIndex >= 0 ? Math.min(activeIndex, typeButtons.length - 1) : 0] || typeButtons[0];
+      const activeBtn = typeButtons[activeIndex >= 0 ? activeIndex : 0] || typeButtons[0];
       if (activeBtn) activeBtn.classList.add('eisai-type-btn-active');
     }
     renderTypeButtons();
@@ -4052,7 +4143,7 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
         flexWrap: 'wrap'
       }
     }, step2);
-    const selectedTypeText = createEl('span', { style: { minWidth: '0' } }, selectedTypeLabel, '悩み解決型（情報提供）');
+    const selectedTypeText = createEl('span', { style: { minWidth: '0' } }, selectedTypeLabel, 'ビフォー・アフター型（生徒の変化・成果）');
     const labelRightWrap = createEl('div', {
       style: {
         display: 'flex',
@@ -4100,6 +4191,7 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
 
     // v0.4.0: 記事入力（ペルソナ→事実）。旧5タイプのTYPE_FORMS/TEST_SAMPLESは廃止。
     const ARTICLE_TYPE_LABELS = {
+      [ARTICLE_TYPES.BA]: 'ビフォー・アフター型（生徒の変化・成果）',
       [ARTICLE_TYPES.SOLVE]: '悩み解決型（情報提供）',
       [ARTICLE_TYPES.STORY]: 'ストーリー型（事例・イベント・体験）',
       [ARTICLE_TYPES.AUTO]: 'おまかせ（メモから判断）'
@@ -4143,6 +4235,21 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
     // v0.4.0.5: サンプルの対象校名も、記事タイトル等に出ても不自然にならない架空名にする
     // （TEST_CLASSROOM.schoolsと同じ命名に揃える）。
     const ARTICLE_TEST_SAMPLES = {
+      [ARTICLE_TYPES.BA]: {
+        label: '点数アップ事例（サンプル）',
+        values: {
+          grade: '中3', tSchools: 'テスト市立第一中学校', timing: '9月の実力テスト後',
+          w1: '「夏休みに勉強したのに、点数につながるか不安」',
+          w2: '「中1・中2の内容まで戻らないと直せない気がする」',
+          w3: '「志望校まであと何点必要か分からない」',
+          h1: '', h2: '', h3: '',
+          facts: '・夏期講習で毎日自習室に来て、英語と数学の中1・中2の復習をやり直した\n・英語は単語を毎日30個、音読と書き取りをセットで\n・数学は関数と図形の基本問題を講師と解き直し',
+          caseText: '中3のBくん（英語：田中先生・数学：鈴木先生）。夏休み前の実力テスト5教科320点→9月の実力テスト395点（+75点）。英語62点→81点、数学58点→79点。本人の言葉：「中1からやり直したら、問題文が読めるようになった」',
+          action: '無料学習相談', offer: '', length: '1800-2200',
+          r1: '', r2: '', r3: '',
+          photos: '英語の単語ノート、数学の解き直しノート'
+        }
+      },
       [ARTICLE_TYPES.SOLVE]: {
         label: 'テスト市立第一中学校 対策（サンプル）',
         values: {
@@ -4202,14 +4309,22 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
         Object.keys(data).forEach(key => {
           if (draft[key] !== undefined) data[key] = draft[key];
         });
-        if (draft.type === ARTICLE_TYPES.SOLVE || draft.type === ARTICLE_TYPES.STORY || draft.type === ARTICLE_TYPES.AUTO) {
+        // v0.4.1: v0.4.0以前の下書き（型の印が無いもの）は、標準のビフォー・アフター型に切り替える。
+        if (draft.typeScheme === ARTICLE_TYPE_SCHEME &&
+            (draft.type === ARTICLE_TYPES.BA || draft.type === ARTICLE_TYPES.SOLVE || draft.type === ARTICLE_TYPES.STORY || draft.type === ARTICLE_TYPES.AUTO)) {
           data.type = draft.type;
+        } else {
+          data.type = ARTICLE_TYPES.BA;
         }
       }
       return data;
     }
 
     let articleInput = loadInitialArticleInput();
+    // v0.4.1（Codexレビュー対応）：しっかりモードに「おまかせ」は無いので、ビフォー・アフター型に直す
+    if (currentInputMode === INPUT_MODES.DETAILED && articleInput.type === ARTICLE_TYPES.AUTO) {
+      articleInput.type = ARTICLE_TYPES.BA;
+    }
     currentArticleType = articleInput.type;
     renderTypeButtons();
 
@@ -4393,7 +4508,7 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
       fieldEls && Object.keys(fieldEls).forEach(k => delete fieldEls[k]);
       articleInput.type = currentArticleType;
       articleInput.mode = currentInputMode;
-      selectedTypeText.textContent = ARTICLE_TYPE_LABELS[currentArticleType] || ARTICLE_TYPE_LABELS[ARTICLE_TYPES.SOLVE];
+      selectedTypeText.textContent = ARTICLE_TYPE_LABELS[currentArticleType] || ARTICLE_TYPE_LABELS[ARTICLE_TYPES.BA];
       renderSampleButton();
 
       if (currentInputMode === INPUT_MODES.EASY) {
@@ -4406,7 +4521,7 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
           style: { fontWeight: '400', color: 'var(--eisai-text-soft)', marginLeft: '6px', fontSize: '11px' }
         }, moreSummary, buildDetailedSummaryText());
         const moreBody = createEl('div', { className: 'eisai-details-content' }, moreDetails);
-        typeWrapLabel.textContent = '記事の型（おまかせが既定）';
+        typeWrapLabel.textContent = '記事の型（標準：ビフォー・アフター）';
         moreBody.appendChild(typeWrap);
         ['grade', 'tSchools', 'timing', 'action', 'length', 'r1', 'r2', 'r3', 'photos'].forEach(key => mountField(moreBody, key));
       } else {
