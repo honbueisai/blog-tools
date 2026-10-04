@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.4.4
+// @version      0.4.5
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -98,7 +98,7 @@ ${buildRequestIdLine(requestId)}
     return;
   }
 
-  const CURRENT_VERSION = '0.4.4';
+  const CURRENT_VERSION = '0.4.5';
   // v0.4.0.5: パネル見出しの版表示だけ、Tampermonkey等が渡す GM_info.script.version があれば
   // それを使う（テスト版インストール時は 0.4.0.N のようなテスト版番号が出る）。
   // @grant none環境やGM_info未対応環境でも落ちないよう、try/typeofで守る。
@@ -5067,7 +5067,8 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
 
       statusDiv.textContent = '🎯 画像生成用プロンプトを作成しています…待っている間、別のタブを見ていて大丈夫です。';
       statusDiv.classList.add('show');
-      hideBlogCopyButton();
+      // v0.4.5: サムネを作り始めても「HTMLをコピー（エディタへ）」は隠さない（記事のHTMLは保存済みの lastBlogHtml をコピーするため、
+      // サムネの後でもそのまま使える）。動画マニュアルの撮影で、サムネの後に下のボタンが「ChatGPTで記事を作る」に戻っていた。
       imgExecBtn.style.display = 'none';
       syncFooterButtons();
 
