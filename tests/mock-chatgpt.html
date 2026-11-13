@@ -277,6 +277,11 @@
     })();
   }
   var lateSendBtnMode = params.get('lateSendBtn') === '1';
+  // v0.4.6: 2026-11の実機の再現。
+  //   htmlDisplay=codeblock : 記事のHTMLがコードブロックに入って表示される（画面の文字は「HTML」の見出し＋HTML）
+  //   truncateAt=N          : 記事の回答がN文字で途中で切れ、終了目印が出ないまま回答が終わる
+  var htmlDisplayMode = params.get('htmlDisplay') || '';
+  var truncateAtParam = parseInt(params.get('truncateAt'), 10) || 0;
   var LATE_SEND_BTN_DELAY_MS = 2000;
 
   function setInfo(id, text) {
@@ -883,7 +888,10 @@
       startStreamingGenericText(fixtureText);
       return;
     }
-    startStreamingGenericText(wrapWithMarkers(id, fixtureText));
+    var articleBody = htmlDisplayMode === 'codeblock' ? 'HTML\n' + fixtureText : fixtureText;
+    var articleAnswer = wrapWithMarkers(id, articleBody);
+    if (truncateAtParam > 0) articleAnswer = articleAnswer.slice(0, truncateAtParam);
+    startStreamingGenericText(articleAnswer);
   }
 
   function handleThumbnailRequestSend(sentText) {
