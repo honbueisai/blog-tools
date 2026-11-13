@@ -231,6 +231,9 @@ function buildMockUrl(testCase) {
   // v0.4.1.7: 貼り付けが添付ファイル扱いに変わる境目（実機は8,000〜10,000字の間）を下げて、
   // 記事の依頼文（約6,000字）でも添付になる状況を再現する（添付＋短い案内文で送れることの確認）。
   if (testCase.pasteAttachAt) p.set('pasteAttachAt', String(testCase.pasteAttachAt));
+  // v0.4.6: 2026-11の実機の再現（記事のHTMLがコードブロックで表示される／回答が途中で切れる）。
+  if (testCase.htmlDisplay) p.set('htmlDisplay', testCase.htmlDisplay);
+  if (testCase.truncateAt) p.set('truncateAt', String(testCase.truncateAt));
   return `${BASE_URL}?${p.toString()}`;
 }
 
@@ -743,6 +746,34 @@ async function runComposerMisdetectionCase(port) {
   }
 }
 
+// v0.4.6: 回答が途中で切れて終了目印が出ない時、8分待たずに約1分で「途中で止まりました」と出ることを確認する。
+async function runStallCase(port) {
+  const t0 = Date.now();
+  const { cdp, ws, targetId } = await openTab(port);
+  const steps = [];
+  try {
+    const url = buildMockUrl({ fixture: 'sc_yanokuchi-chatgpt', layout: 'markdown', speed: 12, htmlDisplay: 'codeblock', truncateAt: 900 });
+    await navigate(cdp, url);
+    await seedArticleDraft(cdp);
+    await setHidden(cdp, false);
+    if (!(await clickByIdPrefix(cdp, 'eisai-chatgpt-btn-v'))) throw new Error('起動ボタンが見つかりませんでした');
+    await sleep(150);
+    if (!(await clickById(cdp, 'eisai-gen-article-btn'))) throw new Error('「ChatGPTで記事を作る」ボタンが見つかりませんでした');
+    steps.push('sent-article');
+    const after = await waitUntil(cdp, (st) => st.copyVisible || st.rereadVisible, 110000);
+    if (!after) throw new Error('100秒たっても止まったことを知らせませんでした');
+    if (after.copyVisible) throw new Error('途中で切れた回答を完成として扱いました');
+    if (String(after.status || '').indexOf('途中で止まりました') === -1) throw new Error('知らせの文が違います: ' + String(after.status).slice(0, 80));
+    steps.push('stall-detected');
+    const finalState = await getState(cdp);
+    return { ok: true, elapsedMs: Date.now() - t0, longtaskCount: finalState.longtaskCount, longtaskMax: finalState.longtaskMax, steps };
+  } catch (e) {
+    return { ok: false, elapsedMs: Date.now() - t0, longtaskCount: -1, longtaskMax: -1, steps, error: e && e.message ? e.message : String(e) };
+  } finally {
+    await closeTab(port, targetId, ws);
+  }
+}
+
 function buildMatrix() {
   const layouts = [
     { label: 'writing-block', layout: 'writing-block' },
@@ -780,6 +811,8 @@ function buildMatrix() {
   });
   // v0.4.1.7: 依頼文が添付ファイル扱いになる場合（表のまま／裏→表）
   cases.push({ name: '依頼文が添付になる（pasteAttachAt=3000）/ 表のまま', fixture: 'sc_yanokuchi-chatgpt', layout: 'writing-block', pasteAttachAt: 3000 });
+  cases.push({ name: '記事がコードブロックで表示される（htmlDisplay=codeblock）/ 表のまま', fixture: 'sc_yanokuchi-chatgpt', layout: 'markdown', htmlDisplay: 'codeblock' });
+  cases.push({ name: '記事がコードブロックで表示される（htmlDisplay=codeblock）/ 裏→表', fixture: 'sc_yanokuchi-chatgpt', layout: 'writing-block', htmlDisplay: 'codeblock', toggleVisibility: true });
   cases.push({ name: '依頼文が添付になる（pasteAttachAt=3000）/ 裏→表', fixture: 'sc_yanokuchi-chatgpt', layout: 'markdown', pasteAttachAt: 3000, toggleVisibility: true });
   return cases;
 }
@@ -852,6 +885,11 @@ async function main() {
     const lateSendBtnResult = applyLongtaskGate(await runLateSendButtonCase(port));
     results.push({ name: 'ずっと裏のまま・送信ボタン遅延（lateSendBtn=1、記事→サムネ指示→画像）', ...lateSendBtnResult });
     console.log(lateSendBtnResult.ok ? `OK (${lateSendBtnResult.elapsedMs}ms)` : `FAIL (${lateSendBtnResult.error})`);
+
+    process.stdout.write('実行中: 回答が途中で切れる（truncateAt=900） ... ');
+    const stallResult = await runStallCase(port);
+    results.push({ name: '回答が途中で切れる（truncateAt=900）→約1分で知らせる', ...stallResult });
+    console.log(stallResult.ok ? `OK (${stallResult.elapsedMs}ms)` : `FAIL (${stallResult.error})`);
 
     process.stdout.write('実行中: ずっと裏のまま・throttle近似＋送信ボタン遅延 ... ');
     const throttledResult = applyLongtaskGate(await runThrottledLateSendButtonCase(port));

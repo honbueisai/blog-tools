@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Eisai Blog Generator for ChatGPT
 // @namespace    http://tampermonkey.net/
-// @version      0.4.5
+// @version      0.4.6
 // @description  英才ブログ生成ツール (ChatGPT対応 / Gemini版とは別ファイル)
 // @author       Yuan
 // @match        https://chatgpt.com/*
@@ -98,7 +98,7 @@ ${buildRequestIdLine(requestId)}
     return;
   }
 
-  const CURRENT_VERSION = '0.4.5';
+  const CURRENT_VERSION = '0.4.6';
   // v0.4.0.5: パネル見出しの版表示だけ、Tampermonkey等が渡す GM_info.script.version があれば
   // それを使う（テスト版インストール時は 0.4.0.N のようなテスト版番号が出る）。
   // @grant none環境やGM_info未対応環境でも落ちないよう、try/typeofで守る。
@@ -659,7 +659,7 @@ ${buildRequestIdLine(requestId)}
     ].join('\n');
     const lines=[];
     lines.push(`あなたは英才個別学院の教室ブログ専門ライターです。以下の入力から、保護者向けのブログ記事をHTMLで1本書いてください。
-このHTMLは英才ブログエディタに貼り付けて装飾されます。応答は <h1> から始め、前置き・解説・Markdown・コードブロックは出力しないでください。
+このHTMLは英才ブログエディタに貼り付けて装飾されます。記事のHTML全体を、\`\`\`html のコードブロック1つに入れて出力する。中は <h1> から始め、外に前置き・解説は書かない。
 
 【この記事のゴール】
 - ${personaPrefix}保護者が${goalTimingPhrase}、記事だけでも得をし（家庭でできることが分かる）、同時に「${v('kosha')}ならここまでやってくれる」と感じて「${actionText}」に進みたくなること。
@@ -3469,6 +3469,10 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
   // （480秒）でタイムアウト。
   const MARKER_WATCH_MAX_POLL_COUNT = 480; // 8分（見えている秒数だけ数える）
   const MARKER_WATCH_STABLE_TARGET = 2; // 終了目印が見つかってから、これだけ連続で同一なら完成
+  // v0.4.6: 開始目印の後、文字数が増えないまま見えている時間でこれだけ経ったら「途中で止まった」とみなす。
+  // 2026-11-14に実機で確認：ChatGPTの回答がコードブロックの途中で切れ、終了目印が出ないまま
+  // 回答が終わることがある。以前は8分待ってからタイムアウトを出していた。
+  const MARKER_WATCH_STALL_POLL_COUNT = 60; // 1分
 
   function startMarkerWatch(requestId, statusDiv, stopFn, setTimerFn, handlers) {
     stopFn();
@@ -3476,6 +3480,8 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
     let last = null;
     let stableCount = 0;
     let pollCount = 0;
+    let lastCharCount = -1;
+    let stallPolls = 0;
     let visibleAgainAt = Date.now();
     let wasHidden = isTabHidden();
 
@@ -3525,6 +3531,18 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
         }
         statusDiv.textContent = `🧠 ChatGPTが生成中です…（${state.charCount}文字）`;
         statusDiv.classList.add('show');
+        // v0.4.6: 文字数が増えないまま1分（見えている時間）→ 回答が途中で止まった。
+        // 下の「表に戻った直後の60秒」の猶予より前で数える（猶予の中で数えないと、送信直後の
+        // 1分が猶予になり、知らせが2分以上遅れる）。表に戻った直後の5秒だけは数えない。
+        if (state.charCount !== lastCharCount) {
+          lastCharCount = state.charCount;
+          stallPolls = 0;
+        } else if (Date.now() - visibleAgainAt >= 5000 && ++stallPolls >= MARKER_WATCH_STALL_POLL_COUNT) {
+          stopFn();
+          if (typeof handlers.onStall === 'function') handlers.onStall(state.charCount);
+          else handlers.onTimeout(true);
+          return;
+        }
         // 表に戻った直後、ChatGPTが全文を描画するまで数秒かかる。見えている状態で
         // 60秒以内は、この待ちをタイムアウトに数えない。
         if (Date.now() - visibleAgainAt < 60000) {
@@ -3581,6 +3599,12 @@ details.eisai-details summary::-webkit-details-marker { display: none; }
       onDone: (text) => {
         const ok = finalizeBlogFromText(text, statusDiv, copyBtn, getArticleFactsText);
         finish(ok);
+      },
+      onStall: (charCount) => {
+        statusDiv.textContent = '⚠️ ChatGPTの回答が途中で止まりました（' + charCount + '文字のまま1分）。ChatGPT側で回答が切れたようです。下の「📋 プロンプトをコピー」を押し、新しいチャットに貼り付けて送信してください。記事が出たら「読み取り直す」を押します。';
+        statusDiv.classList.add('show');
+        copyBtn.style.display = 'none';
+        finish(false);
       },
       onTimeout: (hasStart) => {
         statusDiv.textContent = hasStart
